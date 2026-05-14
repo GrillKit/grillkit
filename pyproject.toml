@@ -1,0 +1,60 @@
+[project]
+name = "grillkit"
+version = "0.1.0"
+description = "AI Interview Trainer - Practice technical interviews with AI"
+requires-python = ">=3.12"
+
+[project.scripts]
+grillkit = "app.main:main"
+dependencies = [
+    # Core Framework
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    # Database
+    "sqlalchemy>=2.0.0",
+    # AI Providers
+    "openai>=1.0.0",
+    "anthropic>=0.8.0",
+    "httpx>=0.25.0",
+    # Templating & Frontend
+    "jinja2>=3.1.0",
+    # Data Processing
+    "pyyaml>=6.0.1",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    # Utilities
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "httpx>=0.25.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

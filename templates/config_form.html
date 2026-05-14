@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Configure - GrillKit{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+{% if message %}
+<div class="message">{{ message }}</div>
+{% endif %}
+
+<form method="post" action="/config">
+    <div>
+        <label for="provider_type">Provider Type</label>
+        <select name="provider_type" id="provider_type" required>
+            {% for provider in providers %}
+            <option value="{{ provider.id }}" {% if config and config.provider_type == provider.id %}selected{% endif %}>
+                {{ provider.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label for="base_url">Base URL</label>
+        <input type="url" name="base_url" id="base_url" value="{{ config.base_url if config else '' }}" placeholder="https://api.openai.com/v1" required>
+    </div>
+
+    <div>
+        <label for="model">Model</label>
+        <input type="text" name="model" id="model" value="{{ config.model if config else '' }}" placeholder="gpt-4" required>
+    </div>
+
+    <div>
+        <label for="api_key">API Key (optional for local providers)</label>
+        <input type="password" name="api_key" id="api_key" value="{{ config.api_key if config else '' }}" placeholder="sk-...">
+    </div>
+
+    <div>
+        <label for="timeout">Timeout (seconds)</label>
+        <input type="number" name="timeout" id="timeout" value="{{ config.timeout if config else 60 }}" min="1" max="300" step="1">
+    </div>
+
+    <div class="actions">
+        <button type="submit">Save Configuration</button>
+        <button type="submit" formaction="/config/test" formmethod="post">Test Connection</button>
+    </div>
+</form>
+
+{% if config %}
+<form method="post" action="/config" onsubmit="this.method='delete'; return confirm('Remove configuration?');">
+    <button type="submit" class="danger">Remove Configuration</button>
+</form>
+{% endif %}
+{% endblock %}

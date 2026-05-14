@@ -1,0 +1,41 @@
+category: "Data Structures"
+language: "python"
+level: "junior"
+
+description: "Fundamental Python data structures and their usage"
+
+questions:
+  - id: "ds-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["list", "tuple"]
+
+    question:
+      text: "What is the difference between a list and a tuple in Python?"
+      code: null
+
+    follow_ups:
+      - "When would you choose a tuple over a list?"
+      - "Can a tuple contain mutable objects?"
+
+    expected_points:
+      - "Lists are mutable, tuples are immutable"
+      - "Lists use [], tuples use ()"
+
+  - id: "ds-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["dict", "hash-map"]
+
+    question:
+      text: "How does a Python dictionary work internally?"
+      code: null
+
+    follow_ups:
+      - "Why are dictionary keys required to be hashable?"
+      - "What is the time complexity of dictionary lookup?"
+
+    expected_points:
+      - "Uses hash table implementation"
+      - "Keys must be hashable and unique"
+      - "Average O(1) lookup time"

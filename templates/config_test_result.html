@@ -1,0 +1,11 @@
+{% if success %}
+<div class="test-success">
+    <strong>Connection successful!</strong>
+    <p>{{ message }}</p>
+</div>
+{% else %}
+<div class="test-error">
+    <strong>Connection failed!</strong>
+    <p>{{ message }}</p>
+</div>
+{% endif %}
