@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Interview - GrillKit{% endblock %}
+
+{% block content %}
+{% if session.status == "completed" %}
+<div class="alert alert-info">
+    <strong>Interview completed!</strong> Final score: {{ session.score }} / {{ session.question_count * 5 }}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">
+            {{ session.category | capitalize }} Interview
+        </h1>
+        <p class="card-subtitle">
+            Level: {{ session.level | capitalize }} &middot;
+            {% if current_question %}
+            Question {{ current_question.order }} of {{ session.question_count }}
+            {% else %}
+            All questions answered
+            {% endif %}
+            &middot;
+            Status: {{ session.status | capitalize }}
+        </p>
+    </div>
+
+    <div class="interview-chat">
+        {% for answer in answers %}
+        <div class="chat-message question">
+            <div class="chat-bubble question-bubble">
+                <strong>Q{{ answer.order }}:</strong>
+                {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
+                {{ answer.question_text }}
+                {% if answer.question_code %}
+                <pre class="code-block"><code>{{ answer.question_code }}</code></pre>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if answer.answer_text %}
+        <div class="chat-message answer">
+            <div class="chat-bubble answer-bubble">
+                <strong>You:</strong> {{ answer.answer_text }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if answer.score is not none %}
+        <div class="chat-message feedback">
+            <div class="chat-bubble feedback-bubble">
+                <strong>Score: {{ answer.score }}/5</strong>
+                {% if answer.feedback %}
+                <p>{{ answer.feedback }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if current_question %}
+    <form method="post" action="/interview/{{ session.id }}/answer" class="form answer-form">
+        <input type="hidden" name="question_id" value="{{ current_question.question_id }}">
+
+        <div class="form-group">
+            <label for="answer_text" class="form-label">Your Answer</label>
+            <textarea name="answer_text" id="answer_text"
+                      class="form-control" rows="6" required
+                      placeholder="Type your answer here..."></textarea>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">Submit Answer</button>
+        </div>
+    </form>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <div class="button-group">
+        <a href="/" class="btn btn-outline">Back to Dashboard</a>
+        {% if session.status == "active" %}
+        <form method="post" action="/interview/{{ session.id }}/complete" style="display:inline;">
+            <button type="submit" class="btn btn-danger">End Interview</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

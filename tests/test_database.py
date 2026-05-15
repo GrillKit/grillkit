@@ -7,7 +7,8 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, Interview, init_db, get_session
+from app.database import Base, init_db, get_session
+from app.models import InterviewSession
 
 
 @pytest.fixture
@@ -28,108 +29,108 @@ def test_session(test_engine):
     session.close()
 
 
-class TestInterview:
-    """Tests for Interview model."""
+class TestInterviewSession:
+    """Tests for InterviewSession model."""
 
-    def test_interview_creation(self, test_session):
-        """Test creating an Interview record."""
-        interview = Interview(
-            id="test-interview-001",
+    def test_session_creation(self, test_session):
+        """Test creating an InterviewSession record."""
+        session = InterviewSession(
+            id="test-session-001",
             level="junior",
             category="python",
             status="active",
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-001").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-001").first()
         assert result is not None
         assert result.level == "junior"
         assert result.category == "python"
         assert result.status == "active"
 
-    def test_interview_with_score(self, test_session):
-        """Test creating an Interview with a score."""
-        interview = Interview(
-            id="test-interview-002",
+    def test_session_with_score(self, test_session):
+        """Test creating an InterviewSession with a score."""
+        session = InterviewSession(
+            id="test-session-002",
             level="senior",
             category="system-design",
             status="completed",
             score=85,
-            messages_json='[{"role": "user", "content": "Hello"}]',
+            question_ids='["ds-001","ds-002"]',
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-002").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-002").first()
         assert result.score == 85
-        assert result.messages_json == '[{"role": "user", "content": "Hello"}]'
+        assert result.question_ids == '["ds-001","ds-002"]'
 
-    def test_interview_default_status(self, test_session):
+    def test_session_default_status(self, test_session):
         """Test that status defaults to 'active'."""
-        interview = Interview(
-            id="test-interview-003",
+        session = InterviewSession(
+            id="test-session-003",
             level="mid",
             category="algorithms",
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-003").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-003").first()
         assert result.status == "active"
 
-    def test_interview_default_messages_json(self, test_session):
-        """Test that messages_json defaults to '[]'."""
-        interview = Interview(
-            id="test-interview-004",
+    def test_session_default_question_ids(self, test_session):
+        """Test that question_ids defaults to '[]'."""
+        session = InterviewSession(
+            id="test-session-004",
             level="junior",
             category="sql",
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-004").first()
-        assert result.messages_json == "[]"
+        result = test_session.query(InterviewSession).filter_by(id="test-session-004").first()
+        assert result.question_ids == "[]"
 
-    def test_interview_completed_at_nullable(self, test_session):
+    def test_session_completed_at_nullable(self, test_session):
         """Test that completed_at can be null."""
-        interview = Interview(
-            id="test-interview-005",
+        session = InterviewSession(
+            id="test-session-005",
             level="junior",
             category="python",
             completed_at=None,
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-005").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-005").first()
         assert result.completed_at is None
 
-    def test_interview_score_nullable(self, test_session):
+    def test_session_score_nullable(self, test_session):
         """Test that score can be null."""
-        interview = Interview(
-            id="test-interview-006",
+        session = InterviewSession(
+            id="test-session-006",
             level="junior",
             category="python",
             score=None,
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-006").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-006").first()
         assert result.score is None
 
-    def test_interview_started_at_auto(self, test_session):
+    def test_session_started_at_auto(self, test_session):
         """Test that started_at is set automatically."""
-        interview = Interview(
-            id="test-interview-007",
+        session = InterviewSession(
+            id="test-session-007",
             level="junior",
             category="python",
         )
-        test_session.add(interview)
+        test_session.add(session)
         test_session.commit()
 
-        result = test_session.query(Interview).filter_by(id="test-interview-007").first()
+        result = test_session.query(InterviewSession).filter_by(id="test-session-007").first()
         assert result.started_at is not None
         assert isinstance(result.started_at, datetime)
 
@@ -147,7 +148,7 @@ class TestDatabaseFunctions:
         session = Session()
 
         with pytest.raises(Exception):
-            session.query(Interview).first()
+            session.query(InterviewSession).first()
 
         session.close()
 
@@ -156,7 +157,7 @@ class TestDatabaseFunctions:
 
         # Verify tables exist now
         session = Session()
-        result = session.query(Interview).first()
+        result = session.query(InterviewSession).first()
         assert result is None  # No records yet, but query works
         session.close()
 

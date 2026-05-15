@@ -8,13 +8,13 @@ stored in data/config.json.
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from ..ai.factory import ProviderFactory
-from ..database import DATA_DIR
 
-
-CONFIG_PATH = DATA_DIR / "config.json"
+CONFIG_DIR = Path(__file__).parent.parent.parent / "data"
+CONFIG_PATH = CONFIG_DIR / "config.json"
 
 
 @dataclass
@@ -93,7 +93,7 @@ class ConfigService:
         Args:
             config: Configuration to save.
         """
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(config.to_dict(), indent=2))
 
     @staticmethod
