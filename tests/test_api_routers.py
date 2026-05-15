@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for API routers."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -93,10 +93,13 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_save_config_success(self, client):
         """Test POST /config with successful connection test."""
-        with patch(
-            "app.api.config.ConfigService.test_connection", return_value=(True, "OK")
-        ), patch("app.api.config.ConfigService.save_config") as mock_save, patch(
-            "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+        with (
+            patch(
+                "app.api.config.ConfigService.test_connection",
+                return_value=(True, "OK"),
+            ),
+            patch("app.api.config.ConfigService.save_config") as mock_save,
+            patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]),
         ):
             response = client.post(
                 "/config",
@@ -115,11 +118,12 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_save_config_failure(self, client):
         """Test POST /config with failed connection test."""
-        with patch(
-            "app.api.config.ConfigService.test_connection",
-            return_value=(False, "Connection failed"),
-        ), patch(
-            "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+        with (
+            patch(
+                "app.api.config.ConfigService.test_connection",
+                return_value=(False, "Connection failed"),
+            ),
+            patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]),
         ):
             response = client.post(
                 "/config",
@@ -213,21 +217,23 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.process_answer_submission",
                 new_callable=AsyncMock,
             ) as mock_process,
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({
+            ws.send_json(
+                {
                     "type": "answer",
                     "question_id": "ds-001",
                     "answer_text": "My answer",
-                })
-                # Should not raise — service is called, no response sent back
-                # (response events are sent via ws_send callback internally)
-                mock_process.assert_awaited_once_with(
-                    session_id="test-id",
-                    question_id="ds-001",
-                    answer_text="My answer",
-                    ws_send=mock_process.call_args.kwargs["ws_send"],
-                )
+                }
+            )
+            # Should not raise — service is called, no response sent back
+            # (response events are sent via ws_send callback internally)
+            mock_process.assert_awaited_once_with(
+                session_id="test-id",
+                question_id="ds-001",
+                answer_text="My answer",
+                ws_send=mock_process.call_args.kwargs["ws_send"],
+            )
 
     def test_websocket_answer_missing_fields(self, client):
         """Test WebSocket returns error when question_id or answer_text is missing."""
@@ -247,16 +253,18 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.get_session",
                 return_value=mock_session,
             ),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({
+            ws.send_json(
+                {
                     "type": "answer",
                     "question_id": "ds-001",
                     "answer_text": "My answer",
-                })
-                response = ws.receive_json()
-                assert response["type"] == "error"
-                assert "completed" in response["message"].lower()
+                }
+            )
+            response = ws.receive_json()
+            assert response["type"] == "error"
+            assert "completed" in response["message"].lower()
 
     def test_websocket_answer_session_not_found(self, client):
         """Test WebSocket returns error when session is not found."""
@@ -265,16 +273,18 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.get_session",
                 return_value=None,
             ),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({
+            ws.send_json(
+                {
                     "type": "answer",
                     "question_id": "ds-001",
                     "answer_text": "My answer",
-                })
-                response = ws.receive_json()
-                assert response["type"] == "error"
-                assert "not found" in response["message"].lower()
+                }
+            )
+            response = ws.receive_json()
+            assert response["type"] == "error"
+            assert "not found" in response["message"].lower()
 
     def test_websocket_ping_pong(self, client):
         """Test WebSocket ping/pong returns session status."""
@@ -285,12 +295,12 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.get_session",
                 return_value=mock_session,
             ),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({"type": "ping"})
-                response = ws.receive_json()
-                assert response["type"] == "pong"
-                assert response["status"] == "active"
+            ws.send_json({"type": "ping"})
+            response = ws.receive_json()
+            assert response["type"] == "pong"
+            assert response["status"] == "active"
 
     def test_websocket_ping_completed_session(self, client):
         """Test ping returns completed status."""
@@ -301,12 +311,12 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.get_session",
                 return_value=mock_session,
             ),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({"type": "ping"})
-                response = ws.receive_json()
-                assert response["type"] == "pong"
-                assert response["status"] == "completed"
+            ws.send_json({"type": "ping"})
+            response = ws.receive_json()
+            assert response["type"] == "pong"
+            assert response["status"] == "completed"
 
     def test_websocket_complete_success(self, client):
         """Test WebSocket complete message triggers session completion."""
@@ -321,13 +331,13 @@ class TestInterviewWebSocket:
                 "app.api.interview.InterviewSessionService.process_session_completion",
                 new_callable=AsyncMock,
             ) as mock_complete,
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({"type": "complete"})
-                mock_complete.assert_awaited_once_with(
-                    session_id="test-id",
-                    ws_send=mock_complete.call_args.kwargs["ws_send"],
-                )
+            ws.send_json({"type": "complete"})
+            mock_complete.assert_awaited_once_with(
+                session_id="test-id",
+                ws_send=mock_complete.call_args.kwargs["ws_send"],
+            )
 
     def test_websocket_answer_service_error(self, client):
         """Test WebSocket handles ValueError from service layer."""
@@ -343,13 +353,15 @@ class TestInterviewWebSocket:
                 new_callable=AsyncMock,
                 side_effect=ValueError("Invalid question"),
             ),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({
+            ws.send_json(
+                {
                     "type": "answer",
                     "question_id": "ds-001",
                     "answer_text": "My answer",
-                })
-                response = ws.receive_json()
-                assert response["type"] == "error"
-                assert "Invalid question" in response["message"]
+                }
+            )
+            response = ws.receive_json()
+            assert response["type"] == "error"
+            assert "Invalid question" in response["message"]

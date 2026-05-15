@@ -119,11 +119,3 @@ class AIProvider(ABC):
             ValueError: If the request fails or parameters are invalid.
         """
         pass
-
-    async def close(self) -> None:
-        """Close the provider and release resources.
-
-        Default no-op. Subclasses with managed resources (e.g., HTTP clients)
-        should override this method to perform cleanup.
-        """
-        pass

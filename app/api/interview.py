@@ -9,6 +9,7 @@ service layer.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from typing import Any
@@ -137,26 +138,32 @@ async def interview_ws(websocket: WebSocket, session_id: str):
                 answer_text = raw.get("answer_text", "")
 
                 if not question_id or not answer_text:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Both question_id and answer_text are required",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Both question_id and answer_text are required",
+                        }
+                    )
                     continue
 
                 try:
                     # Validate session is active
                     session = InterviewSessionService.get_session(session_id)
                     if not session:
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": "Session not found",
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "message": "Session not found",
+                            }
+                        )
                         continue
                     if session.status != "active":
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": "Cannot submit answer to a completed session",
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "message": "Cannot submit answer to a completed session",
+                            }
+                        )
                         continue
 
                     await InterviewSessionService.process_answer_submission(
@@ -195,21 +202,23 @@ async def interview_ws(websocket: WebSocket, session_id: str):
                     logger.exception(
                         "WebSocket session completion failed for session %s", session_id
                     )
-                    ws_send({"type": "error", "message": f"Session evaluation failed: {e}"})
+                    ws_send(
+                        {"type": "error", "message": f"Session evaluation failed: {e}"}
+                    )
             else:
-                await websocket.send_json({
-                    "type": "error",
-                    "message": f"Unknown message type: {msg_type}",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": f"Unknown message type: {msg_type}",
+                    }
+                )
     except WebSocketDisconnect:
         logger.debug("WebSocket disconnected for session %s", session_id)
     finally:
         # Cancel the send worker so it doesn't outlive the connection
         send_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await send_task
-        except asyncio.CancelledError:
-            pass
 
 
 @router.post("/{session_id}/answer", response_class=HTMLResponse)
