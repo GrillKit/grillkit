@@ -619,3 +619,109 @@ textarea.form-control {
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
 }
+
+/* Feedback section for final evaluation */
+.feedback-section {
+    margin-bottom: 1.25rem;
+}
+
+.feedback-section h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.feedback-section ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.feedback-section li {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+/* Score breakdown table */
+.score-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.score-table th,
+.score-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.score-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.score-table td {
+    color: var(--text-primary);
+}
+
+.score-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================================
+   Evaluating indicator (spinner)
+   ============================================ */
+.evaluating-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.spinner {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error message in chat */
+.chat-message.error .chat-bubble.error-bubble {
+    background-color: var(--error-bg);
+    border-color: var(--error-border);
+    color: var(--error-text);
+}
+
+/* Button disabled state */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Text muted */
+.text-muted {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}

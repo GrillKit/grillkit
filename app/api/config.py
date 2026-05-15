@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Configuration endpoints."""
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from ..services.config import ConfigService, ProviderConfig
 from ..ai.factory import ProviderFactory
+from ..services.config import ConfigService, ProviderConfig
 
 router = APIRouter(prefix="/config", tags=["config"])
 templates = Jinja2Templates(directory="templates")
@@ -70,7 +70,7 @@ async def save_config(
         providers = ProviderFactory.get_provider_types()
         return templates.TemplateResponse(
             request,
-            "config_form.html",
+            "config.html",
             {
                 "error": message,
                 "config": config.to_dict(mask_secret=False),
@@ -101,7 +101,7 @@ async def delete_config(request: Request):
     ConfigService.delete_config()
     return templates.TemplateResponse(
         request,
-        "config_form.html",
+        "config.html",
         {
             "config": None,
             "providers": ProviderFactory.get_provider_types(),
@@ -149,4 +149,3 @@ async def test_config(
             "message": message,
         },
     )
-

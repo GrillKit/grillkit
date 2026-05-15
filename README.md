@@ -7,31 +7,32 @@
 
 Practice technical interviews with an AI interviewer. Open-source platform for developers to prepare for coding interviews.
 
-> **Status**: MVP - Configuration and provider management ready. Interview engine in development.
+> **Status**: Beta - Real-time AI interview engine with scoring and feedback.
 
 ## Current Features
 
+- **Real-time AI Interview** - WebSocket-based chat with AI interviewer, answer evaluation, and follow-up questions
+- **AI Scoring & Feedback** - Per-question scores (1-5), strengths/weaknesses, and final session evaluation
+- **Follow-up Questions** - AI probes deeper on insufficient answers (up to 2 follow-ups per question)
+- **Session Management** - Create, answer, and complete interview sessions with full history
+- **Category Selection** - Choose interview topics and difficulty levels from YAML question bank
 - **AI Provider Configuration** - Setup wizard for OpenAI-compatible APIs (OpenAI, Ollama, vLLM)
 - **Connection Testing** - Validate API keys before saving
+- **SQLite Database** - Persistent storage for sessions and answers
 
 ## In Progress
 
-
-- **Interview Engine** - WebSocket-based chat with AI interviewer
+- **Interview History** - Browse past interviews with scores and filtering
 - **Time Tracking** - Response time monitoring per question
-- **Feedback System** - AI-generated scoring and recommendations
-- **Interview History** - Browse past interviews with scores
-- **Category Selection** - Choose interview topics and difficulty
-- **SQLite Database** - Interview storage schema ready
-- **YAML Question Bank** - Python junior questions included
+- **Additional AI Providers** - Native Anthropic Claude support
+- **More Languages** - Go, JavaScript, Java, C++, SQL question banks
 
 ## Planned
 
-- **Additional AI Providers** - Native Anthropic Claude support
-- **More Languages** - Go, JavaScript, Java, C++, SQL question banks
 - **Code Editor** - Monaco integration with syntax highlighting
 - **Advanced Features** - Voice interviews, custom question banks
 - **Standalone Frontend** - React/Vue SPA (seeking contributors)
+- **PWA Support** - Offline interview practice
 
 ## Quick Start
 
@@ -88,22 +89,25 @@ Supported providers (OpenAI-compatible):
 ```
 app/
 ├── ai/              # AI provider adapters (base, factory, openai-compatible)
-├── api/             # API endpoints (root, config)
-├── services/        # Business logic (config service)
-├── database.py      # SQLAlchemy models and database
+├── api/             # API endpoints (config, interview, root, setup)
+├── services/        # Business logic (config, interview session, evaluator)
+├── database.py      # SQLAlchemy database connection
 ├── main.py          # FastAPI app factory
+├── models.py        # SQLAlchemy models (InterviewSession, Answer)
 └── questions.py     # YAML question loader
 data/
 ├── questions/       # YAML question banks
 │   └── python/
-│       └── junior/
+│       ├── junior/
+│       ├── middle/
+│       └── senior/
 ├── config.json      # User configuration (gitignored)
-└── grillkit.db      # SQLite database (gitignored)
+└── db/              # SQLite database directory (gitignored)
 templates/           # Jinja2 HTML templates
 static/              # CSS and assets
 tests/               # Test suite
 docs/                # Design documents
-design.md            # Full architecture specification
+ARCHITECTURE.md      # Full architecture specification
 ```
 
 ## Development

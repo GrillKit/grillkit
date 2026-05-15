@@ -6,7 +6,7 @@ This module defines all database models, including interview sessions,
 answers, and future entities.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
@@ -27,6 +27,7 @@ class InterviewSession(Base):
         question_ids: JSON list of question IDs in display order.
         status: Interview status ("active", "completed").
         score: Final total score (None if not graded yet).
+        overall_feedback: JSON string with final evaluation feedback (None if not evaluated).
         started_at: Timestamp when interview began.
         completed_at: Timestamp when interview ended (None if active).
         answers: Relationship to Answer records, ordered by (order, round).
@@ -41,6 +42,7 @@ class InterviewSession(Base):
     question_ids = Column(Text, default="[]")
     status = Column(String, default="active")
     score = Column(Integer, nullable=True)
+    overall_feedback = Column(Text, nullable=True)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -91,7 +93,7 @@ class Answer(Base):
     feedback = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     interview_session = relationship("InterviewSession", back_populates="answers")

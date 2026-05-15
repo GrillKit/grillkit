@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for configuration service."""
 
-import json
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -104,7 +102,7 @@ class TestConfigService:
             api_key="test_key",
         )
         ConfigService.save_config(config)
-        
+
         retrieved_config = ConfigService.get_config()
         assert retrieved_config == config
         assert mock_config_path.exists()
@@ -128,7 +126,9 @@ class TestConfigService:
         assert not config_path.exists()
 
     @pytest.mark.asyncio
-    async def test_test_connection_success(self, mock_config_path, mock_provider_factory):
+    async def test_test_connection_success(
+        self, mock_config_path, mock_provider_factory
+    ):
         """Test successful provider connection."""
         config = ProviderConfig(
             provider_type="openai-compatible",
@@ -149,9 +149,13 @@ class TestConfigService:
         mock_provider_factory.from_config.return_value.validate.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_test_connection_failure_invalid_api_key(self, mock_config_path, mock_provider_factory):
+    async def test_test_connection_failure_invalid_api_key(
+        self, mock_config_path, mock_provider_factory
+    ):
         """Test failed provider connection due to invalid API key."""
-        mock_provider_factory.from_config.return_value.validate.side_effect = ValueError("Authentication failed: Invalid API key")
+        mock_provider_factory.from_config.return_value.validate.side_effect = (
+            ValueError("Authentication failed: Invalid API key")
+        )
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
@@ -163,7 +167,9 @@ class TestConfigService:
         assert message == "Authentication failed: Invalid API key"
 
     @pytest.mark.asyncio
-    async def test_test_connection_exception(self, mock_config_path, mock_provider_factory):
+    async def test_test_connection_exception(
+        self, mock_config_path, mock_provider_factory
+    ):
         """Test failed provider connection due to an exception."""
         mock_provider_factory.from_config.side_effect = ValueError("Test Error")
         config = ProviderConfig(
@@ -177,7 +183,9 @@ class TestConfigService:
         assert message == "Test Error"
 
     @pytest.mark.asyncio
-    async def test_create_provider_from_config_success(self, mock_config_path, mock_provider_factory):
+    async def test_create_provider_from_config_success(
+        self, mock_config_path, mock_provider_factory
+    ):
         """Test creating provider from saved config."""
         config = ProviderConfig(
             provider_type="openai-compatible",

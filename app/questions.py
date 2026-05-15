@@ -6,10 +6,10 @@ This module provides functionality for loading interview questions
 from YAML files organized by language, level, and category.
 """
 
-import yaml
-from pathlib import Path
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+
+import yaml
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "questions"
 

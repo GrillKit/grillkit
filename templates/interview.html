@@ -5,7 +5,7 @@
 {% block content %}
 {% if session.status == "completed" %}
 <div class="alert alert-info">
-    <strong>Interview completed!</strong> Final score: {{ session.score }} / {{ session.question_count * 5 }}
+    <strong>Interview completed!</strong> Final score: {{ session.score }} / {{ max_score }}
 </div>
 {% endif %}
 
@@ -22,13 +22,15 @@
             All questions answered
             {% endif %}
             &middot;
-            Status: {{ session.status | capitalize }}
+            Status: <span id="session-status">{{ session.status | capitalize }}</span>
         </p>
     </div>
 
-    <div class="interview-chat">
+    <div class="interview-chat" id="chat-container">
         {% for answer in answers %}
-        <div class="chat-message question">
+        {# Only show answered questions or the current unanswered question #}
+        {% if answer.answer_text is not none or answer == current_question %}
+        <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
             <div class="chat-bubble question-bubble">
                 <strong>Q{{ answer.order }}:</strong>
                 {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
@@ -40,7 +42,7 @@
         </div>
 
         {% if answer.answer_text %}
-        <div class="chat-message answer">
+        <div class="chat-message answer" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
             <div class="chat-bubble answer-bubble">
                 <strong>You:</strong> {{ answer.answer_text }}
             </div>
@@ -48,7 +50,7 @@
         {% endif %}
 
         {% if answer.score is not none %}
-        <div class="chat-message feedback">
+        <div class="chat-message feedback" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
             <div class="chat-bubble feedback-bubble">
                 <strong>Score: {{ answer.score }}/5</strong>
                 {% if answer.feedback %}
@@ -57,13 +59,13 @@
             </div>
         </div>
         {% endif %}
+        {% endif %}
         {% endfor %}
     </div>
 
-    {% if current_question %}
-    <form method="post" action="/interview/{{ session.id }}/answer" class="form answer-form">
-        <input type="hidden" name="question_id" value="{{ current_question.question_id }}">
-
+    {# --- Answer form (visible only for active sessions) --- #}
+    {% if session.status == "active" and current_question %}
+    <div id="answer-section">
         <div class="form-group">
             <label for="answer_text" class="form-label">Your Answer</label>
             <textarea name="answer_text" id="answer_text"
@@ -72,9 +74,79 @@
         </div>
 
         <div class="button-group">
-            <button type="submit" class="btn btn-primary">Submit Answer</button>
+            <button type="button" id="submit-btn" class="btn btn-primary" onclick="submitAnswer()">Submit Answer</button>
         </div>
-    </form>
+
+        {# --- Evaluating spinner (hidden by default) --- #}
+        <div id="evaluating-indicator" class="evaluating-indicator" style="display:none;">
+            <div class="spinner"></div>
+            <span>AI is evaluating your answer...</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {# --- Final evaluation section (completed sessions) --- #}
+    {% if session.status == "completed" and overall_feedback %}
+    <div class="divider"></div>
+    <div class="card" id="final-evaluation">
+        <div class="card-header">
+            <h2 class="card-title">Final Evaluation</h2>
+        </div>
+        <div class="card-body">
+            <div class="feedback-section">
+                <h3>Overall Feedback</h3>
+                <p>{{ overall_feedback.overall_feedback }}</p>
+            </div>
+
+            {% if overall_feedback.strengths_summary %}
+            <div class="feedback-section">
+                <h3>Strengths</h3>
+                <ul>
+                    {% for strength in overall_feedback.strengths_summary %}
+                    <li>{{ strength }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.topics_to_review %}
+            <div class="feedback-section">
+                <h3>Topics to Review</h3>
+                <ul>
+                    {% for topic in overall_feedback.topics_to_review %}
+                    <li>{{ topic }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.score_breakdown %}
+            <div class="feedback-section">
+                <h3>Score Breakdown</h3>
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Score</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for qid, breakdown in overall_feedback.score_breakdown.items() %}
+                        {% if qid != "total" %}
+                        <tr>
+                            <td>{{ qid }}</td>
+                            <td>{{ breakdown.score }}</td>
+                            <td>{{ breakdown.max }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
     {% endif %}
 
     <div class="divider"></div>
@@ -82,10 +154,346 @@
     <div class="button-group">
         <a href="/" class="btn btn-outline">Back to Dashboard</a>
         {% if session.status == "active" %}
-        <form method="post" action="/interview/{{ session.id }}/complete" style="display:inline;">
-            <button type="submit" class="btn btn-danger">End Interview</button>
-        </form>
+        <button type="button" id="end-btn" class="btn btn-danger" onclick="endInterview()">End Interview</button>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // WebSocket connection
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/{{ session.id }}/ws';
+    let ws = null;
+    let reconnectTimer = null;
+    let currentQuestionId = '{{ current_question.question_id if current_question else "" }}';
+    let isSubmitting = false;
+
+    function connectWebSocket() {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = function() {
+            console.log('WebSocket connected');
+            // Reset submitting flag on reconnect so user can submit again
+            isSubmitting = false;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            // Re-enable buttons after reconnect
+            document.getElementById('submit-btn') && (document.getElementById('submit-btn').disabled = false);
+            document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = false);
+            // Check session status after reconnect
+            ws.send(JSON.stringify({ type: 'ping' }));
+        };
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            handleWsMessage(data);
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket disconnected, reconnecting in 3s...');
+            // Try to reconnect after 3 seconds
+            reconnectTimer = setTimeout(function() {
+                connectWebSocket();
+            }, 3000);
+        };
+
+        ws.onerror = function(err) {
+            console.error('WebSocket error:', err);
+        };
+    }
+
+    function handleWsMessage(data) {
+        switch (data.type) {
+            case 'saved':
+                // Answer was saved, show the answer bubble
+                showAnswerBubble();
+                break;
+
+            case 'evaluating':
+                // Show spinner
+                showEvaluating(true);
+                break;
+
+            case 'feedback':
+                // Hide spinner, show feedback
+                showEvaluating(false);
+                showFeedback(data);
+                break;
+
+            case 'session_completed':
+                // Session completed, show final evaluation
+                showEvaluating(false);
+                handleSessionCompleted(data);
+                break;
+
+            case 'pong':
+                // Session status check after reconnect
+                if (data.status === 'completed') {
+                    // Session was completed while disconnected — reload page
+                    window.location.reload();
+                } else if (data.status === 'not_found') {
+                    // Session was deleted — redirect home
+                    window.location.href = '/';
+                } else if (data.status === 'error') {
+                    showError('Session error. Please reload the page.');
+                }
+                break;
+
+            case 'error':
+                showEvaluating(false);
+                isSubmitting = false;
+                enableForm(true);
+                showError(data.message);
+                break;
+        }
+    }
+
+    function submitAnswer() {
+        const textarea = document.getElementById('answer_text');
+        const answerText = textarea.value.trim();
+
+        if (!answerText) {
+            alert('Please enter your answer.');
+            return;
+        }
+
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        // Disable form
+        enableForm(false);
+
+        // Send via WebSocket
+        ws.send(JSON.stringify({
+            type: 'answer',
+            question_id: currentQuestionId,
+            answer_text: answerText
+        }));
+    }
+
+    function endInterview() {
+        if (!confirm('Are you sure you want to end this interview?')) return;
+
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = true);
+        showEvaluating(true);
+
+        ws.send(JSON.stringify({ type: 'complete' }));
+    }
+
+    function showAnswerBubble() {
+        const textarea = document.getElementById('answer_text');
+        const answerText = textarea.value.trim();
+
+        // Create answer bubble
+        const chatContainer = document.getElementById('chat-container');
+        const answerDiv = document.createElement('div');
+        answerDiv.className = 'chat-message answer';
+        answerDiv.innerHTML = '<div class="chat-bubble answer-bubble"><strong>You:</strong> ' + escapeHtml(answerText) + '</div>';
+        chatContainer.appendChild(answerDiv);
+
+        // Clear textarea
+        textarea.value = '';
+        textarea.focus();
+
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function showEvaluating(visible) {
+        const indicator = document.getElementById('evaluating-indicator');
+        if (indicator) {
+            indicator.style.display = visible ? 'flex' : 'none';
+        }
+    }
+
+    function showFeedback(data) {
+        const chatContainer = document.getElementById('chat-container');
+
+        // Create feedback bubble
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'chat-message feedback';
+        let html = '<div class="chat-bubble feedback-bubble">';
+        html += '<strong>Score: ' + escapeHtml(String(data.score)) + '/5</strong>';
+        if (data.feedback) {
+            html += '<p>' + escapeHtml(data.feedback) + '</p>';
+        }
+        if (data.strengths && data.strengths.length > 0) {
+            html += '<p><strong>Strengths:</strong></p><ul>';
+            data.strengths.forEach(function(s) {
+                html += '<li>' + escapeHtml(s) + '</li>';
+            });
+            html += '</ul>';
+        }
+        if (data.weaknesses && data.weaknesses.length > 0) {
+            html += '<p><strong>Areas to improve:</strong></p><ul>';
+            data.weaknesses.forEach(function(w) {
+                html += '<li>' + escapeHtml(w) + '</li>';
+            });
+            html += '</ul>';
+        }
+        feedbackDiv.innerHTML = html + '</div>';
+        chatContainer.appendChild(feedbackDiv);
+
+        // Handle follow-up question (same question, deeper round)
+        if (data.follow_up_question) {
+            const followUpDiv = document.createElement('div');
+            followUpDiv.className = 'chat-message question';
+            followUpDiv.setAttribute('data-question-id', data.question_id);
+            followUpDiv.setAttribute('data-round', String(data.round + 1));
+            followUpDiv.innerHTML = '<div class="chat-bubble question-bubble"><strong>Q' + data.order + ':</strong> <em>(follow-up)</em> ' + escapeHtml(data.follow_up_question) + '</div>';
+            chatContainer.appendChild(followUpDiv);
+
+            currentQuestionId = data.question_id;
+            isSubmitting = false;
+            enableForm(true);
+        }
+        // Handle next question (different question)
+        else if (data.next_question) {
+            const nq = data.next_question;
+            const nextQDiv = document.createElement('div');
+            nextQDiv.className = 'chat-message question';
+            nextQDiv.setAttribute('data-question-id', nq.question_id);
+            nextQDiv.setAttribute('data-round', '0');
+            let qHtml = '<div class="chat-bubble question-bubble">';
+            qHtml += '<strong>Q' + nq.order + ':</strong> ' + escapeHtml(nq.question_text);
+            if (nq.question_code) {
+                qHtml += '<pre class="code-block"><code>' + escapeHtml(nq.question_code) + '</code></pre>';
+            }
+            qHtml += '</div>';
+            nextQDiv.innerHTML = qHtml;
+            chatContainer.appendChild(nextQDiv);
+
+            currentQuestionId = nq.question_id;
+            isSubmitting = false;
+            enableForm(true);
+        } else {
+            // No more questions — show "End Interview" prompt
+            isSubmitting = false;
+            const answerSection = document.getElementById('answer-section');
+            if (answerSection) {
+                answerSection.innerHTML = '<p class="text-muted">All questions answered. Click "End Interview" to get your final evaluation.</p>';
+            }
+        }
+
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function handleSessionCompleted(data) {
+        // Update status
+        document.getElementById('session-status').textContent = 'Completed';
+
+        // Remove answer section
+        const answerSection = document.getElementById('answer-section');
+        if (answerSection) answerSection.style.display = 'none';
+
+        // Remove end button
+        const endBtn = document.getElementById('end-btn');
+        if (endBtn) endBtn.style.display = 'none';
+
+        // Show alert with max_score from server
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info';
+        alertDiv.innerHTML = '<strong>Interview completed!</strong> Final score: ' + data.score + ' / ' + (data.max_score || 0);
+        const card = document.querySelector('.card');
+        card.insertBefore(alertDiv, card.firstChild);
+
+        // Show final evaluation
+        if (data.overall_feedback) {
+            const finalEval = document.getElementById('final-evaluation');
+            if (finalEval) {
+                finalEval.style.display = 'block';
+            } else {
+                buildFinalEvaluation(data.overall_feedback, data.score, data.max_score || 0);
+            }
+        }
+    }
+
+    function buildFinalEvaluation(feedback, score, maxScore) {
+        const evalCard = document.createElement('div');
+        evalCard.className = 'card';
+        evalCard.id = 'final-evaluation';
+
+        let html = '<div class="card-header"><h2 class="card-title">Final Evaluation</h2></div>';
+        html += '<div class="card-body">';
+
+        if (feedback.overall_feedback) {
+            html += '<div class="feedback-section"><h3>Overall Feedback</h3><p>' + escapeHtml(feedback.overall_feedback) + '</p></div>';
+        }
+        if (feedback.strengths_summary && feedback.strengths_summary.length > 0) {
+            html += '<div class="feedback-section"><h3>Strengths</h3><ul>';
+            feedback.strengths_summary.forEach(function(s) {
+                html += '<li>' + escapeHtml(s) + '</li>';
+            });
+            html += '</ul></div>';
+        }
+        if (feedback.topics_to_review && feedback.topics_to_review.length > 0) {
+            html += '<div class="feedback-section"><h3>Topics to Review</h3><ul>';
+            feedback.topics_to_review.forEach(function(t) {
+                html += '<li>' + escapeHtml(t) + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        // Score breakdown table
+        if (feedback.score_breakdown) {
+            html += '<div class="feedback-section"><h3>Score Breakdown</h3>';
+            html += '<table class="score-table"><thead><tr>';
+            html += '<th>Question</th><th>Score</th><th>Max</th>';
+            html += '</tr></thead><tbody>';
+
+            for (const [qid, breakdown] of Object.entries(feedback.score_breakdown)) {
+                if (qid !== 'total') {
+                    html += '<tr>';
+                    html += '<td>' + escapeHtml(qid) + '</td>';
+                    html += '<td>' + escapeHtml(String(breakdown.score)) + '</td>';
+                    html += '<td>' + escapeHtml(String(breakdown.max)) + '</td>';
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody></table>';
+            html += '</div>';
+        }
+
+        evalCard.innerHTML = html + '</div></div>';
+
+        const buttonGroup = document.querySelector('.button-group');
+        buttonGroup.parentNode.insertBefore(evalCard, buttonGroup);
+    }
+
+    function enableForm(enabled) {
+        const textarea = document.getElementById('answer_text');
+        const submitBtn = document.getElementById('submit-btn');
+        if (textarea) textarea.disabled = !enabled;
+        if (submitBtn) submitBtn.disabled = !enabled;
+    }
+
+    function showError(message) {
+        const chatContainer = document.getElementById('chat-container');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'chat-message error';
+        errorDiv.innerHTML = '<div class="chat-bubble error-bubble"><strong>Error:</strong> ' + escapeHtml(message) + '</div>';
+        chatContainer.appendChild(errorDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Connect on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        connectWebSocket();
+    });
+</script>
 {% endblock %}

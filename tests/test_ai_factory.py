@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for AI provider factory."""
 
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from app.ai.factory import ProviderFactory
-from app.ai.openai_compatible import OpenAICompatibleProvider
 
 
 class TestProviderFactory:

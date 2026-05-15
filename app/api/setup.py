@@ -6,7 +6,7 @@ This module provides the setup page for configuring interview parameters
 and creating new interview sessions.
 """
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
