@@ -3,14 +3,24 @@
 """Interview session endpoints.
 
 This module provides HTTP endpoints for viewing and interacting
-with interview sessions. All business logic is delegated to the
+with interview sessions, as well as a WebSocket endpoint for
+real-time interaction. All business logic is delegated to the
 service layer.
 """
 
+import asyncio
 import json
 import logging
+from typing import Any
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    Form,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -70,6 +80,136 @@ async def interview_page(request: Request, session_id: str):
             "max_score": max_score,
         },
     )
+
+
+@router.websocket("/{session_id}/ws")
+async def interview_ws(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time interview interaction.
+
+    Protocol (JSON messages):
+
+    **Client → Server:**
+    - ``{"type":"answer","question_id":"...","answer_text":"..."}``
+    - ``{"type":"complete"}``
+
+    **Server → Client:**
+    - ``{"type":"saved"}`` — answer persisted
+    - ``{"type":"evaluating"}`` — AI is evaluating
+    - ``{"type":"feedback","score":N,"feedback":"...",...}`` — evaluation result
+    - ``{"type":"session_completed","overall_feedback":{...},"score":N}``
+    - ``{"type":"error","message":"..."}``
+
+    Args:
+        websocket: The WebSocket connection.
+        session_id: The session UUID.
+    """
+    await websocket.accept()
+
+    # Use an asyncio.Queue to buffer outgoing messages.
+    # The service layer calls ws_send synchronously, but send_json is async.
+    # A background task drains the queue, preserving message order and
+    # preventing silent message loss on disconnect.
+    send_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+
+    async def _send_worker():
+        """Background task that drains send_queue and writes to WebSocket."""
+        while True:
+            data = await send_queue.get()
+            try:
+                await websocket.send_json(data)
+            except Exception:
+                logger.warning("WS send failed: %s", data.get("type", "unknown"))
+                break
+
+    send_task = asyncio.create_task(_send_worker())
+
+    def ws_send(data: dict[str, Any]) -> None:
+        """Synchronously enqueue a JSON message for WebSocket delivery."""
+        send_queue.put_nowait(data)
+
+    try:
+        while True:
+            raw = await websocket.receive_json()
+            msg_type = raw.get("type")
+
+            if msg_type == "answer":
+                question_id = raw.get("question_id", "")
+                answer_text = raw.get("answer_text", "")
+
+                if not question_id or not answer_text:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Both question_id and answer_text are required",
+                    })
+                    continue
+
+                try:
+                    # Validate session is active
+                    session = InterviewSessionService.get_session(session_id)
+                    if not session:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Session not found",
+                        })
+                        continue
+                    if session.status != "active":
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Cannot submit answer to a completed session",
+                        })
+                        continue
+
+                    await InterviewSessionService.process_answer_submission(
+                        session_id=session_id,
+                        question_id=question_id,
+                        answer_text=answer_text,
+                        ws_send=ws_send,
+                    )
+                except ValueError as e:
+                    ws_send({"type": "error", "message": str(e)})
+                except Exception as e:
+                    logger.exception(
+                        "WebSocket AI evaluation failed for session %s", session_id
+                    )
+                    ws_send({"type": "error", "message": f"AI evaluation failed: {e}"})
+
+            elif msg_type == "ping":
+                # Client checks session status after reconnect
+                try:
+                    session = InterviewSessionService.get_session(session_id)
+                    status = session.status if session else "not_found"
+                    await websocket.send_json({"type": "pong", "status": status})
+                except Exception as e:
+                    logger.warning("Ping failed for session %s: %s", session_id, e)
+                    await websocket.send_json({"type": "pong", "status": "error"})
+
+            elif msg_type == "complete":
+                try:
+                    await InterviewSessionService.process_session_completion(
+                        session_id=session_id,
+                        ws_send=ws_send,
+                    )
+                except ValueError as e:
+                    ws_send({"type": "error", "message": str(e)})
+                except Exception as e:
+                    logger.exception(
+                        "WebSocket session completion failed for session %s", session_id
+                    )
+                    ws_send({"type": "error", "message": f"Session evaluation failed: {e}"})
+            else:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Unknown message type: {msg_type}",
+                })
+    except WebSocketDisconnect:
+        logger.debug("WebSocket disconnected for session %s", session_id)
+    finally:
+        # Cancel the send worker so it doesn't outlive the connection
+        send_task.cancel()
+        try:
+            await send_task
+        except asyncio.CancelledError:
+            pass
 
 
 @router.post("/{session_id}/answer", response_class=HTMLResponse)

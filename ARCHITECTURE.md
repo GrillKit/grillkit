@@ -18,7 +18,7 @@ grillkit/
 │   │   ├── root.py             # GET / → dashboard or setup redirect
 │   │   ├── setup.py            # GET/POST /setup → interview config + session creation
 │   │   ├── config.py           # GET/POST/DELETE /config → AI provider settings
-│   │   └── interview.py        # GET /interview/{id}, POST /interview/{id}/answer, /complete
+│   │   └── interview.py        # GET /interview/{id}, POST /interview/{id}/answer, /complete, WS /interview/{id}/ws
 │   └── services/               # Business logic layer
 │       ├── config.py           # ConfigService: get/save/delete config, test_connection
 │       ├── interview_session.py # InterviewSessionService: CRUD, answers, follow-ups, AI orchestration
@@ -107,7 +107,21 @@ Browser → POST /interview/{session_id}/answer {question_id, answer_text}
   ← 303 Redirect → /interview/{session_id}
 ```
 
-## Data Flow: Session Completion (with AI Summary)
+## Data Flow: Answering Questions via WebSocket (NEW)
+
+```
+Browser → WebSocket /interview/{session_id}/ws
+  → interview.py → interview_ws()
+    1. Client sends: {"type":"answer","question_id":"...","answer_text":"..."}
+    2. Server persists answer → sends {"type":"saved"}
+    3. Server creates AI provider → sends {"type":"evaluating"}
+    4. Server calls InterviewEvaluatorService.evaluate_answer() / evaluate_follow_up()
+    5. Server saves score + feedback → sends {"type":"feedback","score":N,"feedback":"...","follow_up_question":"..."}
+    6. If follow_up needed → creates new Answer row → WebSocket includes follow_up_question field
+    7. On {"type":"complete"} → server evaluates session → sends {"type":"session_completed",...}
+```
+
+## Data Flow: HTTP Session Completion (fallback)
 
 ```
 Browser → POST /interview/{session_id}/complete
@@ -215,8 +229,8 @@ Sort order for chat display: `(order ASC, round ASC)`
 
 - Only one AI provider implemented (`openai-compatible`)
 - Only Python junior questions (1 category, 2 questions)
-- No WebSocket — HTTP POST redirects for each answer
+- HTTP POST endpoints for answer/complete are kept for backward compatibility, but WebSocket is the primary interface
 - No interview history page
 - Empty test files: `test_session.py`
-- AI evaluation is synchronous — user waits for AI response on each answer
-- Error in AI evaluation returns 502 error to user (no graceful degradation yet)
+- AI evaluation is still synchronous — user waits for AI response via WebSocket (but sees an evaluating spinner)
+- Error in AI evaluation returns error via WebSocket (no 502 page reload)

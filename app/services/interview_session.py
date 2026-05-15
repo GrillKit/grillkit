@@ -10,7 +10,9 @@ follow-up generation, and session completion.
 import json
 import logging
 import random
-from datetime import UTC
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import selectinload
@@ -22,6 +24,9 @@ from .config import ConfigService
 from .interview_evaluator import InterviewEvaluatorService
 
 logger = logging.getLogger(__name__)
+
+# Type alias for WebSocket event send callbacks
+WsSend = Callable[[dict[str, Any]], None]
 
 
 class InterviewSessionService:
@@ -254,8 +259,6 @@ class InterviewSessionService:
             scores = [a.score for a in session.answers if a.score is not None]
             session.score = sum(scores) if scores else 0
             session.status = "completed"
-            from datetime import datetime
-
             session.completed_at = datetime.now(UTC)
             db.commit()
             db.refresh(session)
@@ -348,10 +351,206 @@ class InterviewSessionService:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _find_current_answer(session: InterviewSession, question_id: str) -> Answer:
+        """Find the current unanswered answer for a question (any round).
+
+        Args:
+            session: The interview session with eager-loaded answers.
+            question_id: The question ID to look for.
+
+        Returns:
+            The first unanswered Answer record.
+
+        Raises:
+            ValueError: If no unanswered answer is found.
+        """
+        for ans in session.answers:
+            if ans.question_id == question_id and ans.answer_text is None:
+                return ans
+        raise ValueError(
+            f"Unanswered answer not found: session={session.id}, question={question_id}"
+        )
+
+    @staticmethod
+    def _find_next_unanswered(
+        session: InterviewSession, current_answer: Answer
+    ) -> Answer | None:
+        """Find the next unanswered question in the session.
+
+        Looks for the first Answer record after the current one that has
+        no answer_text. This can be a different question or, if there
+        are follow-ups pending, the same question with a higher round.
+
+        Args:
+            session: The interview session with eager-loaded answers.
+            current_answer: The currently evaluated answer.
+
+        Returns:
+            The next unanswered Answer, or None if all questions are answered.
+        """
+        # If the current answer has follow-ups queued (higher round, no answer),
+        # return that first
+        for ans in session.answers:
+            if (
+                ans.question_id == current_answer.question_id
+                and ans.round > current_answer.round
+                and ans.answer_text is None
+            ):
+                return ans
+
+        # Build set of question_ids that have an answered round=0
+        answered_questions = {
+            a.question_id
+            for a in session.answers
+            if a.round == 0 and a.answer_text is not None
+        }
+
+        # Otherwise, find the next unanswered from a different question
+        found_current = False
+        for ans in session.answers:
+            if ans is current_answer:
+                found_current = True
+                continue
+            if (
+                found_current
+                and ans.answer_text is None
+                # Verify it's not a stale follow-up of a previous question
+                and (ans.round == 0 or ans.question_id in answered_questions)
+            ):
+                return ans
+
+        return None
+
+    @staticmethod
+    async def _evaluate_and_save(
+        session: InterviewSession,
+        current_answer: Answer,
+        answer_text: str,
+        ws_send: WsSend | None = None,
+    ) -> None:
+        """Evaluate an answer with AI, save results, and optionally generate follow-ups.
+
+        Sends intermediate WebSocket events if ws_send is provided.
+
+        Args:
+            session: The interview session.
+            current_answer: The Answer record being evaluated.
+            answer_text: The user's answer text.
+            ws_send: Optional callback for WebSocket events.
+        """
+        question_id = current_answer.question_id
+        answer_round = current_answer.round
+
+        if ws_send:
+            ws_send({"type": "evaluating"})
+
+        provider = None
+        try:
+            provider = ConfigService.create_provider_from_config()
+
+            if answer_round == 0:
+                evaluation = await InterviewEvaluatorService.evaluate_answer(
+                    provider=provider,
+                    question_text=current_answer.question_text,
+                    answer_text=answer_text,
+                    question_code=current_answer.question_code,
+                )
+                follow_up_needed = evaluation.follow_up_needed and bool(
+                    evaluation.follow_up_question
+                )
+                follow_up_text = evaluation.follow_up_question
+            else:
+                initial_answer = next(
+                    (
+                        a
+                        for a in session.answers
+                        if a.question_id == question_id and a.round == 0
+                    ),
+                    None,
+                )
+                evaluation = await InterviewEvaluatorService.evaluate_follow_up(
+                    provider=provider,
+                    question_text=initial_answer.question_text
+                    if initial_answer
+                    else current_answer.question_text,
+                    initial_answer=initial_answer.answer_text if initial_answer else "",
+                    follow_up_question=current_answer.question_text,
+                    follow_up_answer=answer_text,
+                    question_code=current_answer.question_code,
+                )
+                follow_up_needed = (
+                    evaluation.needs_further_follow_up
+                    and bool(evaluation.follow_up_question)
+                    and answer_round < InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH
+                )
+                follow_up_text = evaluation.follow_up_question
+        finally:
+            if provider is not None:
+                await provider.close()
+
+        # Common: save evaluation results
+        InterviewSessionService.save_evaluation(
+            session_id=session.id,
+            question_id=question_id,
+            round_num=answer_round,
+            score=evaluation.score,
+            feedback=evaluation.feedback,
+        )
+
+        # Common: build WS event
+        ws_event: dict[str, Any] = {
+            "type": "feedback",
+            "question_id": question_id,
+            "order": current_answer.order,
+            "round": answer_round,
+            "score": evaluation.score,
+            "feedback": evaluation.feedback,
+        }
+
+        # Strengths/weaknesses are only returned for initial (round=0) evaluations
+        if answer_round == 0:
+            ws_event["strengths"] = evaluation.strengths
+            ws_event["weaknesses"] = evaluation.weaknesses
+
+        # Common: handle follow-up creation
+        if follow_up_needed:
+            follow_up = InterviewSessionService.add_follow_up(
+                session_id=session.id,
+                question_id=question_id,
+                follow_up_text=follow_up_text,
+            )
+            # Append to session.answers so _find_next_unanswered can find it
+            if follow_up not in session.answers:
+                session.answers.append(follow_up)
+            ws_event["follow_up_question"] = follow_up_text
+        else:
+            ws_event["follow_up_question"] = None
+
+        # After all evaluation is done, find the next question
+        # (only if no follow-up was generated)
+        if ws_send and ws_event.get("follow_up_question") is None:
+            next_q = InterviewSessionService._find_next_unanswered(
+                session, current_answer
+            )
+            if next_q:
+                ws_event["next_question"] = {
+                    "question_id": next_q.question_id,
+                    "order": next_q.order,
+                    "question_text": next_q.question_text,
+                    "question_code": next_q.question_code,
+                }
+            else:
+                ws_event["next_question"] = None
+
+        if ws_send:
+            ws_send(ws_event)
+
+    @staticmethod
     async def process_answer_submission(
         session_id: str,
         question_id: str,
         answer_text: str,
+        ws_send: WsSend | None = None,
     ) -> None:
         """Submit an answer and evaluate it with AI.
 
@@ -366,6 +565,7 @@ class InterviewSessionService:
             session_id: The session UUID.
             question_id: The question ID.
             answer_text: The user's answer.
+            ws_send: Optional callback for WebSocket events.
 
         Raises:
             ValueError: If provider not configured or session not found.
@@ -376,18 +576,9 @@ class InterviewSessionService:
         if not session:
             raise ValueError(f"Session not found: {session_id}")
 
-        current_answer = None
-        for ans in session.answers:
-            if ans.question_id == question_id and ans.answer_text is None:
-                current_answer = ans
-                break
-
-        if not current_answer:
-            raise ValueError(
-                f"Unanswered answer not found: session={session_id}, "
-                f"question={question_id}"
-            )
-
+        current_answer = InterviewSessionService._find_current_answer(
+            session, question_id
+        )
         answer_round = current_answer.round
 
         # 2. Save the answer text to the correct round
@@ -398,79 +589,22 @@ class InterviewSessionService:
             round_num=answer_round,
         )
 
-        # 3. Get AI provider
-        provider = ConfigService.create_provider_from_config()
-        try:
-            # 4. Evaluate with AI based on the round
-            if answer_round == 0:
-                evaluation = await InterviewEvaluatorService.evaluate_answer(
-                    provider=provider,
-                    question_text=current_answer.question_text,
-                    answer_text=answer_text,
-                    question_code=current_answer.question_code,
-                )
+        if ws_send:
+            ws_send({"type": "saved"})
 
-                # Save evaluation
-                InterviewSessionService.save_evaluation(
-                    session_id=session_id,
-                    question_id=question_id,
-                    round_num=answer_round,
-                    score=evaluation.score,
-                    feedback=evaluation.feedback,
-                )
-
-                # Generate follow-up if needed
-                if evaluation.follow_up_needed and evaluation.follow_up_question:
-                    InterviewSessionService.add_follow_up(
-                        session_id=session_id,
-                        question_id=question_id,
-                        follow_up_text=evaluation.follow_up_question,
-                    )
-            else:
-                # Follow-up answer (round >= 1)
-                initial_answer = next(
-                    (
-                        a
-                        for a in session.answers
-                        if a.question_id == question_id and a.round == 0
-                    ),
-                    None,
-                )
-
-                evaluation = await InterviewEvaluatorService.evaluate_follow_up(
-                    provider=provider,
-                    question_text=initial_answer.question_text if initial_answer else current_answer.question_text,
-                    initial_answer=initial_answer.answer_text if initial_answer else "",
-                    follow_up_question=current_answer.question_text,
-                    follow_up_answer=answer_text,
-                    question_code=current_answer.question_code,
-                )
-
-                # Save evaluation
-                InterviewSessionService.save_evaluation(
-                    session_id=session_id,
-                    question_id=question_id,
-                    round_num=answer_round,
-                    score=evaluation.score,
-                    feedback=evaluation.feedback,
-                )
-
-                # Generate another follow-up if needed and under limit
-                if (
-                    evaluation.needs_further_follow_up
-                    and evaluation.follow_up_question
-                    and answer_round < InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH
-                ):
-                    InterviewSessionService.add_follow_up(
-                        session_id=session_id,
-                        question_id=question_id,
-                        follow_up_text=evaluation.follow_up_question,
-                    )
-        finally:
-            await provider.close()
+        # 3. Evaluate with AI
+        await InterviewSessionService._evaluate_and_save(
+            session=session,
+            current_answer=current_answer,
+            answer_text=answer_text,
+            ws_send=ws_send,
+        )
 
     @staticmethod
-    async def process_session_completion(session_id: str) -> None:
+    async def process_session_completion(
+        session_id: str,
+        ws_send: WsSend | None = None,
+    ) -> None:
         """Complete a session and generate final AI evaluation.
 
         Orchestrates:
@@ -481,6 +615,7 @@ class InterviewSessionService:
 
         Args:
             session_id: The session UUID.
+            ws_send: Optional callback for WebSocket events.
 
         Raises:
             ValueError: If session or provider not found.
@@ -502,9 +637,13 @@ class InterviewSessionService:
             if a.answer_text is not None
         ]
 
+        if ws_send:
+            ws_send({"type": "evaluating"})
+
         # Get AI provider
-        provider = ConfigService.create_provider_from_config()
+        provider = None
         try:
+            provider = ConfigService.create_provider_from_config()
             # Evaluate session
             session_eval = await InterviewEvaluatorService.evaluate_session(
                 provider=provider,
@@ -520,6 +659,24 @@ class InterviewSessionService:
             )
 
             # Mark completed
-            InterviewSessionService.complete_session(session_id)
+            completed_session = InterviewSessionService.complete_session(session_id)
+
+            # Calculate max_score from score_breakdown to match the table
+            max_score_total = 0
+            if session_eval.score_breakdown:
+                for qid, breakdown in session_eval.score_breakdown.items():
+                    if qid != "total" and isinstance(breakdown, dict):
+                        max_score_total += breakdown.get("max", 5)
+
+            if ws_send:
+                ws_send(
+                    {
+                        "type": "session_completed",
+                        "overall_feedback": session_eval.model_dump(),
+                        "score": completed_session.score,
+                        "max_score": max_score_total,
+                    }
+                )
         finally:
-            await provider.close()
+            if provider is not None:
+                await provider.close()
