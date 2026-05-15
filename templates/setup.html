@@ -1,7 +1,56 @@
 {% extends "base.html" %}
 
-{% block title %}Setup - GrillKit{% endblock %}
+{% block title %}Setup Interview - GrillKit{% endblock %}
 
 {% block content %}
-<h1>Setup</h1>
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Interview Setup</h1>
+        <p class="card-subtitle">Configure your interview session parameters</p>
+    </div>
+
+    <form method="post" action="/setup" class="form">
+        <div class="form-group">
+            <label for="topic" class="form-label form-label-required">Topic</label>
+            <select name="topic" id="topic" class="form-control" required>
+                <option value="">Select a topic...</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat | capitalize | replace("-", " ") }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Choose the main topic for your interview questions.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="level" class="form-label form-label-required">Difficulty Level</label>
+            <select name="level" id="level" class="form-control" required>
+                <option value="">Select level...</option>
+                <option value="junior">Junior</option>
+                <option value="middle">Middle</option>
+                <option value="senior">Senior</option>
+            </select>
+            <p class="form-hint">Select the difficulty level appropriate for your experience.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="question_count" class="form-label">Number of Questions</label>
+            <input type="number" name="question_count" id="question_count"
+                   class="form-control" value="5" min="1" max="20">
+            <p class="form-hint">How many questions do you want in this session? (1-20)</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">Start Interview</button>
+            <a href="/" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

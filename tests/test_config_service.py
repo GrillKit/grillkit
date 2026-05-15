@@ -2,19 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for configuration service."""
 
-import pytest
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from app.services.config import ConfigService, ProviderConfig
-from app.database import DATA_DIR
 
 
 @pytest.fixture
-def config_path():
+def config_path(tmp_path):
     """Fixture for configuration file path."""
-    test_config_path = DATA_DIR / "test_config.json"
+    test_config_path = tmp_path / "test_config.json"
     yield test_config_path
     if test_config_path.exists():
         test_config_path.unlink()
@@ -88,7 +88,13 @@ class TestProviderConfig:
 class TestConfigService:
     """Tests for ConfigService class."""
 
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
+    @pytest.fixture
+    def mock_config_path(self, tmp_path):
+        """Fixture providing a patched CONFIG_PATH in a temp directory."""
+        test_path = tmp_path / "test_config.json"
+        with patch("app.services.config.CONFIG_PATH", test_path):
+            yield test_path
+
     def test_save_and_get_config(self, mock_config_path, config_path):
         """Test saving and retrieving configuration."""
         config = ProviderConfig(
@@ -103,12 +109,10 @@ class TestConfigService:
         assert retrieved_config == config
         assert mock_config_path.exists()
 
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     def test_get_config_no_file(self, mock_config_path):
         """Test retrieving config when file does not exist."""
         assert ConfigService.get_config() is None
 
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     def test_delete_config(self, mock_config_path, config_path):
         """Test deleting configuration file."""
         config = ProviderConfig(
@@ -124,7 +128,6 @@ class TestConfigService:
         assert not config_path.exists()
 
     @pytest.mark.asyncio
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     async def test_test_connection_success(self, mock_config_path, mock_provider_factory):
         """Test successful provider connection."""
         config = ProviderConfig(
@@ -146,10 +149,9 @@ class TestConfigService:
         mock_provider_factory.from_config.return_value.validate.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     async def test_test_connection_failure_invalid_api_key(self, mock_config_path, mock_provider_factory):
         """Test failed provider connection due to invalid API key."""
-        mock_provider_factory.from_config.return_value.validate.return_value = False
+        mock_provider_factory.from_config.return_value.validate.side_effect = ValueError("Authentication failed: Invalid API key")
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
@@ -158,10 +160,9 @@ class TestConfigService:
         )
         success, message = await ConfigService.test_connection(config)
         assert success is False
-        assert message == "Invalid API key or unreachable endpoint"
+        assert message == "Authentication failed: Invalid API key"
 
     @pytest.mark.asyncio
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     async def test_test_connection_exception(self, mock_config_path, mock_provider_factory):
         """Test failed provider connection due to an exception."""
         mock_provider_factory.from_config.side_effect = ValueError("Test Error")
@@ -176,7 +177,6 @@ class TestConfigService:
         assert message == "Test Error"
 
     @pytest.mark.asyncio
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     async def test_create_provider_from_config_success(self, mock_config_path, mock_provider_factory):
         """Test creating provider from saved config."""
         config = ProviderConfig(
@@ -198,7 +198,6 @@ class TestConfigService:
         )
 
     @pytest.mark.asyncio
-    @patch("app.services.config.CONFIG_PATH", new_callable=lambda: DATA_DIR / "test_config.json")
     async def test_create_provider_from_config_no_config(self, mock_config_path):
         """Test creating provider when no config exists."""
         if mock_config_path.exists():

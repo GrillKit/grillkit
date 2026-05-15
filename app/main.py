@@ -15,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
 from .api import config as config_router
+from .api import interview as interview_router
 from .api import root as root_router
+from .api import setup as setup_router
 
 
 BASE_DIR = Path(__file__).parent.parent
@@ -48,7 +50,9 @@ def create_app() -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(root_router.router)
+    app.include_router(setup_router.router)
     app.include_router(config_router.router)
+    app.include_router(interview_router.router)
 
     return app
 
