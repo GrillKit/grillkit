@@ -70,7 +70,7 @@ async def save_config(
         providers = ProviderFactory.get_provider_types()
         return templates.TemplateResponse(
             request,
-            "config_form.html",
+            "config.html",
             {
                 "error": message,
                 "config": config.to_dict(mask_secret=False),
@@ -101,7 +101,7 @@ async def delete_config(request: Request):
     ConfigService.delete_config()
     return templates.TemplateResponse(
         request,
-        "config_form.html",
+        "config.html",
         {
             "config": None,
             "providers": ProviderFactory.get_provider_types(),

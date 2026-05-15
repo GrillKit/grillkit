@@ -28,6 +28,8 @@
 
     <div class="interview-chat">
         {% for answer in answers %}
+        {# Only show answered questions or the current unanswered question #}
+        {% if answer.answer_text is not none or answer == current_question %}
         <div class="chat-message question">
             <div class="chat-bubble question-bubble">
                 <strong>Q{{ answer.order }}:</strong>
@@ -56,6 +58,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
         {% endif %}
         {% endfor %}
     </div>

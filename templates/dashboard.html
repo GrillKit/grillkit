@@ -3,5 +3,20 @@
 {% block title %}Dashboard - GrillKit{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Dashboard</h1>
+        <p class="card-subtitle">Welcome to GrillKit - AI Interview Trainer</p>
+    </div>
+
+    <div class="empty-state">
+        <div class="empty-state-icon">&#x1F393;</div>
+        <h3>Ready to practice?</h3>
+        <p>Start a new interview session to sharpen your skills with AI-powered feedback.</p>
+        <div class="button-group" style="justify-content: center;">
+            <a href="/setup" class="btn btn-primary btn-lg">Start New Interview</a>
+            <a href="/config" class="btn btn-outline btn-lg">Configure AI Provider</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

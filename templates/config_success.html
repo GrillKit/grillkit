@@ -3,9 +3,13 @@
 {% block title %}Configuration Saved - GrillKit{% endblock %}
 
 {% block content %}
-<div class="success">
-    <h2>Success!</h2>
-    <p>{{ message }}</p>
-    <a href="/" class="button">Go to Dashboard</a>
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Success!</h1>
+    </div>
+    <div class="alert alert-success">{{ message }}</div>
+    <div class="button-group">
+        <a href="/" class="btn btn-primary">Go to Dashboard</a>
+    </div>
 </div>
 {% endblock %}

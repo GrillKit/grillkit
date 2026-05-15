@@ -1,57 +1,73 @@
-{% extends "base.html" %}
-
-{% block title %}Configure - GrillKit{% endblock %}
-
-{% block content %}
 {% if error %}
-<div class="error">{{ error }}</div>
+<div class="alert alert-error">{{ error }}</div>
 {% endif %}
 
 {% if message %}
-<div class="message">{{ message }}</div>
+<div class="alert alert-success">{{ message }}</div>
 {% endif %}
 
-<form method="post" action="/config">
-    <div>
-        <label for="provider_type">Provider Type</label>
-        <select name="provider_type" id="provider_type" required>
-            {% for provider in providers %}
-            <option value="{{ provider.id }}" {% if config and config.provider_type == provider.id %}selected{% endif %}>
-                {{ provider.name }}
-            </option>
-            {% endfor %}
-        </select>
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">AI Provider Configuration</h1>
+        <p class="card-subtitle">Configure your AI provider for interview feedback and evaluation</p>
     </div>
 
-    <div>
-        <label for="base_url">Base URL</label>
-        <input type="url" name="base_url" id="base_url" value="{{ config.base_url if config else '' }}" placeholder="https://api.openai.com/v1" required>
-    </div>
+    <form method="post" action="/config" class="form">
+        <div class="form-group">
+            <label for="provider_type" class="form-label form-label-required">Provider Type</label>
+            <select name="provider_type" id="provider_type" class="form-control" required>
+                {% for provider in providers %}
+                <option value="{{ provider.id }}" {% if config and config.provider_type == provider.id %}selected{% endif %}>
+                    {{ provider.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <div>
-        <label for="model">Model</label>
-        <input type="text" name="model" id="model" value="{{ config.model if config else '' }}" placeholder="gpt-4" required>
-    </div>
+        <div class="form-group">
+            <label for="base_url" class="form-label form-label-required">Base URL</label>
+            <input type="url" name="base_url" id="base_url"
+                   class="form-control"
+                   value="{{ config.base_url if config else '' }}"
+                   placeholder="https://api.openai.com/v1" required>
+        </div>
 
-    <div>
-        <label for="api_key">API Key (optional for local providers)</label>
-        <input type="password" name="api_key" id="api_key" value="{{ config.api_key if config else '' }}" placeholder="sk-...">
-    </div>
+        <div class="form-group">
+            <label for="model" class="form-label form-label-required">Model</label>
+            <input type="text" name="model" id="model"
+                   class="form-control"
+                   value="{{ config.model if config else '' }}"
+                   placeholder="gpt-4" required>
+        </div>
 
-    <div>
-        <label for="timeout">Timeout (seconds)</label>
-        <input type="number" name="timeout" id="timeout" value="{{ config.timeout if config else 60 }}" min="1" max="300" step="1">
-    </div>
+        <div class="form-group">
+            <label for="api_key" class="form-label">API Key <span class="text-muted">(optional for local providers)</span></label>
+            <input type="password" name="api_key" id="api_key"
+                   class="form-control"
+                   value="{{ config.api_key if config else '' }}"
+                   placeholder="sk-...">
+        </div>
 
-    <div class="actions">
-        <button type="submit">Save Configuration</button>
-        <button type="submit" formaction="/config/test" formmethod="post">Test Connection</button>
-    </div>
-</form>
+        <div class="form-group">
+            <label for="timeout" class="form-label">Timeout (seconds)</label>
+            <input type="number" name="timeout" id="timeout"
+                   class="form-control"
+                   value="{{ config.timeout if config else 60 }}"
+                   min="1" max="300" step="1">
+        </div>
 
-{% if config %}
-<form method="post" action="/config" onsubmit="this.method='delete'; return confirm('Remove configuration?');">
-    <button type="submit" class="danger">Remove Configuration</button>
-</form>
-{% endif %}
-{% endblock %}
+        <div class="divider"></div>
+
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">Save Configuration</button>
+            <button type="submit" formaction="/config/test" formmethod="post" class="btn btn-secondary">Test Connection</button>
+        </div>
+    </form>
+
+    {% if config %}
+    <div class="divider"></div>
+    <form method="post" action="/config" onsubmit="this.method='delete'; return confirm('Remove configuration?');">
+        <button type="submit" class="btn btn-danger">Remove Configuration</button>
+    </form>
+    {% endif %}
+</div>

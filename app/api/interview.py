@@ -81,3 +81,21 @@ async def submit_answer(
         url=f"/interview/{session_id}",
         status_code=303,
     )
+
+
+@router.post("/{session_id}/complete", response_class=HTMLResponse)
+async def complete_interview(request: Request, session_id: str):
+    """Mark an interview session as completed.
+
+    Args:
+        request: FastAPI request object.
+        session_id: The session UUID.
+
+    Returns:
+        Redirect to the interview page.
+    """
+    InterviewSessionService.complete_session(session_id)
+    return RedirectResponse(
+        url=f"/interview/{session_id}",
+        status_code=303,
+    )

@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Navigation bar in `base.html` with links to Dashboard, New Interview, Configuration.
+- `POST /interview/{session_id}/complete` endpoint to end an interview session.
+- Dashboard page with empty state and call-to-action buttons.
+
+### Fixed
+- Template layout: all pages now use `.app-container` + `.main-content` wrapper.
+- `config_form.html` is now a partial (no `{% extends %}`) to avoid double layout when included.
+- `config_form.html` uses proper CSS classes (`form-group`, `form-control`, `btn`, `card`).
+- `config_success.html` uses `card`/`alert`/`btn` classes instead of non-existent `.success`/`.button`.
+- `config_test_result.html` uses existing `.test-result.success`/`.test-result.error` classes.
+- Interview chat now only shows answered questions + current unanswered question (not all future questions).
 - Database refactoring: models moved to `app/models.py`, DB directory changed to `data/db/`.
 - `InterviewSession` model (replaces old `Interview`) with `question_ids` and `question_count`.
 - `Answer` model with support for follow-up rounds (`order`, `round` fields).
