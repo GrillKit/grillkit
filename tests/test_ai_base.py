@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for AI provider base classes."""
 
-import pytest
 from abc import ABC
 
-from app.ai.base import Message, GenerationResult, AIProvider
+from app.ai.base import AIProvider, GenerationResult, Message
 
 
 class TestMessage:
@@ -68,6 +67,7 @@ class TestAIProvider:
 
     def test_init_sets_model(self):
         """Test that __init__ sets the model attribute."""
+
         # Create a concrete implementation for testing
         class ConcreteProvider(AIProvider):
             @property
@@ -91,6 +91,7 @@ class TestAIProvider:
 
     def test_init_sets_config(self):
         """Test that __init__ stores additional kwargs in config."""
+
         class ConcreteProvider(AIProvider):
             @property
             def name(self):

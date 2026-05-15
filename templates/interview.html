@@ -5,7 +5,7 @@
 {% block content %}
 {% if session.status == "completed" %}
 <div class="alert alert-info">
-    <strong>Interview completed!</strong> Final score: {{ session.score }} / {{ session.question_count * 5 }}
+    <strong>Interview completed!</strong> Final score: {{ session.score }} / {{ max_score }}
 </div>
 {% endif %}
 
@@ -78,6 +78,69 @@
             <button type="submit" class="btn btn-primary">Submit Answer</button>
         </div>
     </form>
+    {% endif %}
+
+    {% if session.status == "completed" and overall_feedback %}
+    <div class="divider"></div>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Final Evaluation</h2>
+        </div>
+        <div class="card-body">
+            <div class="feedback-section">
+                <h3>Overall Feedback</h3>
+                <p>{{ overall_feedback.overall_feedback }}</p>
+            </div>
+
+            {% if overall_feedback.strengths_summary %}
+            <div class="feedback-section">
+                <h3>Strengths</h3>
+                <ul>
+                    {% for strength in overall_feedback.strengths_summary %}
+                    <li>{{ strength }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.topics_to_review %}
+            <div class="feedback-section">
+                <h3>Topics to Review</h3>
+                <ul>
+                    {% for topic in overall_feedback.topics_to_review %}
+                    <li>{{ topic }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.score_breakdown %}
+            <div class="feedback-section">
+                <h3>Score Breakdown</h3>
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Score</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for qid, breakdown in overall_feedback.score_breakdown.items() %}
+                        {% if qid != "total" %}
+                        <tr>
+                            <td>{{ qid }}</td>
+                            <td>{{ breakdown.score }}</td>
+                            <td>{{ breakdown.max }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
     {% endif %}
 
     <div class="divider"></div>

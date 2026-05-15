@@ -8,11 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AI-powered answer evaluation: each answer is scored 1-5 with detailed feedback.
+- AI-powered follow-up questions: if answer is insufficient, AI generates a probing follow-up (up to 2 per question).
+- AI-powered session evaluation: final overall feedback, strengths, topics to review, and score breakdown.
+- `InterviewEvaluatorService` (`app/services/interview_evaluator.py`) with Pydantic models for structured AI output.
+- `AnswerEvaluation`, `FollowUpEvaluation`, `SessionEvaluation` Pydantic models with JSON schema embedded in prompts.
+- `overall_feedback` field on `InterviewSession` model (JSON string with final evaluation).
+- `save_evaluation()` and `save_session_evaluation()` methods on `InterviewSessionService`.
+- `process_answer_submission()` and `process_session_completion()` orchestration methods.
+- Final evaluation section in interview template (overall feedback, strengths, topics, score table).
+- CSS styles for feedback sections and score breakdown table.
 - Navigation bar in `base.html` with links to Dashboard, New Interview, Configuration.
 - `POST /interview/{session_id}/complete` endpoint to end an interview session.
 - Dashboard page with empty state and call-to-action buttons.
 
 ### Fixed
+- Follow-up evaluation now passes the original question text (not the follow-up text itself) to AI for proper context ([#Bug]).
+- AI provider connection now properly closed after evaluation to prevent resource leaks.
+- `POST /interview/{session_id}/answer` now returns 400 with a clear message if the session is already completed.
 - Template layout: all pages now use `.app-container` + `.main-content` wrapper.
 - `config_form.html` is now a partial (no `{% extends %}`) to avoid double layout when included.
 - `config_form.html` uses proper CSS classes (`form-group`, `form-control`, `btn`, `card`).

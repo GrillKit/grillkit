@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for FastAPI application factory."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 from app.main import create_app, lifespan
 
@@ -35,7 +36,9 @@ class TestCreateApp:
         # Check root router paths exist
         assert "/" in routes or "/" in [r.path for r in app.routes]
         # Check config router paths exist (they have /config prefix)
-        config_routes = [r for r in app.routes if hasattr(r, 'path') and '/config' in r.path]
+        config_routes = [
+            r for r in app.routes if hasattr(r, "path") and "/config" in r.path
+        ]
         assert len(config_routes) > 0
 
 

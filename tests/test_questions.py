@@ -4,10 +4,8 @@
 
 import pytest
 import yaml
-from pathlib import Path
-from unittest.mock import patch
 
-from app.questions import load_category, list_categories, Question
+from app.questions import Question, list_categories, load_category
 
 
 @pytest.fixture
@@ -39,7 +37,10 @@ def temp_questions_dir(tmp_path, monkeypatch):
                 "type": "knowledge",
                 "difficulty": 1,
                 "tags": ["list", "tuple"],
-                "question": {"text": "What is the difference between a list and a tuple?", "code": None},
+                "question": {
+                    "text": "What is the difference between a list and a tuple?",
+                    "code": None,
+                },
                 "follow_ups": ["When would you choose a tuple over a list?"],
                 "expected_points": ["Lists are mutable, tuples are immutable"],
             },
@@ -60,7 +61,10 @@ def temp_questions_dir(tmp_path, monkeypatch):
                 "type": "coding",
                 "difficulty": 2,
                 "tags": ["sorting", "array"],
-                "question": {"text": "Implement bubble sort.", "code": "def bubble_sort(arr):\n    pass"},
+                "question": {
+                    "text": "Implement bubble sort.",
+                    "code": "def bubble_sort(arr):\n    pass",
+                },
                 "follow_ups": [],
                 "expected_points": [],
             },
@@ -146,7 +150,7 @@ class TestQuestions:
         empty_content = {"category": "Empty", "language": "python", "level": "junior"}
         with open(temp_questions_dir / "python" / "junior" / "empty.yaml", "w") as f:
             yaml.dump(empty_content, f)
-        
+
         questions = load_category("python", "junior", "empty")
         assert len(questions) == 0
 
@@ -181,8 +185,22 @@ class TestQuestions:
             "language": "python",
             "level": "junior",
             "questions": [
-                {"id": "mq-001", "type": "knowledge", "difficulty": 1, "question": {"text": "Q1"}, "follow_ups": [], "expected_points": []},
-                {"id": "mq-002", "type": "coding", "difficulty": 2, "question": {"text": "Q2"}, "follow_ups": [], "expected_points": []},
+                {
+                    "id": "mq-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {"text": "Q1"},
+                    "follow_ups": [],
+                    "expected_points": [],
+                },
+                {
+                    "id": "mq-002",
+                    "type": "coding",
+                    "difficulty": 2,
+                    "question": {"text": "Q2"},
+                    "follow_ups": [],
+                    "expected_points": [],
+                },
             ],
         }
         with open(temp_questions_dir / "python" / "junior" / "multi.yaml", "w") as f:

@@ -13,12 +13,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from .database import init_db
 from .api import config as config_router
 from .api import interview as interview_router
 from .api import root as root_router
 from .api import setup as setup_router
-
+from .database import init_db
 
 BASE_DIR = Path(__file__).parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"

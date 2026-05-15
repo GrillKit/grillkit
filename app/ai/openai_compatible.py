@@ -6,7 +6,7 @@ This module provides an adapter for OpenAI-compatible APIs including
 OpenAI, Grok, Ollama, vLLM, and other OpenAI-compatible endpoints.
 """
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError, RateLimitError
 from openai.types.chat import ChatCompletionMessageParam
@@ -58,7 +58,9 @@ class OpenAICompatibleProvider(AIProvider):
         """Check if provider supports streaming."""
         return True
 
-    def _format_messages(self, messages: list[Message]) -> list[ChatCompletionMessageParam]:
+    def _format_messages(
+        self, messages: list[Message]
+    ) -> list[ChatCompletionMessageParam]:
         """Convert Message objects to OpenAI format.
 
         Args:

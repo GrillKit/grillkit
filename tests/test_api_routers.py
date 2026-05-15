@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for API routers."""
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 from app.main import create_app
 from app.services.config import ProviderConfig
@@ -59,7 +60,9 @@ class TestConfigRouter:
         )
 
         with patch("app.api.config.ConfigService.get_config", return_value=mock_config):
-            with patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]):
+            with patch(
+                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+            ):
                 response = client.get("/config")
                 assert response.status_code == 200
                 assert "text/html" in response.headers.get("content-type", "")
@@ -67,16 +70,22 @@ class TestConfigRouter:
     def test_config_page_get_no_config(self, client):
         """Test GET /config without existing config."""
         with patch("app.api.config.ConfigService.get_config", return_value=None):
-            with patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]):
+            with patch(
+                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+            ):
                 response = client.get("/config")
                 assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_save_config_success(self, client):
         """Test POST /config with successful connection test."""
-        with patch("app.api.config.ConfigService.test_connection", return_value=(True, "OK")):
+        with patch(
+            "app.api.config.ConfigService.test_connection", return_value=(True, "OK")
+        ):
             with patch("app.api.config.ConfigService.save_config") as mock_save:
-                with patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]):
+                with patch(
+                    "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+                ):
                     response = client.post(
                         "/config",
                         data={
@@ -94,8 +103,13 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_save_config_failure(self, client):
         """Test POST /config with failed connection test."""
-        with patch("app.api.config.ConfigService.test_connection", return_value=(False, "Connection failed")):
-            with patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]):
+        with patch(
+            "app.api.config.ConfigService.test_connection",
+            return_value=(False, "Connection failed"),
+        ):
+            with patch(
+                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+            ):
                 response = client.post(
                     "/config",
                     data={
@@ -112,7 +126,9 @@ class TestConfigRouter:
     def test_delete_config(self, client):
         """Test DELETE /config endpoint."""
         with patch("app.api.config.ConfigService.delete_config") as mock_delete:
-            with patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]):
+            with patch(
+                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
+            ):
                 response = client.delete("/config")
 
                 assert response.status_code == 200
@@ -121,7 +137,10 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_test_config_success(self, client):
         """Test POST /config/test with successful connection."""
-        with patch("app.api.config.ConfigService.test_connection", return_value=(True, "Connection successful")):
+        with patch(
+            "app.api.config.ConfigService.test_connection",
+            return_value=(True, "Connection successful"),
+        ):
             response = client.post(
                 "/config/test",
                 data={
@@ -138,7 +157,10 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_test_config_failure(self, client):
         """Test POST /config/test with failed connection."""
-        with patch("app.api.config.ConfigService.test_connection", return_value=(False, "Invalid API key")):
+        with patch(
+            "app.api.config.ConfigService.test_connection",
+            return_value=(False, "Invalid API key"),
+        ):
             response = client.post(
                 "/config/test",
                 data={

@@ -9,7 +9,7 @@ and the declarative base for all SQLAlchemy models.
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data" / "db"
 DATA_DIR.mkdir(parents=True, exist_ok=True)

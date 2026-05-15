@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Configuration endpoints."""
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from ..services.config import ConfigService, ProviderConfig
 from ..ai.factory import ProviderFactory
+from ..services.config import ConfigService, ProviderConfig
 
 router = APIRouter(prefix="/config", tags=["config"])
 templates = Jinja2Templates(directory="templates")
@@ -149,4 +149,3 @@ async def test_config(
             "message": message,
         },
     )
-

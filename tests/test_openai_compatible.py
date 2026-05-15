@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for OpenAI-compatible AI provider."""
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from openai import AuthenticationError, OpenAIError, RateLimitError
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.completion_usage import CompletionUsage
 
-from app.ai.base import Message, GenerationResult
+from app.ai.base import Message
 from app.ai.openai_compatible import OpenAICompatibleProvider
 
 
@@ -68,7 +68,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_success(self, mock_openai_client):
         """Test successful generation of a single response."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_chat_completion = ChatCompletion(
             id="chatcmpl-123",
@@ -107,7 +109,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_authentication_error(self, mock_openai_client):
         """Test generate handles AuthenticationError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_response = MagicMock()
         mock_response.request = MagicMock()
@@ -123,7 +127,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_rate_limit_error(self, mock_openai_client):
         """Test generate handles RateLimitError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_response = MagicMock()
         mock_response.request = MagicMock()
@@ -139,7 +145,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_openai_error(self, mock_openai_client):
         """Test generate handles generic OpenAIError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_instance.chat.completions.create.side_effect = OpenAIError("API Error")
 
@@ -151,7 +159,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_stream_success(self, mock_openai_client):
         """Test successful streaming of response tokens."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         # Create proper mock objects for streaming chunks
         def create_mock_chunk(content):
@@ -188,7 +198,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_stream_authentication_error(self, mock_openai_client):
         """Test stream generation handles AuthenticationError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_response = MagicMock()
         mock_response.request = MagicMock()
@@ -205,7 +217,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_stream_rate_limit_error(self, mock_openai_client):
         """Test stream generation handles RateLimitError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_response = MagicMock()
         mock_response.request = MagicMock()
@@ -222,7 +236,9 @@ class TestOpenAICompatibleProvider:
     async def test_generate_stream_openai_error(self, mock_openai_client):
         """Test stream generation handles generic OpenAIError."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_instance.chat.completions.create.side_effect = OpenAIError("API Error")
 
@@ -235,7 +251,9 @@ class TestOpenAICompatibleProvider:
     async def test_validate_success(self, mock_openai_client):
         """Test successful API key validation."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_instance.models.list.return_value = AsyncMock()
         is_valid = await provider.validate()
@@ -246,7 +264,9 @@ class TestOpenAICompatibleProvider:
     async def test_validate_failure(self, mock_openai_client):
         """Test failed API key validation."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         mock_instance.models.list.side_effect = OpenAIError("Invalid Key")
         is_valid = await provider.validate()
@@ -257,7 +277,9 @@ class TestOpenAICompatibleProvider:
     async def test_close(self, mock_openai_client):
         """Test close method calls client.close()."""
         MockClient, mock_instance = mock_openai_client
-        provider = OpenAICompatibleProvider(model="test-model", base_url="http://localhost")
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
 
         await provider.close()
         mock_instance.close.assert_called_once()
