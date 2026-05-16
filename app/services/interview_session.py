@@ -5,6 +5,9 @@
 This module provides the service layer for managing interview sessions,
 including creation, question selection, answer submission, AI evaluation,
 follow-up generation, and session completion.
+
+The service delegates all data access to repositories and uses the
+Unit of Work pattern for atomic database transactions.
 """
 
 import json
@@ -15,11 +18,9 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy.orm import Session, selectinload
-
-from ..database import get_session, session_scope
 from ..models import Answer, InterviewSession
 from ..questions import list_categories, load_category
+from ..uow import UnitOfWork
 from .config import ConfigService
 from .interview_evaluator import InterviewEvaluatorService
 
@@ -29,93 +30,15 @@ logger = logging.getLogger(__name__)
 WsSend = Callable[[dict[str, Any]], None]
 
 
-# ---------------------------------------------------------------------------
-# Module-level DB helpers (reduce boilerplate across service methods)
-# ---------------------------------------------------------------------------
-
-
-def _get_answer_record(
-    db: Session, session_id: str, question_id: str, round_num: int
-) -> Answer:
-    """Look up an Answer record by session, question, and round.
-
-    Args:
-        db: Active DB session.
-        session_id: The session UUID.
-        question_id: The question ID.
-        round_num: The answer round number.
-
-    Returns:
-        The matching Answer record.
-
-    Raises:
-        ValueError: If not found.
-    """
-    answer = (
-        db.query(Answer)
-        .filter_by(
-            interview_session_id=session_id,
-            question_id=question_id,
-            round=round_num,
-        )
-        .first()
-    )
-    if not answer:
-        raise ValueError(
-            f"Answer not found: session={session_id}, "
-            f"question={question_id}, round={round_num}"
-        )
-    return answer
-
-
-def _add_follow_up_record(
-    db: Session, session_id: str, question_id: str, follow_up_text: str
-) -> Answer:
-    """Create a follow-up Answer record in an existing DB session.
-
-    Args:
-        db: Active DB session.
-        session_id: The session UUID.
-        question_id: The question ID.
-        follow_up_text: The follow-up question text.
-
-    Returns:
-        The newly created Answer record.
-
-    Raises:
-        ValueError: If original question not found.
-    """
-    # Find the current max round for this question
-    max_round = (
-        db.query(Answer.round)
-        .filter_by(
-            interview_session_id=session_id,
-            question_id=question_id,
-        )
-        .order_by(Answer.round.desc())
-        .first()
-    )
-    next_round = (max_round[0] if max_round else 0) + 1
-
-    # Get the original answer to copy metadata
-    original = _get_answer_record(db, session_id, question_id, 0)
-
-    follow_up = Answer(
-        interview_session_id=session_id,
-        question_id=question_id,
-        order=original.order,
-        round=next_round,
-        question_text=follow_up_text,
-        question_code=original.question_code,
-    )
-    db.add(follow_up)
-    db.flush()
-    db.refresh(follow_up)
-    return follow_up
-
-
 class InterviewSessionService:
-    """Service for managing interview sessions."""
+    """Service for managing interview sessions.
+
+    All data access is performed through repositories and the Unit of Work.
+    """
+
+    # ------------------------------------------------------------------
+    # Read-only queries (no UoW needed — single reads)
+    # ------------------------------------------------------------------
 
     @staticmethod
     def get_available_categories(language: str) -> list[str]:
@@ -133,6 +56,23 @@ class InterviewSessionService:
         return sorted(categories)
 
     @staticmethod
+    def get_session(session_id: str) -> InterviewSession | None:
+        """Retrieve an interview session by ID.
+
+        Args:
+            session_id: The session UUID.
+
+        Returns:
+            InterviewSession with answers loaded, or None if not found.
+        """
+        with UnitOfWork() as uow:
+            return uow.sessions.get(session_id)
+
+    # ------------------------------------------------------------------
+    # Write operations (via UoW)
+    # ------------------------------------------------------------------
+
+    @staticmethod
     def create_session(
         level: str,
         category: str,
@@ -142,7 +82,7 @@ class InterviewSessionService:
         """Create a new interview session with selected questions.
 
         Loads questions from YAML bank, shuffles and picks the requested
-        number, then persists the session to the database.
+        number, then persists the session to the database atomically.
 
         Args:
             level: Difficulty level (junior, middle, senior).
@@ -163,90 +103,32 @@ class InterviewSessionService:
         random.shuffle(questions)
         selected = questions[:question_count]
         question_ids = [q.id for q in selected]
-
         interview_session_id = str(uuid4())
 
-        with session_scope() as db:
-            interview_session = InterviewSession(
-                id=interview_session_id,
+        with UnitOfWork(auto_commit=True) as uow:
+            session = uow.sessions.new_session(
+                session_id=interview_session_id,
                 level=level,
                 category=category,
                 question_count=len(selected),
-                question_ids=json.dumps(question_ids),
-                status="active",
+                question_ids=question_ids,
             )
-            db.add(interview_session)
+            uow.sessions.add(session)
 
             for order, q in enumerate(selected, start=1):
-                answer = Answer(
-                    interview_session_id=interview_session_id,
+                answer = uow.answers.new_answer(
+                    session_id=interview_session_id,
                     question_id=q.id,
                     order=order,
-                    round=0,
+                    round_num=0,
                     question_text=q.text,
                     question_code=q.code,
                 )
-                db.add(answer)
+                uow.answers.add(answer)
 
-            db.refresh(interview_session)
-            return interview_session
-
-    @staticmethod
-    def get_session(session_id: str) -> InterviewSession | None:
-        """Retrieve an interview session by ID.
-
-        Args:
-            session_id: The session UUID.
-
-        Returns:
-            InterviewSession with answers loaded, or None if not found.
-        """
-        db = get_session()
-        try:
-            return (
-                db.query(InterviewSession)
-                .options(selectinload(InterviewSession.answers))
-                .filter_by(id=session_id)
-                .first()
-            )
-        finally:
-            db.close()
-
-    @staticmethod
-    def submit_answer(
-        session_id: str,
-        question_id: str,
-        answer_text: str,
-        round_num: int = 0,
-        db: Session | None = None,
-    ) -> Answer:
-        """Record a user's answer for a question.
-
-        Args:
-            session_id: The session UUID.
-            question_id: The question ID from the YAML bank.
-            answer_text: The user's answer text.
-            round_num: Follow-up round number (0 = initial, 1+ = follow-ups).
-            db: Optional existing DB session. If provided, caller manages commit.
-
-        Returns:
-            The updated Answer record.
-
-        Raises:
-            ValueError: If session or question not found.
-        """
-        if db is not None:
-            answer = _get_answer_record(db, session_id, question_id, round_num)
-            answer.answer_text = answer_text
-            db.flush()
-            db.refresh(answer)
-            return answer
-
-        with session_scope() as sess:
-            answer = _get_answer_record(sess, session_id, question_id, round_num)
-            answer.answer_text = answer_text
-            sess.refresh(answer)
-            return answer
+            uow.flush()
+            uow.session.refresh(session)
+            return session
 
     @staticmethod
     def add_follow_up(
@@ -270,8 +152,19 @@ class InterviewSessionService:
         Raises:
             ValueError: If original question not found.
         """
-        with session_scope() as db:
-            return _add_follow_up_record(db, session_id, question_id, follow_up_text)
+        with UnitOfWork(auto_commit=True) as uow:
+            max_round = uow.answers.get_max_round(session_id, question_id)
+            next_round = max_round + 1
+
+            original = uow.answers.get_by_session_question_round_raise(
+                session_id, question_id, 0
+            )
+
+            follow_up = uow.answers.new_follow_up(original, follow_up_text, next_round)
+            uow.answers.add(follow_up)
+            uow.flush()
+            uow.session.refresh(follow_up)
+            return follow_up
 
     @staticmethod
     def complete_session(session_id: str) -> InterviewSession:
@@ -286,79 +179,17 @@ class InterviewSessionService:
         Raises:
             ValueError: If session not found.
         """
-        with session_scope() as db:
-            session = db.query(InterviewSession).filter_by(id=session_id).first()
+        with UnitOfWork(auto_commit=True) as uow:
+            session = uow.sessions.get(session_id)
             if not session:
                 raise ValueError(f"Session not found: {session_id}")
 
-            scores = [a.score for a in session.answers if a.score is not None]
-            session.score = sum(scores) if scores else 0
-            session.status = "completed"
-            session.completed_at = datetime.now(UTC)
-            db.refresh(session)
+            uow.sessions.complete_session(session)
+            uow.session.refresh(session)
             return session
 
     # ------------------------------------------------------------------
-    # AI evaluation helpers (called by process_answer_submission)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def save_evaluation(
-        session_id: str,
-        question_id: str,
-        round_num: int,
-        score: int,
-        feedback: str,
-    ) -> Answer:
-        """Save AI evaluation results to an Answer record.
-
-        Args:
-            session_id: The session UUID.
-            question_id: The question ID.
-            round_num: The answer round number.
-            score: AI-assigned score (1-5).
-            feedback: AI-generated feedback text.
-
-        Returns:
-            The updated Answer record.
-
-        Raises:
-            ValueError: If answer record not found.
-        """
-        with session_scope() as db:
-            answer = _get_answer_record(db, session_id, question_id, round_num)
-            answer.score = score
-            answer.feedback = feedback
-            db.refresh(answer)
-            return answer
-
-    @staticmethod
-    def save_session_evaluation(
-        session_id: str,
-        evaluation_json: str,
-    ) -> InterviewSession:
-        """Save the final session evaluation (overall_feedback).
-
-        Args:
-            session_id: The session UUID.
-            evaluation_json: JSON string with evaluation data.
-
-        Returns:
-            The updated InterviewSession.
-
-        Raises:
-            ValueError: If session not found.
-        """
-        with session_scope() as db:
-            session = db.query(InterviewSession).filter_by(id=session_id).first()
-            if not session:
-                raise ValueError(f"Session not found: {session_id}")
-            session.overall_feedback = evaluation_json
-            db.refresh(session)
-            return session
-
-    # ------------------------------------------------------------------
-    # Orchestration methods (called by API endpoints)
+    # Orchestration internals — operate on loaded models, no DB mutations
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -428,6 +259,7 @@ class InterviewSessionService:
         question_id = answer.question_id
         answer_round = answer.round
 
+        evaluation: Any = None
         if answer_round == 0:
             evaluation = await InterviewEvaluatorService.evaluate_answer(
                 provider=provider,
@@ -453,7 +285,7 @@ class InterviewSessionService:
                 question_text=initial_answer.question_text
                 if initial_answer
                 else answer.question_text,
-                initial_answer=initial_answer.answer_text if initial_answer else "",
+                initial_answer=(initial_answer.answer_text or "") if initial_answer else "",
                 follow_up_question=answer.question_text,
                 follow_up_answer=answer_text,
                 question_code=answer.question_code,
@@ -492,8 +324,6 @@ class InterviewSessionService:
             "question_id": answer.question_id,
             "order": answer.order,
             "round": answer.round,
-            "score": evaluation.score,
-            "feedback": evaluation.feedback,
             "follow_up_question": follow_up_text if follow_up_needed else None,
             "next_question": (
                 {
@@ -507,11 +337,6 @@ class InterviewSessionService:
             ),
         }
 
-        # Strengths/weaknesses are only returned for initial (round=0) evaluations
-        if answer.round == 0:
-            ws_event["strengths"] = getattr(evaluation, "strengths", None)
-            ws_event["weaknesses"] = getattr(evaluation, "weaknesses", None)
-
         return ws_event
 
     @staticmethod
@@ -524,9 +349,14 @@ class InterviewSessionService:
     ) -> None:
         """Evaluate an answer with AI, save results, and optionally generate follow-ups.
 
+        The DB writes (score, feedback, optional follow-up) are wrapped
+        in a single UnitOfWork for atomicity. The session and answer objects
+        are re-loaded inside the UoW to ensure they are attached to the
+        active DB session.
+
         Args:
-            session: The interview session.
-            current_answer: The Answer record being evaluated.
+            session: The interview session (may be detached — used read-only).
+            current_answer: The Answer record being evaluated (may be detached).
             answer_text: The user's answer text.
             current_index: Index of *current_answer* in ``session.answers``.
             ws_send: Optional callback for WebSocket events.
@@ -552,34 +382,44 @@ class InterviewSessionService:
             if provider is not None:
                 await provider.close()
 
-        # Save evaluation results to DB
-        with session_scope() as db:
-            answer = _get_answer_record(
-                db,
+        # Save evaluation results + optional follow-up atomically
+        # All objects are re-loaded inside the UoW to ensure they are
+        # attached to the active DB session.
+        next_question: Answer | None = None
+        with UnitOfWork(auto_commit=True) as uow:
+            db_session = uow.sessions.get(session.id)
+            if not db_session:
+                raise ValueError(f"Session not found: {session.id}")
+
+            db_answer = uow.answers.get_by_session_question_round_raise(
                 session_id=session.id,
                 question_id=current_answer.question_id,
                 round_num=current_answer.round,
             )
-            answer.score = evaluation.score
-            answer.feedback = evaluation.feedback
+            uow.answers.set_evaluation(
+                db_answer, evaluation.score, evaluation.feedback
+            )
 
-            # Handle follow-up creation within the same session
-            next_question: Answer | None = None
             if follow_up_needed:
-                follow_up = _add_follow_up_record(
-                    db,
-                    session_id=session.id,
-                    question_id=current_answer.question_id,
-                    follow_up_text=follow_up_text,
+                max_round = uow.answers.get_max_round(
+                    session.id, current_answer.question_id
                 )
-                session.answers.append(follow_up)
+                next_round = max_round + 1
+
+                original = uow.answers.get_by_session_question_round_raise(
+                    session.id, current_answer.question_id, 0
+                )
+                follow_up = uow.answers.new_follow_up(
+                    original, follow_up_text or "", next_round
+                )
+                uow.answers.add(follow_up)
             else:
                 # Only look ahead when there's no follow-up
                 next_question = InterviewSessionService._find_next_unanswered(
-                    session, current_index
+                    db_session, current_index
                 )
 
-        # Build and send WS event (outside DB session)
+        # Build and send WS event (outside UoW)
         if ws_send:
             ws_event = InterviewSessionService._build_feedback_ws_event(
                 evaluation=evaluation,
@@ -589,6 +429,10 @@ class InterviewSessionService:
                 next_question=next_question,
             )
             ws_send(ws_event)
+
+    # ------------------------------------------------------------------
+    # Public orchestration methods (called by API endpoints)
+    # ------------------------------------------------------------------
 
     @staticmethod
     async def process_answer_submission(
@@ -624,20 +468,18 @@ class InterviewSessionService:
         )
         current_index = session.answers.index(current_answer)
 
-        # Save the answer text to DB
-        with session_scope() as db:
-            answer = _get_answer_record(
-                db,
-                session_id=session_id,
-                question_id=question_id,
-                round_num=current_answer.round,
+        # Save the answer text in its own transaction so it persists
+        # even if the subsequent AI evaluation fails
+        with UnitOfWork(auto_commit=True) as uow:
+            answer = uow.answers.get_by_session_question_round_raise(
+                session_id, question_id, current_answer.round
             )
-            answer.answer_text = answer_text
+            uow.answers.set_answer_text(answer, answer_text)
 
         if ws_send:
             ws_send({"type": "saved"})
 
-        # Evaluate with AI (opens its own DB session for saving results)
+        # Evaluate with AI (opens its own UoW for saving results)
         await InterviewSessionService._evaluate_and_save(
             session=session,
             current_answer=current_answer,
@@ -700,22 +542,19 @@ class InterviewSessionService:
             if provider is not None:
                 await provider.close()
 
-        # Wrap leftover DB writes in a single transaction
-        with session_scope() as db:
-            # Load session in this transaction context
-            db_session = db.query(InterviewSession).filter_by(id=session_id).first()
+        # Persist results atomically
+        with UnitOfWork(auto_commit=True) as uow:
+            db_session = uow.sessions.get(session_id)
             if not db_session:
                 raise ValueError(f"Session not found: {session_id}")
 
-            db_session.overall_feedback = session_eval.model_dump_json()
+            uow.sessions.save_evaluation_feedback(
+                db_session, session_eval.model_dump_json()
+            )
+            uow.sessions.complete_session(db_session)
+            uow.session.refresh(db_session)
 
-            scores = [a.score for a in db_session.answers if a.score is not None]
-            db_session.score = sum(scores) if scores else 0
-            db_session.status = "completed"
-            db_session.completed_at = datetime.now(UTC)
-            db.refresh(db_session)
-
-            # Calculate max_score from score_breakdown to match the table
+            # Calculate max_score from score_breakdown
             max_score_total = 0
             if session_eval.score_breakdown:
                 for qid, breakdown in session_eval.score_breakdown.items():

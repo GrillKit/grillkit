@@ -14,8 +14,8 @@ class TestProviderFactory:
 
     def test_from_config_openai_compatible(self):
         """Test creating an OpenAI-compatible provider."""
-        with patch("app.ai.factory.OpenAICompatibleProvider") as MockProvider:
-            mock_instance = MockProvider.return_value
+        with patch("app.ai.factory.OpenAICompatibleProvider") as mock_provider:
+            mock_instance = mock_provider.return_value
 
             result = ProviderFactory.from_config(
                 base_url="https://api.openai.com/v1",
@@ -25,7 +25,7 @@ class TestProviderFactory:
                 timeout=30.0,
             )
 
-            MockProvider.assert_called_once_with(
+            mock_provider.assert_called_once_with(
                 model="gpt-4",
                 base_url="https://api.openai.com/v1",
                 api_key="test-key",
@@ -35,8 +35,8 @@ class TestProviderFactory:
 
     def test_from_config_without_api_key(self):
         """Test creating a provider without API key for local providers."""
-        with patch("app.ai.factory.OpenAICompatibleProvider") as MockProvider:
-            mock_instance = MockProvider.return_value
+        with patch("app.ai.factory.OpenAICompatibleProvider") as mock_provider:
+            mock_instance = mock_provider.return_value
 
             result = ProviderFactory.from_config(
                 base_url="http://localhost:11434",
@@ -44,10 +44,11 @@ class TestProviderFactory:
                 api_type="openai-compatible",
             )
 
-            MockProvider.assert_called_once_with(
+            mock_provider.assert_called_once_with(
                 model="llama2",
                 base_url="http://localhost:11434",
                 api_key=None,
+                timeout=60.0,
             )
             assert result == mock_instance
 

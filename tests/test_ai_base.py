@@ -86,6 +86,9 @@ class TestAIProvider:
             async def generate_stream(self, messages, temperature=0.7, max_tokens=2000):
                 yield "test"
 
+            async def close(self):
+                pass
+
         provider = ConcreteProvider(model="gpt-4")
         assert provider.model == "gpt-4"
 
@@ -108,6 +111,9 @@ class TestAIProvider:
 
             async def generate_stream(self, messages, temperature=0.7, max_tokens=2000):
                 yield "test"
+
+            async def close(self):
+                pass
 
         provider = ConcreteProvider(
             model="gpt-4",

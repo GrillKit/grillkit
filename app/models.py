@@ -8,8 +8,8 @@ answers, and future entities.
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import relationship
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
@@ -35,18 +35,22 @@ class InterviewSession(Base):
 
     __tablename__ = "interview_sessions"
 
-    id = Column(String, primary_key=True)
-    level = Column(String, nullable=False)
-    category = Column(String, nullable=False)
-    question_count = Column(Integer, default=5)
-    question_ids = Column(Text, default="[]")
-    status = Column(String, default="active")
-    score = Column(Integer, nullable=True)
-    overall_feedback = Column(Text, nullable=True)
-    started_at = Column(DateTime(timezone=True), server_default=func.now())
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    level: Mapped[str] = mapped_column(String)
+    category: Mapped[str] = mapped_column(String)
+    question_count: Mapped[int] = mapped_column(default=5)
+    question_ids: Mapped[str] = mapped_column(Text, default="[]")
+    status: Mapped[str] = mapped_column(String, default="active")
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    overall_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    answers = relationship(
+    answers: Mapped[list["Answer"]] = relationship(
         "Answer",
         back_populates="interview_session",
         order_by="Answer.order, Answer.round",
@@ -77,23 +81,24 @@ class Answer(Base):
 
     __tablename__ = "answers"
 
-    id = Column(Integer, primary_key=True)
-    interview_session_id = Column(
+    id: Mapped[int] = mapped_column(primary_key=True)
+    interview_session_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("interview_sessions.id", ondelete="CASCADE"),
-        nullable=False,
     )
-    question_id = Column(String, nullable=False)
-    order = Column(Integer, nullable=False)
-    round = Column(Integer, default=0)
-    question_text = Column(Text, nullable=False)
-    question_code = Column(Text, nullable=True)
-    answer_text = Column(Text, nullable=True)
-    score = Column(Integer, nullable=True)
-    feedback = Column(Text, nullable=True)
-    created_at = Column(
+    question_id: Mapped[str] = mapped_column(String)
+    order: Mapped[int] = mapped_column()
+    round: Mapped[int] = mapped_column(Integer, default=0)
+    question_text: Mapped[str] = mapped_column(Text)
+    question_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
     )
 
-    interview_session = relationship("InterviewSession", back_populates="answers")
+    interview_session: Mapped["InterviewSession"] = relationship(
+        "InterviewSession", back_populates="answers"
+    )

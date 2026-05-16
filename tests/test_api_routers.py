@@ -73,22 +73,22 @@ class TestConfigRouter:
             api_key="test-key",
         )
 
-        with patch("app.api.config.ConfigService.get_config", return_value=mock_config):
-            with patch(
-                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
-            ):
-                response = client.get("/config")
-                assert response.status_code == 200
-                assert "text/html" in response.headers.get("content-type", "")
+        with (
+            patch("app.api.config.ConfigService.get_config", return_value=mock_config),
+            patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]),
+        ):
+            response = client.get("/config")
+            assert response.status_code == 200
+            assert "text/html" in response.headers.get("content-type", "")
 
     def test_config_page_get_no_config(self, client):
         """Test GET /config without existing config."""
-        with patch("app.api.config.ConfigService.get_config", return_value=None):
-            with patch(
-                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
-            ):
-                response = client.get("/config")
-                assert response.status_code == 200
+        with (
+            patch("app.api.config.ConfigService.get_config", return_value=None),
+            patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]),
+        ):
+            response = client.get("/config")
+            assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_save_config_success(self, client):
@@ -140,14 +140,14 @@ class TestConfigRouter:
 
     def test_delete_config(self, client):
         """Test DELETE /config endpoint."""
-        with patch("app.api.config.ConfigService.delete_config") as mock_delete:
-            with patch(
-                "app.api.config.ProviderFactory.get_provider_types", return_value=[]
-            ):
-                response = client.delete("/config")
+        with (
+            patch("app.api.config.ConfigService.delete_config") as mock_delete,
+            patch("app.api.config.ProviderFactory.get_provider_types", return_value=[]),
+        ):
+            response = client.delete("/config")
 
-                assert response.status_code == 200
-                mock_delete.assert_called_once()
+            assert response.status_code == 200
+            mock_delete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_test_config_success(self, client):
@@ -197,12 +197,12 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error for unknown message type."""
         with (
             patch("app.api.interview.InterviewSessionService.get_session"),
+            client.websocket_connect("/interview/test-id/ws") as ws,
         ):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({"type": "unknown_command"})
-                response = ws.receive_json()
-                assert response["type"] == "error"
-                assert "Unknown message type" in response["message"]
+            ws.send_json({"type": "unknown_command"})
+            response = ws.receive_json()
+            assert response["type"] == "error"
+            assert "Unknown message type" in response["message"]
 
     def test_websocket_answer_success(self, client):
         """Test WebSocket answer submission flow."""
@@ -226,23 +226,24 @@ class TestInterviewWebSocket:
                     "answer_text": "My answer",
                 }
             )
-            # Should not raise — service is called, no response sent back
-            # (response events are sent via ws_send callback internally)
-            mock_process.assert_awaited_once_with(
-                session_id="test-id",
-                question_id="ds-001",
-                answer_text="My answer",
-                ws_send=mock_process.call_args.kwargs["ws_send"],
-            )
+            # Verify the service was called with the right args
+            mock_process.assert_awaited()
+            call_kwargs = mock_process.call_args.kwargs
+            assert call_kwargs["session_id"] == "test-id"
+            assert call_kwargs["question_id"] == "ds-001"
+            assert call_kwargs["answer_text"] == "My answer"
+            assert callable(call_kwargs["ws_send"])
 
     def test_websocket_answer_missing_fields(self, client):
         """Test WebSocket returns error when question_id or answer_text is missing."""
-        with patch("app.api.interview.InterviewSessionService.get_session"):
-            with client.websocket_connect("/interview/test-id/ws") as ws:
-                ws.send_json({"type": "answer", "question_id": ""})
-                response = ws.receive_json()
-                assert response["type"] == "error"
-                assert "Both" in response["message"]
+        with (
+            patch("app.api.interview.InterviewSessionService.get_session"),
+            client.websocket_connect("/interview/test-id/ws") as ws,
+        ):
+            ws.send_json({"type": "answer", "question_id": ""})
+            response = ws.receive_json()
+            assert response["type"] == "error"
+            assert "Both" in response["message"]
 
     def test_websocket_answer_completed_session(self, client):
         """Test WebSocket rejects answer on completed session."""

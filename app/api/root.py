@@ -17,7 +17,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+async def root(request: Request) -> HTMLResponse:
     """Root endpoint redirects to dashboard or setup based on configuration.
 
     Args:

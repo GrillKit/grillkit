@@ -50,7 +50,7 @@ class AIProvider(ABC):
         config: Additional provider-specific configuration.
     """
 
-    def __init__(self, model: str, **kwargs):
+    def __init__(self, model: str, **kwargs: object) -> None:
         """Initialize the provider.
 
         Args:
@@ -99,7 +99,12 @@ class AIProvider(ABC):
         pass
 
     @abstractmethod
-    async def generate_stream(
+    async def close(self) -> None:
+        """Close the provider and release resources."""
+        pass
+
+    @abstractmethod
+    def generate_stream(
         self,
         messages: list[Message],
         temperature: float = 0.7,
@@ -119,3 +124,4 @@ class AIProvider(ABC):
             ValueError: If the request fails or parameters are invalid.
         """
         pass
+

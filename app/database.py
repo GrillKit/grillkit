@@ -6,6 +6,7 @@ This module provides database connectivity, session management,
 and the declarative base for all SQLAlchemy models.
 """
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -44,7 +45,7 @@ def get_session() -> Session:
 
 
 @contextmanager
-def session_scope():
+def session_scope() -> Generator[Session, None, None]:
     """Provide a transactional scope around a series of operations.
 
     Automatically commits on success and rolls back on exception.

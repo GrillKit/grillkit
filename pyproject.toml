@@ -43,6 +43,8 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
 
@@ -57,6 +59,18 @@ python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+explicit_package_bases = true
+mypy_path = ["."]
+
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "tests"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["app.models"]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

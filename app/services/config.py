@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..ai.base import AIProvider
 from ..ai.factory import ProviderFactory
 
 CONFIG_DIR = Path(__file__).parent.parent.parent / "data"
@@ -130,7 +131,7 @@ class ConfigService:
             return False, f"Connection failed: {e}"
 
     @staticmethod
-    def create_provider_from_config():
+    def create_provider_from_config() -> AIProvider:
         """Create AI provider from saved configuration.
 
         Returns:

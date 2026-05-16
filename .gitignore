@@ -69,3 +69,6 @@ dmypy.json
 *.log
 /docs/
 .cursor/
+
+
+/.kilocode/

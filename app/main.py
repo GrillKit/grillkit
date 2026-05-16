@@ -7,6 +7,7 @@ for creating the GrillKit application instance with all routes,
 templates, and middleware configured.
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -25,7 +26,7 @@ STATIC_DIR = BASE_DIR / "static"
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler.
 
     Initializes database on startup.

@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Repository layer** (`app/repositories/`) — abstract `Repository[T]` interface and SQLAlchemy-backed `SqlAlchemyRepository[T]` base class.
+- **`InterviewSessionRepository`** (`app/repositories/session.py`) — CRUD for sessions with eager-loading, `complete_session()`, `save_evaluation_feedback()`, and factory methods.
+- **`AnswerRepository`** (`app/repositories/answer.py`) — CRUD for answers with lookup by session/question/round, `set_answer_text()`, `set_evaluation()`, `new_follow_up()` factory.
+- **`UnitOfWork`** (`app/uow.py`) — atomic transaction coordinator with `commit()`, `rollback()`, and lazy-initialised repository accessors (`.sessions`, `.answers`).
 - **WebSocket real-time interview chat** — new endpoint `WS /interview/{session_id}/ws` for bidirectional communication.
+- **Unit tests for repositories** (`tests/test_repositories.py`) — 26 tests covering `SqlAlchemyRepository`, `InterviewSessionRepository`, and `AnswerRepository`.
+- **Unit tests for UnitOfWork** (`tests/test_uow.py`) — 11 tests covering commit, rollback, flush, lazy init, and context manager behaviour.
 - JSON protocol for WebSocket messages: `answer` (client → server), `saved`, `evaluating`, `feedback`, `session_completed`, `error` (server → client).
 - `InterviewSessionService._find_current_answer()`, `_find_next_unanswered()`, and `_evaluate_and_save()` helper methods.
 - `WsSend` callback type alias — WebSocket endpoint passes `send_json` callback to service layer.
@@ -31,11 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard page with empty state and call-to-action buttons.
 
 ### Changed
+- **Service layer refactored** — `InterviewSessionService` no longer depends on raw SQLAlchemy sessions. All DB access is now through `InterviewSessionRepository`, `AnswerRepository`, and `UnitOfWork`.
+- **Removed** module-level helpers `_get_answer_record()` and `_add_follow_up_record()` — replaced by repository methods.
+- **Removed** dead code: `submit_answer()`, `save_evaluation()`, `save_session_evaluation()` — these public methods were unused (logic was duplicated inline).
+- **Removed** unused `uow_scope()` context manager from `app/uow.py`.
+- **Data access pattern** — all write operations now use `with UnitOfWork(auto_commit=True) as uow:` for atomicity; read-only queries use transient `UnitOfWork()`.
+- **Detached session fix** — `_evaluate_and_save()` now re-loads session and answer objects inside the UoW to prevent `DetachedInstanceError`.
 - `templates/interview.html` — initial page loads via HTTP (full history), then all interaction via WebSocket.
 - `process_answer_submission()` and `process_session_completion()` accept optional `ws_send` callback.
 - `ARCHITECTURE.md` — added WebSocket data flow, updated project map and limitations.
 - `InterviewSessionService._evaluate_and_save()` — refactored to eliminate code duplication between initial and follow-up evaluation branches.
 - `InterviewSessionService._find_next_unanswered()` — optimized from O(n²) to O(n) using set lookup.
+- **Per-question score/feedback no longer displayed during active interview** — AI evaluation is saved to DB silently; all scores and feedback are shown only after session completion in the final evaluation section.
+- `InterviewSessionService._build_feedback_ws_event()` — removed `score`, `feedback`, `strengths`, `weaknesses` from WebSocket `feedback` event.
+- `templates/interview.html` — removed per-question score/feedback bubbles from chat rendering for active sessions; replaced `showFeedback()` JS function with `showNextAfterFeedback()` that only advances to the next question.
 
 ### Fixed
 - Follow-up evaluation now passes the original question text (not the follow-up text itself) to AI for proper context.

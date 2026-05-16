@@ -20,7 +20,8 @@ class ProviderFactory:
         model: str,
         api_key: str | None = None,
         api_type: str = "openai-compatible",
-        **kwargs,
+        timeout: float = 60.0,
+        **kwargs: object,
     ) -> AIProvider:
         """Create a provider from user-provided configuration.
 
@@ -29,7 +30,8 @@ class ProviderFactory:
             model: Model name to use.
             api_key: API key (optional for local providers).
             api_type: API type - currently only "openai-compatible" is supported.
-            **kwargs: Additional options (timeout, etc.).
+            timeout: Request timeout in seconds.
+            **kwargs: Additional options.
 
         Returns:
             Configured AIProvider instance.
@@ -42,13 +44,13 @@ class ProviderFactory:
                 model=model,
                 base_url=base_url,
                 api_key=api_key,
-                **kwargs,
+                timeout=timeout,
             )
 
         raise ValueError(f"Unsupported API type: {api_type}")
 
     @classmethod
-    def get_provider_types(cls) -> list[dict]:
+    def get_provider_types(cls) -> list[dict[str, str]]:
         """List available API types for UI selection.
 
         Returns:

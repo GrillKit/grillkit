@@ -19,14 +19,14 @@ class TestOpenAICompatibleProvider:
     @pytest.fixture
     def mock_openai_client(self):
         """Fixture to mock AsyncOpenAI client at module level."""
-        with patch("app.ai.openai_compatible.AsyncOpenAI") as MockClient:
+        with patch("app.ai.openai_compatible.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
-            MockClient.return_value = mock_instance
-            yield MockClient, mock_instance
+            mock_client.return_value = mock_instance
+            yield mock_client, mock_instance
 
     def test_init(self, mock_openai_client):
         """Test provider initialization."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model",
             base_url="http://localhost",
@@ -34,7 +34,7 @@ class TestOpenAICompatibleProvider:
             timeout=5.0,
         )
         assert provider.model == "test-model"
-        MockClient.assert_called_once_with(
+        mock_client.assert_called_once_with(
             base_url="http://localhost",
             api_key="test-key",
             timeout=5.0,
@@ -67,7 +67,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_success(self, mock_openai_client):
         """Test successful generation of a single response."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -108,7 +108,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_authentication_error(self, mock_openai_client):
         """Test generate handles AuthenticationError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -126,7 +126,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_rate_limit_error(self, mock_openai_client):
         """Test generate handles RateLimitError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -144,7 +144,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_openai_error(self, mock_openai_client):
         """Test generate handles generic OpenAIError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -158,7 +158,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_stream_success(self, mock_openai_client):
         """Test successful streaming of response tokens."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -197,7 +197,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_stream_authentication_error(self, mock_openai_client):
         """Test stream generation handles AuthenticationError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -216,7 +216,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_stream_rate_limit_error(self, mock_openai_client):
         """Test stream generation handles RateLimitError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -235,7 +235,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_generate_stream_openai_error(self, mock_openai_client):
         """Test stream generation handles generic OpenAIError."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -250,7 +250,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_validate_success(self, mock_openai_client):
         """Test successful API key validation."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -263,7 +263,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_validate_failure(self, mock_openai_client):
         """Test failed API key validation."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )
@@ -276,7 +276,7 @@ class TestOpenAICompatibleProvider:
     @pytest.mark.asyncio
     async def test_close(self, mock_openai_client):
         """Test close method calls client.close()."""
-        MockClient, mock_instance = mock_openai_client
+        mock_client, mock_instance = mock_openai_client
         provider = OpenAICompatibleProvider(
             model="test-model", base_url="http://localhost"
         )

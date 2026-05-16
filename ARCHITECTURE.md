@@ -9,6 +9,7 @@ grillkit/
 │   ├── database.py             # Engine, SessionLocal, Base, init_db()
 │   ├── models.py               # SQLAlchemy models: InterviewSession, Answer
 │   ├── questions.py            # YAML question loader: Question dataclass, load_category()
+│   ├── uow.py                  # UnitOfWork: atomic DB transactions, repository access
 │   ├── ai/                     # AI provider abstractions
 │   │   ├── base.py             # AIProvider ABC, Message, GenerationResult
 │   │   ├── factory.py          # ProviderFactory.from_config()
@@ -19,6 +20,11 @@ grillkit/
 │   │   ├── setup.py            # GET/POST /setup → interview config + session creation
 │   │   ├── config.py           # GET/POST/DELETE /config → AI provider settings
 │   │   └── interview.py        # GET /interview/{id}, POST /interview/{id}/answer, /complete, WS /interview/{id}/ws
+│   ├── repositories/           # Data access layer (repository pattern)
+│   │   ├── __init__.py         # Re-exports all repositories
+│   │   ├── base.py             # Repository ABC + SqlAlchemyRepository base
+│   │   ├── session.py          # InterviewSessionRepository
+│   │   └── answer.py           # AnswerRepository
 │   └── services/               # Business logic layer
 │       ├── config.py           # ConfigService: get/save/delete config, test_connection
 │       ├── interview_session.py # InterviewSessionService: CRUD, answers, follow-ups, AI orchestration
@@ -62,12 +68,15 @@ main.py
 ├── database.py (init_db)
 ├── api/__init__.py
 │   ├── root.py → services/config.py
-│   ├── setup.py → services/interview_session.py → database.py, models.py, questions.py
+│   ├── setup.py → services/interview_session.py
+│   │                  ├── uow.py → repositories/base.py, session.py, answer.py → models.py
+│   │                  ├── questions.py
+│   │                  └── interview_evaluator.py → ai/base.py
 │   ├── config.py → services/config.py → ai/factory.py
-│   └── interview.py → services/interview_session.py → database.py, models.py
-│                                       ↕ (orchestration)
-│                           services/interview_evaluator.py → ai/base.py (Message, AIProvider)
-│                           services/config.py (create_provider_from_config)
+│   └── interview.py → services/interview_session.py
+│                           ├─�� uow.py → repositories/* → models.py
+│                           ├── services/interview_evaluator.py → ai/base.py
+│                           └── services/config.py (create_provider_from_config)
 └── services/config.py → ai/factory.py → ai/openai_compatible.py → ai/base.py
 ```
 
@@ -98,16 +107,16 @@ Browser → POST /interview/{session_id}/answer {question_id, answer_text}
     2. Create AI provider from saved config (ConfigService)
     3. If round=0 → InterviewEvaluatorService.evaluate_answer()
        → AI returns {score, feedback, follow_up_needed, follow_up_question}
-       → Save score + feedback to Answer
+       → Save score + feedback to Answer (silently, not shown to user)
        → If follow_up_needed → InterviewSessionService.add_follow_up()
     4. If round>=1 → InterviewEvaluatorService.evaluate_follow_up()
        → AI returns {score, feedback, needs_further_follow_up, follow_up_question}
-       → Save score + feedback to Answer
+       → Save score + feedback to Answer (silently)
        → If needs_further_follow_up & round < 2 → add_follow_up()
   ← 303 Redirect → /interview/{session_id}
 ```
 
-## Data Flow: Answering Questions via WebSocket (NEW)
+## Data Flow: Answering Questions via WebSocket
 
 ```
 Browser → WebSocket /interview/{session_id}/ws
@@ -116,12 +125,15 @@ Browser → WebSocket /interview/{session_id}/ws
     2. Server persists answer → sends {"type":"saved"}
     3. Server creates AI provider → sends {"type":"evaluating"}
     4. Server calls InterviewEvaluatorService.evaluate_answer() / evaluate_follow_up()
-    5. Server saves score + feedback → sends {"type":"feedback","score":N,"feedback":"...","follow_up_question":"..."}
+    5. Server saves score + feedback to DB (silently) → sends {"type":"feedback","follow_up_question":"..."}
+       Note: per-question score and feedback are NOT sent to the client; they are stored in DB
+       and shown only in the final session evaluation.
     6. If follow_up needed → creates new Answer row → WebSocket includes follow_up_question field
     7. On {"type":"complete"} → server evaluates session → sends {"type":"session_completed",...}
+       with full overall_feedback, strengths, topics_to_review, and score_breakdown
 ```
 
-## Data Flow: HTTP Session Completion (fallback)
+## Data Flow: HTTP Session Completion
 
 ```
 Browser → POST /interview/{session_id}/complete
@@ -219,11 +231,52 @@ Sort order for chat display: `(order ASC, round ASC)`
 
 ## Service Layer Structure
 
-| Service | Responsibility |
-|---------|---------------|
+| Service / Component | Responsibility |
+|-------------------|---------------|
 | `ConfigService` | CRUD for AI provider config (`data/config.json`), provider creation |
-| `InterviewSessionService` | DB operations (CRUD sessions & answers) + orchestration of AI evaluation |
+| `InterviewSessionService` | Business logic: session creation, answer submission, AI orchestration (uses repositories + UoW for all DB access) |
 | `InterviewEvaluatorService` | AI interaction: Pydantic models, system prompts, JSON parsing |
+| `Repository[T]` (ABC) | Abstract interface for data access – keeps services decoupled from storage |
+| `SqlAlchemyRepository[T]` | SQLAlchemy base implementation with `add()`, `get()`, `list_all()` |
+| `InterviewSessionRepository` | CRUD for sessions, eager-loading, `complete_session()`, factory methods |
+| `AnswerRepository` | CRUD for answers, lookup by session/question/round, follow-up creation |
+| `UnitOfWork` | Atomic transaction coordinator: `commit()`, `rollback()`, exposes `.sessions` and `.answers` repositories |
+
+## Data Access Pattern
+
+All service-layer write operations follow this pattern:
+
+```python
+def create_session(...) -> InterviewSession:
+    questions = load_category(...)
+    with UnitOfWork(auto_commit=True) as uow:
+        session = uow.sessions.new_session(...)
+        uow.sessions.add(session)
+        for q in selected:
+            answer = uow.answers.new_answer(...)
+            uow.answers.add(answer)
+        uow.flush()
+        uow.session.refresh(session)
+        return session
+```
+
+Read-only queries open a transient UnitOfWork:
+
+```python
+def get_session(session_id: str) -> InterviewSession | None:
+    with UnitOfWork() as uow:
+        return uow.sessions.get(session_id)
+```
+
+The `UnitOfWork` can also be passed explicitly to group multiple operations:
+
+```python
+with UnitOfWork(auto_commit=True) as uow:
+    answer = uow.answers.get_by_session_question_round_raise(...)
+    uow.answers.set_evaluation(answer, score, feedback)
+    follow_up = uow.answers.new_follow_up(original, text, round)
+    uow.answers.add(follow_up)
+```
 
 ## Current Limitations
 

@@ -49,16 +49,6 @@
         </div>
         {% endif %}
 
-        {% if answer.score is not none %}
-        <div class="chat-message feedback" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
-            <div class="chat-bubble feedback-bubble">
-                <strong>Score: {{ answer.score }}/5</strong>
-                {% if answer.feedback %}
-                <p>{{ answer.feedback }}</p>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
         {% endif %}
         {% endfor %}
     </div>
@@ -219,9 +209,9 @@
                 break;
 
             case 'feedback':
-                // Hide spinner, show feedback
+                // Hide spinner, show next question (without per-question score/feedback)
                 showEvaluating(false);
-                showFeedback(data);
+                showNextAfterFeedback(data);
                 break;
 
             case 'session_completed':
@@ -313,33 +303,8 @@
         }
     }
 
-    function showFeedback(data) {
+    function showNextAfterFeedback(data) {
         const chatContainer = document.getElementById('chat-container');
-
-        // Create feedback bubble
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.className = 'chat-message feedback';
-        let html = '<div class="chat-bubble feedback-bubble">';
-        html += '<strong>Score: ' + escapeHtml(String(data.score)) + '/5</strong>';
-        if (data.feedback) {
-            html += '<p>' + escapeHtml(data.feedback) + '</p>';
-        }
-        if (data.strengths && data.strengths.length > 0) {
-            html += '<p><strong>Strengths:</strong></p><ul>';
-            data.strengths.forEach(function(s) {
-                html += '<li>' + escapeHtml(s) + '</li>';
-            });
-            html += '</ul>';
-        }
-        if (data.weaknesses && data.weaknesses.length > 0) {
-            html += '<p><strong>Areas to improve:</strong></p><ul>';
-            data.weaknesses.forEach(function(w) {
-                html += '<li>' + escapeHtml(w) + '</li>';
-            });
-            html += '</ul>';
-        }
-        feedbackDiv.innerHTML = html + '</div>';
-        chatContainer.appendChild(feedbackDiv);
 
         // Handle follow-up question (same question, deeper round)
         if (data.follow_up_question) {

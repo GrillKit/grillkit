@@ -29,8 +29,8 @@ class OpenAICompatibleProvider(AIProvider):
         base_url: str,
         api_key: str | None = None,
         timeout: float = 60.0,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         """Initialize the OpenAI-compatible provider.
 
         Args:
@@ -69,7 +69,7 @@ class OpenAICompatibleProvider(AIProvider):
         Returns:
             Formatted messages for OpenAI API.
         """
-        return [{"role": msg.role, "content": msg.content} for msg in messages]  # type: ignore[return-value]
+        return [{"role": msg.role, "content": msg.content} for msg in messages]  # type: ignore[misc]
 
     async def generate(
         self,

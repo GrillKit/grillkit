@@ -6,6 +6,7 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_session
@@ -24,8 +25,8 @@ def test_engine():
 @pytest.fixture
 def test_session(test_engine):
     """Create a test database session."""
-    Session = sessionmaker(bind=test_engine)
-    session = Session()
+    _Session = sessionmaker(bind=test_engine)  # noqa: N806
+    session = _Session()
     yield session
     session.close()
 
@@ -173,10 +174,10 @@ class TestDatabaseFunctions:
         Base.metadata.drop_all(bind=test_engine)
 
         # Verify tables don't exist by trying to query
-        Session = sessionmaker(bind=test_engine)
-        session = Session()
+        _Session = sessionmaker(bind=test_engine)  # noqa: N806
+        session = _Session()
 
-        with pytest.raises(Exception):
+        with pytest.raises(OperationalError):
             session.query(InterviewSession).first()
 
         session.close()
@@ -185,7 +186,7 @@ class TestDatabaseFunctions:
         Base.metadata.create_all(bind=test_engine)
 
         # Verify tables exist now
-        session = Session()
+        session = _Session()
         result = session.query(InterviewSession).first()
         assert result is None  # No records yet, but query works
         session.close()
