@@ -8,6 +8,24 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
 
 Release notes: [CHANGELOG.md](CHANGELOG.md) · Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 
+## Screenshots & demo
+
+**Dashboard** — recent sessions and quick start:
+
+![GrillKit dashboard](assets/dashboard.png)
+
+**Interview setup** — language, level, topic, and session options:
+
+![Interview setup](assets/interview-setup.png)
+
+**Interview session** — real-time Q&A with AI scoring and final evaluation:
+
+![Completed interview with evaluation](assets/interview-session.png)
+
+**Demo video** — full flow from setup to scored feedback:
+
+<video src="assets/demo.mp4" controls width="100%"></video>
+
 ## Features
 
 - **Interviews** — create a session (language, level, topic, locale, question count), answer in the browser, end when done
