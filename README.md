@@ -24,7 +24,7 @@ Release notes: [CHANGELOG.md](CHANGELOG.md) · Architecture: [ARCHITECTURE.md](A
 
 **Demo video** — full flow from setup to scored feedback:
 
-<video src="assets/demo.mp4" controls width="100%"></video>
+![Demo video](assets/demo_cut.gif)
 
 ## Features
 
