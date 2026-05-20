@@ -14,7 +14,12 @@ If you discover a security vulnerability in GrillKit, please report it responsib
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please use GitHub Security Advisory: https://github.com/yourusername/grillkit/security/advisories/new
+Use **private vulnerability reporting** on GitHub:
+
+1. Open this repository on GitHub.
+2. Go to **Security** → **Advisories**.
+3. Click **Report a vulnerability**.
+
 
 Include the following information:
 - Description of the vulnerability
