@@ -28,12 +28,12 @@ Release notes: [CHANGELOG.md](CHANGELOG.md) · Architecture: [ARCHITECTURE.md](A
 
 ## Features
 
-- **Interviews** — create a session (language, level, topic, locale, question count), answer in the browser, end when done
+- **Interviews** — create a session (language, level, topic, question count), answer in the browser, end when done
 - **Real-time chat** — `WS /interview/{id}/ws`: save answer → AI evaluation → score/feedback → optional follow-up or next question
 - **Scoring** — each round scored 1–5 by the AI; totals and breakdown shown after you end the interview
 - **Follow-ups** — AI-generated probing questions when an answer is insufficient (up to 2 per question)
 - **Question banks** — Python and Database/SQL, junior / middle / senior (`data/questions/`)
-- **Locales** — AI feedback language: English, Russian, French, Spanish, German (question text stays in the bank language)
+- **Locales** — interview language in `data/config.json` (English, Russian, French, Spanish, German); AI feedback uses the locale saved when the session started
 - **Dashboard** — recent interview history on the home page
 - **Provider setup** — configure and test an OpenAI-compatible API; settings in `data/config.json`
 - **Persistence** — SQLite (`data/db/grillkit.db`) for interviews and answers
@@ -81,8 +81,8 @@ PUID=$(id -u) PGID=$(id -g) docker compose up --build
 
 ### First-time flow
 
-1. **Configuration** (`/config`) — provider type, base URL, model, optional API key; test connection, then save.
-2. **New interview** (`/setup`) — language → level → topic, locale, number of questions.
+1. **Configuration** (`/config`) — provider type, base URL, model, interview language, optional API key; test connection, then save.
+2. **New interview** (`/setup`) — language → level → topic, number of questions (interview language is shown read-only from config).
 3. **Interview** (`/interview/{id}`) — page loads history; answers and completion go over WebSocket.
 
 Without saved provider config, `/setup` redirects to `/config`.
@@ -106,7 +106,7 @@ Any **OpenAI-compatible** HTTP API works (single adapter in code):
 | Ollama | `http://localhost:11434/v1` |
 | vLLM / others | your endpoint + `/v1` |
 
-Secrets and model name are stored in `data/config.json` (gitignored). Do not commit API keys.
+Provider settings and interview language (`locale`) are stored in `data/config.json` (gitignored). Do not commit API keys.
 
 ## Data layout
 

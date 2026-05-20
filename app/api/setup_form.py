@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Setup form template context helpers."""
 
-from app.domain.locales import SUPPORTED_LOCALES
+from app.domain.locales import SUPPORTED_LOCALES, normalize_locale
 from app.questions import list_categories, list_languages, list_levels
 
 _LANGUAGE_LABELS: dict[str, str] = {
@@ -25,6 +25,7 @@ def language_label(slug: str) -> str:
 
 def setup_form_context(
     *,
+    locale: str,
     language: str | None = None,
     level: str | None = None,
     error: str | None = None,
@@ -32,6 +33,7 @@ def setup_form_context(
     """Build template context for the setup form with cascaded options.
 
     Args:
+        locale: Configured interview language code from provider config.
         language: Selected programming language slug.
         level: Selected difficulty level.
         error: Optional error message to display.
@@ -39,6 +41,8 @@ def setup_form_context(
     Returns:
         Context dict for ``setup.html``.
     """
+    locale_code = normalize_locale(locale)
+    locale_label = SUPPORTED_LOCALES[locale_code]
     languages = list_languages()
     if not languages:
         return {
@@ -47,7 +51,8 @@ def setup_form_context(
             "categories": [],
             "selected_language": "",
             "selected_level": "",
-            "locales": SUPPORTED_LOCALES,
+            "locale": locale_code,
+            "locale_label": locale_label,
             "error": error or "No question banks found.",
         }
 
@@ -66,6 +71,7 @@ def setup_form_context(
         "categories": categories,
         "selected_language": selected_language,
         "selected_level": selected_level,
-        "locales": SUPPORTED_LOCALES,
+        "locale": locale_code,
+        "locale_label": locale_label,
         "error": error,
     }

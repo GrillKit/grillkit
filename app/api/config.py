@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
 from app.api.deps import ConfigServiceDep
+from app.domain.locales import DEFAULT_LOCALE, SUPPORTED_LOCALES, normalize_locale
 from app.services.config import ProviderConfig
 from app.templating import templates
 
@@ -21,6 +22,7 @@ async def _config_from_form(
     model: str = Form(...),
     api_key: str = Form(""),
     timeout: float = Form(60.0),
+    locale: str = Form(DEFAULT_LOCALE),
 ) -> tuple[ProviderConfig, bool, str]:
     """Parse the config form, build ProviderConfig, and test the connection."""
     config = ProviderConfig(
@@ -29,6 +31,7 @@ async def _config_from_form(
         model=model,
         api_key=api_key or None,
         timeout=timeout,
+        locale=normalize_locale(locale),
     )
     success, message = await config_service.test_connection(config)
     return config, success, message
@@ -58,6 +61,7 @@ async def config_page(
         {
             "config": config.to_dict(mask_secret=True) if config else None,
             "providers": providers,
+            "locales": SUPPORTED_LOCALES,
         },
     )
 
@@ -87,6 +91,7 @@ async def save_config(
                 "error": message,
                 "config": config.to_dict(mask_secret=False),
                 "providers": config_service.get_provider_types(),
+                "locales": SUPPORTED_LOCALES,
             },
         )
 
@@ -118,6 +123,7 @@ async def delete_config(
         {
             "config": None,
             "providers": config_service.get_provider_types(),
+            "locales": SUPPORTED_LOCALES,
             "message": "Configuration removed",
         },
     )

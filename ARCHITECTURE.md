@@ -49,7 +49,7 @@ grillkit/
 ├── templates/                  # Jinja2 HTML (dashboard, setup, config, interview)
 ├── static/css/                 # styles.css
 ├── data/
-│   ├── config.json             # AI provider settings (gitignored)
+│   ├── config.json             # AI provider + interview locale (gitignored)
 │   ├── db/grillkit.db          # SQLite database (gitignored, created at runtime)
 │   └── questions/              # YAML banks: {language}/{level}/{category}.yaml
 ├── docker-compose.yml          # Primary deployment (port 8000, ./data volume)
@@ -231,7 +231,8 @@ Setup and interview flows require a saved config; otherwise `/setup` redirects t
 ## Data Flow: Create Interview
 
 ```
-User → POST /setup (language, topic, level, locale, question_count)
+User → POST /setup (language, topic, level, question_count)
+  → locale from ConfigService.get_config() → Interview.locale snapshot
   → InterviewCreationService.create_interview()
        → load_category() from YAML
        → shuffle & pick question_count questions
@@ -300,7 +301,7 @@ with UnitOfWork(auto_commit=True) as uow:
 | Path | Purpose |
 |------|---------|
 | `data/db/grillkit.db` | SQLite database (`DATABASE_URL` in `database.py`) |
-| `data/config.json` | AI provider settings (`ConfigService`) |
+| `data/config.json` | AI provider settings and `locale` (`ConfigService`) |
 | `data/questions/{language}/{level}/{category}.yaml` | Question banks |
 
 Docker Compose mounts `./data:/app/data` so DB and config survive container restarts. `init_db()` runs on app startup (`lifespan` in `main.py`).

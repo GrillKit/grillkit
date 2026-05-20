@@ -39,10 +39,13 @@ async def setup_page(request: Request, config_service: ConfigServiceDep) -> Resp
     """
     if redirect := _redirect_if_no_config(config_service):
         return redirect
+    config = config_service.get_config()
+    if config is None:
+        return _CONFIG_REDIRECT
     return templates.TemplateResponse(
         request,
         "setup.html",
-        setup_form_context(),
+        setup_form_context(locale=config.locale),
     )
 
 
@@ -85,7 +88,6 @@ async def create_interview(
     language: str = Form(...),
     topic: str = Form(...),
     level: str = Form(...),
-    locale: str = Form("en"),
     question_count: int = Form(5),
 ) -> Response:
     """Create interview session.
@@ -97,7 +99,6 @@ async def create_interview(
         language: Programming language question bank slug.
         topic: Question category (YAML topic slug).
         level: Difficulty level (junior, middle, senior).
-        locale: Language for AI feedback and follow-ups.
         question_count: Number of questions.
 
     Returns:
@@ -105,12 +106,15 @@ async def create_interview(
     """
     if redirect := _redirect_if_no_config(config_service):
         return redirect
+    config = config_service.get_config()
+    if config is None:
+        return _CONFIG_REDIRECT
     try:
         interview = interview_creation.create_interview(
             language=language,
             level=level,
             category=topic,
-            locale=locale,
+            locale=config.locale,
             question_count=question_count,
         )
         return RedirectResponse(
@@ -121,5 +125,10 @@ async def create_interview(
         return templates.TemplateResponse(
             request,
             "setup.html",
-            setup_form_context(language=language, level=level, error=str(e)),
+            setup_form_context(
+                locale=config.locale,
+                language=language,
+                level=level,
+                error=str(e),
+            ),
         )

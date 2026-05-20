@@ -46,6 +46,7 @@ class TestProviderConfig:
             "model": "gpt-4",
             "api_key": "test_key",
             "timeout": 30.0,
+            "locale": "en",
         }
         assert config.to_dict(mask_secret=True) == {
             "provider_type": "openai-compatible",
@@ -53,6 +54,7 @@ class TestProviderConfig:
             "model": "gpt-4",
             "api_key": "***",
             "timeout": 30.0,
+            "locale": "en",
         }
 
     def test_from_dict(self):
@@ -70,6 +72,7 @@ class TestProviderConfig:
         assert config.model == "gpt-4"
         assert config.api_key == "test_key"
         assert config.timeout == 30.0
+        assert config.locale == "en"
 
     def test_from_dict_defaults(self):
         """Test from_dict uses default values when keys are missing."""
@@ -81,6 +84,27 @@ class TestProviderConfig:
         assert config.provider_type == "openai-compatible"
         assert config.api_key is None
         assert config.timeout == 60.0
+        assert config.locale == "en"
+
+    def test_from_dict_normalizes_locale(self):
+        """Test from_dict normalizes locale codes."""
+        data = {
+            "base_url": "http://localhost",
+            "model": "gpt-4",
+            "locale": " RU ",
+        }
+        config = ProviderConfig.from_dict(data)
+        assert config.locale == "ru"
+
+    def test_from_dict_rejects_unknown_locale(self):
+        """Test from_dict raises for unsupported locale."""
+        data = {
+            "base_url": "http://localhost",
+            "model": "gpt-4",
+            "locale": "xx",
+        }
+        with pytest.raises(ValueError, match="Unsupported locale"):
+            ProviderConfig.from_dict(data)
 
 
 class TestConfigService:

@@ -77,8 +77,9 @@ Note: `follow_ups` and `expected_points` are stored for future use; follow-ups i
 1. Add tests for new behavior
 2. Run quality checks (see below)
 3. Update [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md), or [CHANGELOG.md](CHANGELOG.md) when behavior or layout changes
-4. New Python files: Apache-2.0 copyright header (see existing modules in `app/`)
-5. Keep commits focused; use [conventional commits](https://www.conventionalcommits.org/)
+4. Record user-visible changes under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) (`### Added`, `### Changed`, `### Fixed`, `### Removed`) — fixes and features alike stay there until release; when shipping, rename `[Unreleased]` to the release date `YYYY.M.d` and add a fresh empty `[Unreleased]` at the top (see [.cursor/rules/changelog.mdc](.cursor/rules/changelog.mdc))
+5. New Python files: Apache-2.0 copyright header (see existing modules in `app/`)
+6. Keep commits focused; use [conventional commits](https://www.conventionalcommits.org/)
 
 Example commit messages:
 

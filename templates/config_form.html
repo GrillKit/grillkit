@@ -49,6 +49,16 @@
         </div>
 
         <div class="form-group">
+            <label for="locale" class="form-label form-label-required">Interview language</label>
+            <select name="locale" id="locale" class="form-control" required>
+                {% for code, label in locales.items() %}
+                <option value="{{ code }}"{% if config and config.locale == code %} selected{% elif not config and code == "en" %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Language for AI feedback and voice dictation.</p>
+        </div>
+
+        <div class="form-group">
             <label for="timeout" class="form-label">Timeout (seconds)</label>
             <input type="number" name="timeout" id="timeout"
                    class="form-control"

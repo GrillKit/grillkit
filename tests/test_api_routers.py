@@ -136,6 +136,7 @@ class TestConfigRouter:
                     "model": "gpt-4",
                     "api_key": "test-key",
                     "timeout": 60.0,
+                    "locale": "en",
                 },
             )
 
@@ -162,6 +163,7 @@ class TestConfigRouter:
                     "model": "gpt-4",
                     "api_key": "test-key",
                     "timeout": 60.0,
+                    "locale": "en",
                 },
             )
 
@@ -195,6 +197,7 @@ class TestConfigRouter:
                     "model": "gpt-4",
                     "api_key": "test-key",
                     "timeout": 60.0,
+                    "locale": "en",
                 },
             )
 
@@ -215,6 +218,7 @@ class TestConfigRouter:
                     "model": "gpt-4",
                     "api_key": "invalid-key",
                     "timeout": 60.0,
+                    "locale": "en",
                 },
             )
 

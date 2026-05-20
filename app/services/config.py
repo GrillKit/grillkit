@@ -13,6 +13,7 @@ from typing import Any
 
 from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
+from app.domain.locales import DEFAULT_LOCALE, normalize_locale
 
 CONFIG_DIR = Path(__file__).parent.parent.parent / "data"
 CONFIG_PATH = CONFIG_DIR / "config.json"
@@ -29,6 +30,7 @@ class ProviderConfig:
         model: Model name to use.
         api_key: API key for authentication (optional for local providers).
         timeout: Request timeout in seconds.
+        locale: Interview language for AI feedback and voice input.
     """
 
     provider_type: str
@@ -36,6 +38,7 @@ class ProviderConfig:
     model: str
     api_key: str | None = None
     timeout: float = 60.0
+    locale: str = DEFAULT_LOCALE
 
     def to_dict(self, mask_secret: bool = False) -> dict[str, Any]:
         """Convert to dictionary.
@@ -52,6 +55,7 @@ class ProviderConfig:
             "model": self.model,
             "api_key": "***" if mask_secret and self.api_key else self.api_key,
             "timeout": self.timeout,
+            "locale": self.locale,
         }
 
     @classmethod
@@ -70,6 +74,7 @@ class ProviderConfig:
             model=data.get("model", ""),
             api_key=data.get("api_key"),
             timeout=data.get("timeout", 60.0),
+            locale=normalize_locale(data.get("locale", DEFAULT_LOCALE)),
         )
 
 
