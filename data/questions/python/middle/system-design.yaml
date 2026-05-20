@@ -1,0 +1,125 @@
+category: "System Design"
+language: "python"
+level: "middle"
+
+description: "System design concepts: scaling, databases, caching, CAP theorem, microservices"
+
+questions:
+  - id: "sd-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["scalability", "horizontal-scaling", "vertical-scaling"]
+    question:
+      text: "Explain the difference between horizontal and vertical scaling. When would you choose each?"
+      code: null
+    follow_ups:
+      - "What are the practical limits of vertical scaling?"
+      - "How does horizontal scaling introduce complexity (consistency, coordination)?"
+      - "How does load balancing work with horizontal scaling?"
+    expected_points:
+      - "Vertical: add more resources (CPU, RAM) to a single machine"
+      - "Horizontal: add more machines to distribute the load"
+      - "Vertical is simpler but has hardware limits and no redundancy"
+      - "Horizontal is more scalable but requires stateless design and coordination"
+
+  - id: "sd-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["CAP", "consistency", "availability"]
+    question:
+      text: "What is the CAP theorem? How does it affect distributed system design?"
+      code: null
+    follow_ups:
+      - "What trade-offs do you make when choosing CP vs AP?"
+      - "How does PACELC extend the CAP theorem?"
+      - "How do databases like Cassandra (AP) and PostgreSQL (CP) differ in CAP terms?"
+    expected_points:
+      - "CAP: Consistency, Availability, Partition Tolerance — pick two"
+      - "In a distributed system, partitions are inevitable"
+      - "CP systems sacrifice availability during partitions"
+      - "AP systems sacrifice consistency (eventual consistency)"
+
+  - id: "sd-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["caching", "redis", "memcached"]
+    question:
+      text: "What caching strategies do you know? Compare cache-aside, write-through, and write-behind."
+      code: null
+    follow_ups:
+      - "What is cache invalidation and why is it hard?"
+      - "How does Redis differ from Memcached?"
+      - "What is a cache stampede and how do you prevent it?"
+    expected_points:
+      - "Cache-aside: app checks cache first, loads from DB on miss"
+      - "Write-through: writes go to cache and DB synchronously"
+      - "Write-behind: writes go to cache, async writes to DB"
+      - "Redis supports persistence, data structures, pub/sub; Memcached is simpler"
+
+  - id: "sd-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["microservices", "service-boundaries"]
+    question:
+      text: "How do you decompose a monolith into microservices? What are the key considerations?"
+      code: null
+    follow_ups:
+      - "How do you handle inter-service communication (sync vs async)?"
+      - "What is the difference between orchestration and choreography?"
+      - "How do you handle distributed transactions (saga pattern)?"
+    expected_points:
+      - "Decompose by bounded contexts (DDD) — each service owns its domain data"
+      - "Prefer async communication via message brokers for loose coupling"
+      - "Orchestration: central coordinator; Choreography: event-driven collaboration"
+      - "Saga pattern manages distributed transactions with compensating actions"
+
+  - id: "sd-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["message-broker", "rabbitmq", "kafka"]
+    question:
+      text: "Compare RabbitMQ and Apache Kafka. When would you choose each?"
+      code: null
+    follow_ups:
+      - "What is the difference between a message queue and a stream?"
+      - "How does Kafka's log-based storage enable replayability?"
+      - "What is consumer group in Kafka?"
+    expected_points:
+      - "RabbitMQ: message broker with queues, exchanges, and routing"
+      - "Kafka: distributed event streaming platform with append-only log"
+      - "Kafka excels at high-throughput event streaming and replay"
+      - "RabbitMQ is better for task queues and complex routing"
+
+  - id: "sd-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["load-balancing", "reverse-proxy"]
+    question:
+      text: "What load balancing algorithms exist and when would you use each?"
+      code: null
+    follow_ups:
+      - "What is the difference between L4 and L7 load balancing?"
+      - "How does a reverse proxy (NGINX, HAProxy) fit into a system design?"
+      - "How do you handle session affinity (sticky sessions) vs stateless design?"
+    expected_points:
+      - "Round robin, least connections, IP hash, weighted distribution"
+      - "L4 balances on TCP/UDP; L7 inspects HTTP headers and content"
+      - "Reverse proxy: TLS termination, caching, rate limiting, routing"
+      - "Prefer stateless design to avoid session affinity limitations"
+
+  - id: "sd-007"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["rate-limiting", "throttling"]
+    question:
+      text: "How do you implement rate limiting in a distributed system? Compare token bucket, leaky bucket, and sliding window."
+      code: null
+    follow_ups:
+      - "Where should rate limiting be applied (API gateway, app layer)?"
+      - "How do you handle rate limiting across multiple servers?"
+      - "What HTTP headers are standard for rate limiting responses?"
+    expected_points:
+      - "Token bucket: refill tokens over time, allow burst up to capacity"
+      - "Leaky bucket: process requests at constant rate, queue overflow drops"
+      - "Sliding window: track requests in a time window for precise control"
+      - "Use Redis for distributed rate limiting across instances"

@@ -1,0 +1,139 @@
+category: "Frameworks"
+language: "python"
+level: "middle"
+
+description: "Python web frameworks: FastAPI, Django, Flask, and framework comparison"
+
+questions:
+  - id: "fw-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "asgi"]
+    question:
+      text: "How does FastAPI work under the hood? What makes it high-performance?"
+      code: null
+    follow_ups:
+      - "What is the role of Starlette in FastAPI?"
+      - "How does Pydantic integrate with FastAPI for request validation?"
+      - "What is the ASGI protocol and how does FastAPI use it?"
+    expected_points:
+      - "FastAPI is built on Starlette (ASGI) and Pydantic (validation)"
+      - "ASGI enables async request handling for high concurrency"
+      - "Pydantic models auto-generate OpenAPI schema and validate requests"
+      - "Type hints drive dependency injection, validation, and docs generation"
+
+  - id: "fw-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "monolith", "batteries-included"]
+    question:
+      text: "What is Django's architecture? Explain the ORM, views, templates, and middleware layers."
+      code: null
+    follow_ups:
+      - "How does Django's ORM differ from SQLAlchemy?"
+      - "What is the difference between function-based views and class-based views?"
+      - "How does Django's middleware compare to FastAPI's middleware?"
+    expected_points:
+      - "Django follows MVT (Model-View-Template) pattern"
+      - "ORM is active-record pattern; migrations are built-in"
+      - "CBVs provide reusable, class-based view inheritance"
+      - "Middleware is a light plugin system for request/response processing"
+
+  - id: "fw-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["flask", "wsgi", "microframework"]
+    question:
+      text: "How does Flask differ from FastAPI and Django? When would you choose Flask?"
+      code: null
+    follow_ups:
+      - "What is Flask's WSGI heritage and its limitations for async?"
+      - "How does Flask's extension ecosystem compare to Django's batteries-included?"
+      - "What is the Flask application context and request context?"
+    expected_points:
+      - "Flask: minimalist WSGI microframework with extensive extension ecosystem"
+      - "WSGI is synchronous — Flask async support is limited compared to ASGI"
+      - "Flask uses application context and request context for global state"
+      - "Good for smaller services, prototypes, and when you want minimal structure"
+
+  - id: "fw-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["orm", "sqlalchemy"]
+    question:
+      text: "Compare Django ORM and SQLAlchemy. What are the key differences in philosophy and usage?"
+      code: null
+    follow_ups:
+      - "What is the difference between active record (Django) and data mapper (SQLAlchemy)?"
+      - "How does SQLAlchemy's declarative base work?"
+      - "When would you choose raw SQL over an ORM?"
+    expected_points:
+      - "Django ORM: active record — model class wraps a table row"
+      - "SQLAlchemy: data mapper — separates models from persistence"
+      - "SQLAlchemy is more flexible, Django ORM is more convenient"
+      - "SQLAlchemy Core allows raw SQL with proper escaping"
+
+  - id: "fw-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["testing-frameworks", "pytest"]
+    question:
+      text: "How does pytest compare to unittest? What makes pytest the preferred testing framework in modern Python?"
+      code: null
+    follow_ups:
+      - "How do pytest fixtures work compared to setUp/tearDown?"
+      - "What is pytest's conftest.py and how does it share fixtures?"
+      - "How does pytest parametrization simplify test coverage?"
+    expected_points:
+      - "pytest uses plain assert, fixtures, and automatic discovery"
+      - "Fixtures are more flexible and composable than setUp/tearDown"
+      - "conftest.py shares fixtures across test modules"
+      - "@pytest.mark.parametrize reduces boilerplate for multiple test cases"
+
+  - id: "fw-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi-deps", "dependency-injection"]
+    question:
+      text: "How does FastAPI's dependency injection system work? What can you use it for?"
+      code: |
+        from fastapi import Depends, FastAPI
+
+        app = FastAPI()
+
+        async def get_db():
+            db = await create_connection()
+            try:
+                yield db
+            finally:
+                await db.close()
+
+        @app.get("/items")
+        async def read_items(db=Depends(get_db)):
+            return await db.fetch_items()
+    follow_ups:
+      - "How do you create reusable dependencies with yield (context managers)?"
+      - "Can you nest dependencies? How does the dependency graph work?"
+      - "How does FastAPI handle dependency caching per request?"
+    expected_points:
+      - "Depends() injects the return value of a callable"
+      - "Dependencies with yield support setup/teardown (resource management)"
+      - "Dependencies can be nested and FastAPI resolves the dependency graph"
+      - "Dependencies are cached within a request scope by default"
+
+  - id: "fw-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asgi", "wsgi", "protocols"]
+    question:
+      text: "What is the difference between WSGI and ASGI? Why does ASGI matter for modern Python web apps?"
+      code: null
+    follow_ups:
+      - "How does WSGI handle long-lived connections like WebSockets?"
+      - "What are the performance characteristics of ASGI vs WSGI?"
+      - "How do you run WSGI and ASGI apps in production (Gunicorn, Uvicorn)?"
+    expected_points:
+      - "WSGI: synchronous, request-response only, blocks during processing"
+      - "ASGI: async, supports HTTP, WebSocket, SSE, and HTTP/2"
+      - "ASGI is needed for async frameworks (FastAPI, Django channels)"
+      - "Uvicorn for ASGI, Gunicorn for WSGI (or Gunicorn+Uvicorn workers)"

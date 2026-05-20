@@ -1,0 +1,96 @@
+category: "PostgreSQL"
+language: "database"
+level: "middle"
+
+description: "PostgreSQL-specific features: MVCC, advanced data types, extensions, configuration"
+
+questions:
+  - id: "pg-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["mvcc", "vacuum", "autovacuum"]
+    question:
+      text: "How does PostgreSQL implement MVCC (Multi-Version Concurrency Control)? What is VACUUM?"
+      code: null
+    follow_ups:
+      - "How does MVCC avoid read locks?"
+      - "What is transaction ID wraparound and how is it prevented?"
+      - "How does autovacuum work and how do you tune it?"
+    expected_points:
+      - "MVCC: each transaction sees a snapshot of data at commit"
+      - "Old row versions remain until VACUUM removes them"
+      - "Transaction ID wraparound: freezes old txids to prevent overflow"
+      - "Autovacuum automates cleanup; tune with scale factor, cost delay"
+
+  - id: "pg-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["advanced-types", "jsonb", "arrays", "hstore"]
+    question:
+      text: "What advanced data types does PostgreSQL support? How do you use JSONB for semi-structured data?"
+      code: |
+        CREATE TABLE events (
+            id SERIAL PRIMARY KEY,
+            payload JSONB
+        );
+        SELECT payload->>'user_id' as uid FROM events WHERE payload @> '{"type": "click"}';
+    follow_ups:
+      - "How do you index JSONB data (GIN indexes)?"
+      - "What is the difference between JSON and JSONB?"
+      - "How do array types and hstore compare to JSONB?"
+    expected_points:
+      - "JSONB store as binary, supports indexing (GIN), no preserve key order"
+      - "JSON stores text, slower for queries, preserves whitespace"
+      - "Advanced types: arrays, range types, hstore (key-value), PostGIS"
+      - "GIN indexes enable @>, ?, ?| operators on JSONB"
+
+  - id: "pg-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["extensions", "postgis", "pgvector"]
+    question:
+      text: "What PostgreSQL extensions exist and how do they extend functionality?"
+      code: null
+    follow_ups:
+      - "How does PostGIS enable spatial queries?"
+      - "What is pgvector and how is it used for AI applications?"
+      - "What are extensions like pg_stat_statements used for?"
+    expected_points:
+      - "PostGIS: geospatial queries (points, polygons, distance calculations)"
+      - "pgvector: vector similarity search for LLM/ML applications"
+      - "pg_stat_statements: tracks query performance statistics"
+      - "uuid-ossp: UUID generation, pgcrypto: encryption functions"
+
+  - id: "pg-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["postgres-config", "pg_hba", "postgresql.conf"]
+    question:
+      text: "How do you configure PostgreSQL for performance and security?"
+      code: null
+    follow_ups:
+      - "What parameters affect memory usage (shared_buffers, work_mem, maintenance_work_mem)?"
+      - "How does pg_hba.conf control authentication?"
+      - "What is effective_cache_size and how does it affect the query planner?"
+    expected_points:
+      - "shared_buffers: 25% of RAM for PostgreSQL buffer cache"
+      - "work_mem: memory for sorts and hash tables (per operation)"
+      - "effective_cache_size: estimate of OS-level cache size"
+      - "pg_hba.conf: host-based authentication rules"
+
+  - id: "pg-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["postgres-replication", "streaming"]
+    question:
+      text: "How does PostgreSQL replication work? Explain streaming replication and logical replication."
+      code: null
+    follow_ups:
+      - "What is synchronous vs asynchronous replication?"
+      - "How does logical replication differ from physical?"
+      - "How do you promote a standby server?"
+    expected_points:
+      - "Streaming replication: physical block-level copy of WAL"
+      - "Logical replication: row-level changes via publication/subscription"
+      - "Synchronous: write confirmed on primary and replica (slower)"
+      - "pg_ctl promote or trigger file to activate standby"

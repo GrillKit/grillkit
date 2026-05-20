@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GrillKit{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css?v={{ static_version('css/styles.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <div class="app-container{% block app_class %}{% endblock %}">
+        <nav class="navbar">
+            <a href="/" class="navbar-brand">GrillKit</a>
+            <ul class="navbar-nav">
+                <li><a href="/" class="nav-link">Dashboard</a></li>
+                <li><a href="/setup" class="nav-link">New Interview</a></li>
+                <li><a href="/config" class="nav-link">Configuration</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content{% block main_class %}{% endblock %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

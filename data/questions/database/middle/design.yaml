@@ -1,0 +1,91 @@
+category: "Database Design"
+language: "database"
+level: "middle"
+
+description: "Intermediate database design: normalization trade-offs, partitioning, sharding, and schema patterns"
+
+questions:
+  - id: "dd-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["normalization", "denormalization"]
+    question:
+      text: "When would you denormalize a database schema? What techniques exist?"
+      code: null
+    follow_ups:
+      - "What performance problems does denormalization solve?"
+      - "How do you maintain data consistency in a denormalized schema?"
+      - "What is the difference between denormalization and pre-aggregation?"
+    expected_points:
+      - "Denormalize for read-heavy workloads — fewer JOINs"
+      - "Add redundant columns or pre-computed summary tables"
+      - "Use triggers or application logic to maintain consistency"
+      - "Denormalization trades write complexity for read speed"
+
+  - id: "dd-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["partitioning", "table-partitioning"]
+    question:
+      text: "What is table partitioning? How does it differ from sharding?"
+      code: null
+    follow_ups:
+      - "What partition types exist (RANGE, LIST, HASH)?"
+      - "How does partition pruning improve query performance?"
+      - "How do you manage partitions over time (time-based partitioning)?"
+    expected_points:
+      - "Partitioning splits a table into segments within the same database"
+      - "Sharding distributes data across multiple database instances"
+      - "RANGE: by date range; LIST: by discrete values; HASH: by hash function"
+      - "Partition pruning: optimizer skips irrelevant partitions"
+
+  - id: "dd-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["index-strategies", "composite-indexes"]
+    question:
+      text: "How do you design an effective indexing strategy? What are composite indexes and column order?"
+      code: null
+    follow_ups:
+      - "How does column order in a composite index affect query performance?"
+      - "What is a covering index and why is it powerful?"
+      - "How do partial indexes (PostgreSQL) work?"
+    expected_points:
+      - "Index columns used in WHERE, JOIN, and ORDER BY"
+      - "Composite index: order columns by selectivity (most selective first)"
+      - "Covering index: includes all columns needed by query (index-only scan)"
+      - "Partial index: WHERE clause limits indexed rows"
+
+  - id: "dd-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["polymorphic", "inheritance-patterns"]
+    question:
+      text: "How do you model polymorphic associations and inheritance in relational databases?"
+      code: null
+    follow_ups:
+      - "What is single table inheritance (STI) vs class table inheritance (CTI)?"
+      - "What are the trade-offs of polymorphic associations (nullable foreign keys)?"
+      - "How do ORMs (Django, SQLAlchemy) handle inheritance mapping?"
+    expected_points:
+      - "STI: one table with nullable columns for subclass-specific fields"
+      - "CTI: one table per class, joined on shared primary key"
+      - "Polymorphic associations: two columns (type + id) referencing different tables"
+      - "Each approach has trade-offs between query simplicity and schema clarity"
+
+  - id: "dd-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["slow-schema-change", "migrations"]
+    question:
+      text: "How do you handle schema migrations in production with zero downtime?"
+      code: null
+    follow_ups:
+      - "What is the expand-migrate-contract pattern?"
+      - "How do you rename a column without downtime?"
+      - "How do large table migrations affect replication lag?"
+    expected_points:
+      - "Expand: add new column/table alongside old one"
+      - "Migrate: backfill data, update application to use new schema"
+      - "Contract: remove old column/table when no longer needed"
+      - "Use pt-online-schema-change (Percona) or gh-ost for large tables"

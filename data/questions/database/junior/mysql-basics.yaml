@@ -1,0 +1,105 @@
+category: "MySQL Basics"
+language: "database"
+level: "junior"
+
+description: "MySQL-specific features: storage engines, SHOW/EXPLAIN, MySQL-specific syntax"
+
+questions:
+  - id: "my-001"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["mysql", "storage-engines"]
+    question:
+      text: "What storage engines does MySQL support? Compare InnoDB and MyISAM."
+      code: null
+    follow_ups:
+      - "What is the default MySQL storage engine?"
+      - "Why is InnoDB preferred for transactional workloads?"
+      - "When would you use MyISAM in modern MySQL?"
+    expected_points:
+      - "InnoDB: ACID-compliant, transactions, foreign keys, row-level locking"
+      - "MyISAM: table-level locking, no transactions, full-text search"
+      - "InnoDB is the default since MySQL 5.5"
+      - "MyISAM can be faster for read-heavy log/archive tables"
+
+  - id: "my-002"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["mysql-syntax", "SHOW", "DESCRIBE"]
+    question:
+      text: "What MySQL-specific administrative commands exist (SHOW, DESCRIBE, EXPLAIN)?"
+      code: |
+        SHOW DATABASES;
+        SHOW TABLES;
+        DESCRIBE users;
+        SHOW CREATE TABLE users;
+    follow_ups:
+      - "How does EXPLAIN help understand query execution?"
+      - "What information does SHOW INDEX provide?"
+      - "What is SHOW PROCESSLIST used for?"
+    expected_points:
+      - "SHOW DATABASES/TABLES — list databases and tables"
+      - "DESCRIBE table — shows column info, types, keys"
+      - "EXPLAIN SELECT — shows query execution plan"
+      - "SHOW PROCESSLIST — shows running queries"
+
+  - id: "my-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["auto-increment", "last-insert-id"]
+    question:
+      text: "How does AUTO_INCREMENT work in MySQL? How do you get the last inserted ID?"
+      code: |
+        CREATE TABLE users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100)
+        );
+        INSERT INTO users (name) VALUES ('Alice');
+        SELECT LAST_INSERT_ID();
+    follow_ups:
+      - "What happens to auto-increment values on rollback?"
+      - "How do you set a custom starting value for AUTO_INCREMENT?"
+      - "What is the difference between LAST_INSERT_ID() and max(id)?"
+    expected_points:
+      - "AUTO_INCREMENT generates unique sequential IDs"
+      - "LAST_INSERT_ID() returns the last ID for the current connection"
+      - "Rolled back transactions still consume auto-increment values"
+      - "Use LAST_INSERT_ID() — max(id) is not connection-safe"
+
+  - id: "my-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["charset", "collation"]
+    question:
+      text: "What are character sets and collations in MySQL? How do they affect string comparison?"
+      code: null
+    follow_ups:
+      - "What is utf8mb4 and why is it preferred over utf8?"
+      - "How does collation affect ORDER BY on string columns?"
+      - "What is the default charset/collation in modern MySQL?"
+    expected_points:
+      - "Charset: encoding for storing characters (utf8mb4, latin1)"
+      - "Collation: rules for comparing characters (ci = case insensitive, bin = binary)"
+      - "utf8mb4 supports full Unicode (emojis, special characters)"
+      - "utf8mb4_unicode_ci or utf8mb4_0900_ai_ci are modern defaults"
+
+  - id: "my-005"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["mysql-cli", "basic-ops"]
+    question:
+      text: "How do you create and manage databases and users in MySQL?"
+      code: |
+        CREATE DATABASE mydb CHARACTER SET utf8mb4;
+        CREATE USER 'app'@'localhost' IDENTIFIED BY 'password';
+        GRANT SELECT, INSERT, UPDATE ON mydb.* TO 'app'@'localhost';
+        FLUSH PRIVILEGES;
+    follow_ups:
+      - "What is the difference between GRANT ALL and specific privileges?"
+      - "How do you revoke privileges?"
+      - "What is FLUSH PRIVILEGES and when is it needed?"
+    expected_points:
+      - "CREATE DATABASE with charset/collation options"
+      - "CREATE USER with password, then GRANT permissions"
+      - "Grant specific privileges — not ALL — following least privilege"
+      - "FLUSH PRIVILEGES reloads grant tables (not always needed with GRANT)"

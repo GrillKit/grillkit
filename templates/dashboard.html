@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GrillKit{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Dashboard</h1>
+        <p class="card-subtitle">Welcome to GrillKit - AI Interview Trainer</p>
+    </div>
+
+    <div class="empty-state">
+        <div class="empty-state-icon">&#x1F393;</div>
+        <h3>Ready to practice?</h3>
+        <p>Start a new interview session to sharpen your skills with AI-powered feedback.</p>
+        <div class="button-group" style="justify-content: center;">
+            <a href="/setup" class="btn btn-primary btn-lg">Start New Interview</a>
+            <a href="/config" class="btn btn-outline btn-lg">Configure AI Provider</a>
+        </div>
+    </div>
+</div>
+
+{% if interview_history %}
+<div class="card interview-history-card">
+    <div class="card-header">
+        <h2 class="card-title">Interview history</h2>
+        <p class="card-subtitle">Your recent sessions (up to 20)</p>
+    </div>
+
+    <div class="history-table-wrap">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Interview</th>
+                    <th>Questions</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in interview_history %}
+                <tr class="history-row history-row--{{ row.status }}" onclick="window.location.href='{{ row.url }}'" role="link" tabindex="0">
+                    <td>
+                        <a href="{{ row.url }}" class="history-link">{{ row.title }}</a>
+                    </td>
+                    <td>{{ row.question_count }}</td>
+                    <td>{{ row.score_display }}</td>
+                    <td>
+                        <span class="history-status history-status--{{ row.status }}">
+                            {{ row.status_label }}
+                        </span>
+                    </td>
+                    <td class="history-date">{{ row.datetime_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

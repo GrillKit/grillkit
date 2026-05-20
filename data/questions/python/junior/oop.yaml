@@ -1,0 +1,169 @@
+category: "Object-Oriented Programming"
+language: "python"
+level: "junior"
+
+description: "Python OOP: classes, inheritance, encapsulation, and special methods"
+
+questions:
+  - id: "oop-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["class", "instance", "self"]
+    question:
+      text: "What is the difference between a class and an instance in Python? What is 'self'?"
+      code: null
+    follow_ups:
+      - "Can you name the methods that are automatically called when creating an instance?"
+      - "What is the difference between method, classmethod, and staticmethod?"
+    expected_points:
+      - "Class is a blueprint; instance is a concrete object created from it"
+      - "'self' refers to the instance itself — passed automatically as first arg"
+      - "__init__ is the constructor, __new__ creates the instance"
+      - "Methods take self, classmethods take cls, staticmethods take neither"
+
+  - id: "oop-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["inheritance", "MRO"]
+    question:
+      text: "How does inheritance work in Python? What is Method Resolution Order (MRO)?"
+      code: |
+        class A:
+            def method(self):
+                return "A"
+
+        class B(A):
+            def method(self):
+                return "B"
+
+        class C(A):
+            def method(self):
+                return "C"
+
+        class D(B, C):
+            pass
+
+        print(D().method())  # ???
+    follow_ups:
+      - "How does super() work in multiple inheritance?"
+      - "How can you view the MRO of a class?"
+    expected_points:
+      - "Child class inherits all attributes from parent"
+      - "MRO determines method lookup order using C3 linearization"
+      - "Use Class.__mro__ or Class.mro() to inspect"
+      - "super() follows MRO, not just the parent class"
+
+  - id: "oop-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["encapsulation", "private", "protected"]
+    question:
+      text: "How does Python handle visibility and encapsulation? Explain single underscore, double underscore, and name mangling."
+      code: |
+        class MyClass:
+            def __init__(self):
+                self.public = 1
+                self._protected = 2
+                self.__private = 3
+    follow_ups:
+      - "Are private attributes truly private in Python?"
+      - "What happens to __private when a subclass is created?"
+    expected_points:
+      - "Single underscore _: convention for 'protected' (internal use)"
+      - "Double underscore __: triggers name mangling to _Classname__attr"
+      - "Name mangling prevents accidental overrides in subclasses"
+      - "Nothing is truly private in Python — it's all about convention"
+
+  - id: "oop-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["property", "getter-setter", "descriptors"]
+    question:
+      text: "How do you create getters and setters in Python? Explain the @property decorator."
+      code: |
+        class Temperature:
+            def __init__(self, celsius):
+                self._celsius = celsius
+
+            @property
+            def fahrenheit(self):
+                return self._celsius * 9/5 + 32
+
+            @fahrenheit.setter
+            def fahrenheit(self, value):
+                self._celsius = (value - 32) * 5/9
+    follow_ups:
+      - "When would you use @property instead of a regular attribute?"
+      - "What is the difference between @property and descriptors?"
+    expected_points:
+      - "@property turns a method into a read-only attribute"
+      - "@<name>.setter and @<name>.deleter provide write and delete"
+      - "Useful for computed attributes and validation"
+      - "Properties are high-level descriptors"
+
+  - id: "oop-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["dataclasses", "__slots__"]
+    question:
+      text: "What are dataclasses in Python? How do they differ from regular classes and __slots__?"
+      code: |
+        from dataclasses import dataclass
+
+        @dataclass
+        class Point:
+            x: float
+            y: float
+    follow_ups:
+      - "What does frozen=True do in a dataclass?"
+      - "How does __slots__ improve memory usage?"
+      - "When would you choose dataclass vs namedtuple vs plain class?"
+    expected_points:
+      - "dataclasses auto-generate __init__, __repr__, __eq__, etc."
+      - "__slots__ defines fixed set of attributes, saving memory"
+      - "dataclasses support type hints, default values, and field metadata"
+      - "frozen=True makes the instance immutable"
+
+  - id: "oop-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["composition", "aggregation"]
+    question:
+      text: "Explain the difference between inheritance and composition. When should you prefer composition?"
+      code: null
+    follow_ups:
+      - "What is 'favor composition over inheritance'?"
+      - "How does the Strategy pattern use composition?"
+    expected_points:
+      - "Inheritance: 'is-a' relationship, creates tight coupling"
+      - "Composition: 'has-a' relationship, more flexible"
+      - "Composition uses interfaces/abstract classes with delegation"
+      - "Prefer composition for behavior sharing across unrelated classes"
+
+  - id: "oop-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["abstract-class", "abc", "interfaces"]
+    question:
+      text: "How do you create abstract classes in Python? What is the ABC module?"
+      code: |
+        from abc import ABC, abstractmethod
+
+        class Shape(ABC):
+            @abstractmethod
+            def area(self) -> float:
+                pass
+
+        class Circle(Shape):
+            def __init__(self, radius):
+                self.radius = radius
+
+            def area(self):
+                return 3.14 * self.radius ** 2
+    follow_ups:
+      - "Can you instantiate an abstract class?"
+      - "What is the difference between abstractmethod and NotImplementedError?"
+    expected_points:
+      - "ABC classes cannot be instantiated directly"
+      - "@abstractmethod forces subclasses to implement the method"
+      - "Use ABCs to define interfaces and enforce contracts"

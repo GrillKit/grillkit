@@ -1,0 +1,144 @@
+category: "Asynchronous Programming"
+language: "python"
+level: "junior"
+
+description: "Python async/await, event loops, and asynchronous programming patterns"
+
+questions:
+  - id: "async-001"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["async-await", "coroutines"]
+    question:
+      text: "What are coroutines in Python? How do async and await work?"
+      code: |
+        import asyncio
+
+        async def fetch_data():
+            await asyncio.sleep(1)
+            return {"data": "ok"}
+
+        async def main():
+            result = await fetch_data()
+            print(result)
+
+        asyncio.run(main())
+    follow_ups:
+      - "What is the difference between a coroutine function and a coroutine object?"
+      - "What happens if you call an async function without await?"
+    expected_points:
+      - "async def defines a coroutine function; calling it returns a coroutine object"
+      - "await suspends execution until the awaited coroutine completes"
+      - "Coroutines must be executed within an event loop"
+      - "Calling async function without await returns a coroutine object, not result"
+
+  - id: "async-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["event-loop", "asyncio.run"]
+    question:
+      text: "What is the asyncio event loop? How do you run async code in Python?"
+      code: null
+    follow_ups:
+      - "What does asyncio.run() do internally?"
+      - "Can you have multiple event loops?"
+      - "How do you access the running loop?"
+    expected_points:
+      - "Event loop manages and schedules coroutines"
+      - "asyncio.run() creates a new loop, runs the coroutine, and cleans up"
+      - "asyncio.get_running_loop() gets the current loop"
+      - "Multiple loops in different threads are allowed"
+
+  - id: "async-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["concurrent-tasks", "asyncio.gather"]
+    question:
+      text: "How do you run multiple coroutines concurrently? Compare asyncio.gather, asyncio.create_task, and asyncio.TaskGroup."
+      code: |
+        async def fetch(url: str) -> str:
+            await asyncio.sleep(1)
+            return f"Response from {url}Response from {url}"
+
+        async def main():
+            urls = ["url1", "url2", "url3"]
+            tasks = [asyncio.create_task(fetch(url)) for url in urls]
+            results = await asyncio.gather(*tasks)
+            print(results)
+    follow_ups:
+      - "What happens if one task in gather raises an exception?"
+      - "What is asyncio.TaskGroup (Python 3.11+) and how is it different?"
+    expected_points:
+      - "asyncio.gather runs coroutines concurrently, returns list of results"
+      - "asyncio.create_task schedules a coroutine as a Task"
+      - "TaskGroup (3.11+) provides structured concurrency with better error handling"
+      - "If one task fails in gather, others continue by default (return_exceptions=True)"
+
+  - id: "async-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["async-with", "async-generator"]
+    question:
+      text: "What are asynchronous context managers and asynchronous generators? Give examples."
+      code: |
+        class AsyncResource:
+            async def __aenter__(self):
+                await self.connect()
+                return self
+
+            async def __aexit__(self, *args):
+                await self.disconnect()
+
+        # Usage
+        async with AsyncResource() as res:
+            await res.do_work()
+    follow_ups:
+      - "What is the difference between __aenter__/__aexit__ and __enter__/__exit__?"
+      - "How do async generators work with 'async for'?"
+    expected_points:
+      - "Async context managers use __aenter__ and __aexit__"
+      - "Usage: async with resource as r:"
+      - "Async generators use 'yield' in async functions"
+      - "Usage: async for item in async_generator():"
+
+  - id: "async-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["GIL", "parallelism", "blocking-code"]
+    question:
+      text: "How do you handle blocking I/O code in asyncio? What is run_in_executor?"
+      code: |
+        import asyncio
+        import time
+
+        async def main():
+            loop = asyncio.get_running_loop()
+            # Run blocking code in thread pool
+            result = await loop.run_in_executor(
+                None, time.sleep, 2
+            )
+            print("Done")
+    follow_ups:
+      - "Why does blocking the event loop matter?"
+      - "What is the difference between asyncio.sleep and time.sleep inside async code?"
+    expected_points:
+      - "Blocking calls (time.sleep, requests.get) block the event loop"
+      - "run_in_executor offloads blocking code to a thread or process pool"
+      - "Always use async libraries (aiohttp, asyncpg) or run_in_executor"
+      - "Never call time.sleep() inside async code — use asyncio.sleep()"
+
+  - id: "async-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["async-queue", "producer-consumer"]
+    question:
+      text: "How does asyncio.Queue work? When would you use it?"
+      code: null
+    follow_ups:
+      - "What is the difference between Queue.get() and Queue.get_nowait()?"
+      - "How do TaskGroup and Queue work together for worker patterns?"
+    expected_points:
+      - "asyncio.Queue is an async FIFO queue for coordinating coroutines"
+      - "await queue.put(item) and await queue.get() are coroutines"
+      - "Useful for producer-consumer patterns and rate limiting"
+      - "Queue supports maxsize for backpressure"

@@ -1,0 +1,139 @@
+category: "Data Structures"
+language: "python"
+level: "junior"
+
+description: "Fundamental Python data structures and their usage"
+
+questions:
+  - id: "ds-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["list", "tuple"]
+    question:
+      text: "What is the difference between a list and a tuple in Python?"
+      code: null
+    follow_ups:
+      - "When would you choose a tuple over a list?"
+      - "Can a tuple contain mutable objects?"
+    expected_points:
+      - "Lists are mutable, tuples are immutable"
+      - "Lists use [], tuples use ()"
+
+  - id: "ds-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["dict", "hash-map"]
+    question:
+      text: "How does a Python dictionary work internally?"
+      code: null
+    follow_ups:
+      - "Why are dictionary keys required to be hashable?"
+      - "What is the time complexity of dictionary lookup?"
+    expected_points:
+      - "Uses hash table implementation"
+      - "Keys must be hashable and unique"
+      - "Average O(1) lookup time"
+
+  - id: "ds-003"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["set", "frozenset"]
+    question:
+      text: "What is the difference between a set and a frozenset in Python? When would you use each?"
+      code: null
+    follow_ups:
+      - "What operations does a set support (union, intersection, difference)?"
+      - "Why can a frozenset be used as a dict key but a set cannot?"
+    expected_points:
+      - "set is mutable; frozenset is immutable"
+      - "Both store unique, hashable elements"
+      - "frozenset is hashable itself, so it can be a dict key or set element"
+      - "Both support mathematical set operations: |, &, -, ^"
+
+  - id: "ds-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["list-operations", "slicing"]
+    question:
+      text: "How does list slicing work in Python? What are common list methods for manipulation?"
+      code: |
+        nums = [0, 1, 2, 3, 4, 5]
+        nums[1:4]    # ???
+        nums[::-1]   # ???
+        nums[::2]    # ???
+    follow_ups:
+      - "What is the time complexity of list.append() vs list.insert()?"
+      - "How do extend() and += differ from append()?"
+      - "How does pop() vs pop(0) differ in performance?"
+    expected_points:
+      - "list[start:stop:step] — returns a new list"
+      - "append() is O(1), insert() and pop(0) are O(n)"
+      - "extend() adds all elements from an iterable"
+      - "pop() removes and returns last element (O(1)); pop(i) is O(n)"
+
+  - id: "ds-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["dict-methods", "defaultdict"]
+    question:
+      text: "What are common dictionary methods? How does collections.defaultdict simplify dictionary usage?"
+      code: null
+    follow_ups:
+      - "What is the difference between dict.get() and dict.setdefault()?"
+      - "What does dict.items(), dict.keys(), dict.values() return?"
+      - "How does Counter from collections relate to defaultdict?"
+    expected_points:
+      - "dict.get(key, default) returns value or default without KeyError"
+      - "dict.setdefault(key, default) sets default if key missing, returns value"
+      - "defaultdict(factory) auto-creates missing keys using factory"
+      - "Counter is a specialized dict for counting hashable objects"
+
+  - id: "ds-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["collections", "deque", "Counter"]
+    question:
+      text: "What useful data structures does the 'collections' module provide? Describe three of them."
+      code: null
+    follow_ups:
+      - "When would you use deque over a list?"
+      - "What is namedtuple and when is it useful?"
+      - "What does ChainMap do?"
+    expected_points:
+      - "deque: double-ended queue with O(1) append/pop on both ends"
+      - "Counter: dict subclass for counting hashable objects"
+      - "namedtuple: lightweight immutable data classes"
+      - "ChainMap: groups multiple dicts into a single view"
+
+  - id: "ds-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["array", "performance"]
+    question:
+      text: "What is the difference between list, array.array, and numpy.array? When would you choose each?"
+      code: null
+    follow_ups:
+      - "What are the memory characteristics of lists vs arrays?"
+      - "Why is numpy faster for numerical operations?"
+    expected_points:
+      - "list: heterogeneous, flexible, stores Python objects (overhead)"
+      - "array.array: homogeneous, memory-efficient for primitive types"
+      - "numpy.array: homogeneous, vectorized operations, C-level performance"
+      - "Use lists for general, array for memory-efficient, numpy for math"
+
+  - id: "ds-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["stack", "queue", "LIFO", "FIFO"]
+    question:
+      text: "How would you implement a stack (LIFO) and a queue (FIFO) in Python?"
+      code: null
+    follow_ups:
+      - "Why is a list suitable for a stack but not ideal for a queue?"
+      - "How does collections.deque solve the queue problem?"
+      - "What is queue.Queue and how does it differ for threading?"
+    expected_points:
+      - "Stack: use list with append() (push) and pop() (pop) — both O(1)"
+      - "Queue: use deque with append() (enqueue) and popleft() (dequeue) — both O(1)"
+      - "list.pop(0) is O(n) — don't use list for queues"
+      - "queue.Queue is thread-safe; deque is not"

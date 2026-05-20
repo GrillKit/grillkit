@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Interview - GrillKit{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Interview Setup</h1>
+        <p class="card-subtitle">Choose language, level, and topics for your session</p>
+    </div>
+
+    <form method="post" action="/setup" class="form" id="setup-form">
+        <div class="form-group">
+            <label for="language" class="form-label form-label-required">Programming language</label>
+            <select name="language" id="language" class="form-control" required>
+                <option value="">Select a language...</option>
+                {% for slug, label in languages %}
+                <option value="{{ slug }}"{% if slug == selected_language %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Question bank language (Python, SQL, etc.).</p>
+        </div>
+
+        <div class="form-group">
+            <label for="level" class="form-label form-label-required">Difficulty level</label>
+            <select name="level" id="level" class="form-control" required>
+                <option value="">Select level...</option>
+                {% for lvl in levels %}
+                <option value="{{ lvl }}"{% if lvl == selected_level %} selected{% endif %}>{{ lvl | capitalize }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Junior, middle, or senior for the selected language.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="topic" class="form-label form-label-required">Topic</label>
+            <select name="topic" id="topic" class="form-control" required>
+                <option value="">Select a topic...</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat | capitalize | replace("-", " ") }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Subtopic within the language and level.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="locale" class="form-label form-label-required">AI Language</label>
+            <select name="locale" id="locale" class="form-control" required>
+                {% for code, label in locales.items() %}
+                <option value="{{ code }}"{% if code == "en" %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Language for AI feedback, follow-up questions, and final evaluation.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="question_count" class="form-label">Number of Questions</label>
+            <input type="number" name="question_count" id="question_count"
+                   class="form-control" value="5" min="1" max="20">
+            <p class="form-hint">How many questions in this session (1–20).</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">Start Interview</button>
+            <a href="/" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const languageSelect = document.getElementById("language");
+    const levelSelect = document.getElementById("level");
+    const topicSelect = document.getElementById("topic");
+
+    function capitalize(text) {
+        return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    function formatTopic(slug) {
+        return capitalize(slug.replace(/-/g, " "));
+    }
+
+    function setSelectOptions(select, placeholder, values, formatter) {
+        const previous = select.value;
+        select.innerHTML = "";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = placeholder;
+        select.appendChild(empty);
+        values.forEach(function (value) {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = formatter ? formatter(value) : value;
+            select.appendChild(option);
+        });
+        if (values.includes(previous)) {
+            select.value = previous;
+        }
+    }
+
+    async function loadLevels() {
+        const language = languageSelect.value;
+        if (!language) {
+            setSelectOptions(levelSelect, "Select a language first...", []);
+            setSelectOptions(topicSelect, "Select language and level...", []);
+            return;
+        }
+        const response = await fetch("/setup/options?language=" + encodeURIComponent(language));
+        if (!response.ok) {
+            return;
+        }
+        const data = await response.json();
+        setSelectOptions(levelSelect, "Select level...", data.levels || [], capitalize);
+        await loadCategories();
+    }
+
+    async function loadCategories() {
+        const language = languageSelect.value;
+        const level = levelSelect.value;
+        if (!language || !level) {
+            setSelectOptions(topicSelect, "Select language and level...", []);
+            return;
+        }
+        const url = "/setup/options?language=" + encodeURIComponent(language)
+            + "&level=" + encodeURIComponent(level);
+        const response = await fetch(url);
+        if (!response.ok) {
+            return;
+        }
+        const data = await response.json();
+        setSelectOptions(topicSelect, "Select a topic...", data.categories || [], formatTopic);
+    }
+
+    languageSelect.addEventListener("change", loadLevels);
+    levelSelect.addEventListener("change", loadCategories);
+})();
+</script>
+{% endblock %}

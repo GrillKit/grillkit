@@ -1,0 +1,91 @@
+category: "NoSQL Databases"
+language: "database"
+level: "middle"
+
+description: "NoSQL databases: document stores, key-value, wide-column, graph databases and use cases"
+
+questions:
+  - id: "no-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["nosql-types", "document", "key-value"]
+    question:
+      text: "What types of NoSQL databases exist? Compare document, key-value, wide-column, and graph databases."
+      code: null
+    follow_ups:
+      - "When would you choose a document store (MongoDB) over a relational DB?"
+      - "What is the difference between DynamoDB (key-value) and MongoDB (document)?"
+      - "How do graph databases (Neo4j) model relationships differently?"
+    expected_points:
+      - "Document: MongoDB, CouchDB — flexible schema, JSON-like documents"
+      - "Key-value: Redis, DynamoDB — simple, fast lookups by key"
+      - "Wide-column: Cassandra, HBase — column families, high write throughput"
+      - "Graph: Neo4j, Dgraph — nodes and edges for connected data"
+
+  - id: "no-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["mongodb", "aggregation", "indexing"]
+    question:
+      text: "How does MongoDB's aggregation pipeline work? How do you index documents?"
+      code: null
+    follow_ups:
+      - "What stages exist in a pipeline ($match, $group, $sort, $lookup)?"
+      - "How does MongoDB indexing differ from relational indexes?"
+      - "What are MongoDB replica sets and sharding?"
+    expected_points:
+      - "Aggregation pipeline processes documents through stages"
+      - "Indexes in MongoDB: single field, compound, multikey, text, geospatial"
+      - "Replica sets provide high availability; sharding scales horizontally"
+      - "$lookup performs left outer join with another collection"
+
+  - id: "no-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "caching", "data-structures"]
+    question:
+      text: "What data structures does Redis support beyond simple key-value? How do you use Redis for caching?"
+      code: null
+    follow_ups:
+      - "How do Redis sorted sets work and what problems do they solve?"
+      - "What is Redis pub/sub and when would you use it?"
+      - "How does Redis persistence work (RDB, AOF)?"
+    expected_points:
+      - "Data structures: strings, hashes, lists, sets, sorted sets, streams"
+      - "Sorted sets: ordered by score — leaderboards, rate limiting"
+      - "Pub/sub: lightweight messaging between publisher and subscribers"
+      - "RDB: point-in-time snapshots; AOF: append-only log of operations"
+
+  - id: "no-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["cassandra", "wide-column"]
+    question:
+      text: "How does Apache Cassandra model data? Explain partition key, clustering columns, and CQL."
+      code: null
+    follow_ups:
+      - "What is Cassandra's consistency level (ONE, QUORUM, ALL)?"
+      - "How does Cassandra achieve high write throughput?"
+      - "What is the difference between Cassandra and traditional relational databases?"
+    expected_points:
+      - "Partition key determines data distribution across nodes"
+      - "Clustering columns sort data within a partition"
+      - "CQL: Cassandra Query Language, similar to SQL but limited"
+      - "Tunable consistency: balance between performance and correctness"
+
+  - id: "no-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["cap-theorem", "base"]
+    question:
+      text: "How do NoSQL databases apply the CAP theorem and BASE model?"
+      code: null
+    follow_ups:
+      - "What is BASE (Basically Available, Soft state, Eventual consistency)?"
+      - "How does MongoDB balance consistency and availability?"
+      - "Why do some NoSQL databases prefer AP over CP and vice versa?"
+    expected_points:
+      - "BASE: softer alternative to ACID for distributed NoSQL"
+      - "MongoDB: CP by default (primary reads), can be AP with secondary reads"
+      - "Cassandra: AP — eventual consistency by default"
+      - "Choose based on requirements: banking needs CP, social feeds can be AP"

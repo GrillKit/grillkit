@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Interview - GrillKit{% endblock %}
+{% block body_class %}page-interview{% endblock %}
+{% block app_class %} app-container--interview{% endblock %}
+{% block main_class %} main-content--interview{% endblock %}
+
+{% block content %}
+<div class="interview-page">
+    <aside class="interview-sidebar">
+        <div id="interview-alerts">
+            {% if interview.status == "completed" %}
+            <div class="alert alert-info">
+                <strong>Interview completed!</strong> Final score: {{ interview.score }} / {{ max_score }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="interview-meta">
+            <h1 class="interview-title">{{ interview.language | title }} Interview</h1>
+            <dl class="meta-list">
+                <dt>Topics</dt>
+                <dd>{{ interview.category | replace('-', ' ') | replace('_', ' ') | title }}</dd>
+                <dt>Level</dt>
+                <dd>{{ interview.level | capitalize }}</dd>
+                <dt>AI language</dt>
+                <dd>{{ locale_label }}</dd>
+                <dt>Progress</dt>
+                <dd id="interview-progress">
+                    {% if current_question %}
+                    Question {{ current_question.order }} of {{ interview.question_count }}
+                    {% else %}
+                    All questions answered
+                    {% endif %}
+                </dd>
+                <dt>Status</dt>
+                <dd><span id="interview-status">{{ interview.status | capitalize }}</span></dd>
+                <dt>Timer</dt>
+                <dd class="text-muted meta-placeholder">—</dd>
+            </dl>
+        </div>
+
+        {% if interview.status == "completed" and overall_feedback %}
+        <div class="interview-final-eval" id="final-evaluation">
+            <h2>Final Evaluation</h2>
+
+            <div class="feedback-section">
+                <h3>Overall Feedback</h3>
+                <p>{{ overall_feedback.overall_feedback }}</p>
+            </div>
+
+            {% if overall_feedback.strengths_summary %}
+            <div class="feedback-section">
+                <h3>Strengths</h3>
+                <ul>
+                    {% for strength in overall_feedback.strengths_summary %}
+                    <li>{{ strength }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.topics_to_review %}
+            <div class="feedback-section">
+                <h3>Topics to Review</h3>
+                <ul>
+                    {% for topic in overall_feedback.topics_to_review %}
+                    <li>{{ topic }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if overall_feedback.score_breakdown %}
+            <div class="feedback-section">
+                <h3>Score Breakdown</h3>
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Score</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for qid, breakdown in overall_feedback.score_breakdown.items() %}
+                        {% if qid != "total" %}
+                        <tr>
+                            <td>{{ qid }}</td>
+                            <td>{{ breakdown.score }}</td>
+                            <td>{{ breakdown.max }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="interview-actions" id="sidebar-actions">
+            <a href="/" class="btn btn-outline">Back to Dashboard</a>
+            {% if interview.status == "active" %}
+            <button type="button" id="end-btn" class="btn btn-danger" onclick="endInterview()">End Interview</button>
+            {% endif %}
+        </div>
+    </aside>
+
+    <section class="interview-chat-panel">
+        <div class="interview-chat" id="chat-container">
+            {% for answer in answers %}
+            {% if answer.answer_text is not none or answer == current_question %}
+            <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
+                <div class="chat-bubble question-bubble">
+                    <strong>Q{{ answer.order }}:</strong>
+                    {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
+                    {{ answer.question_text }}
+                    {% if answer.question_code %}
+                    <pre class="code-block"><code>{{ answer.question_code }}</code></pre>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if answer.answer_text %}
+            <div class="chat-message answer" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
+                <div class="chat-bubble answer-bubble">
+                    <strong>You:</strong> {{ answer.answer_text }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        {% if interview.status == "active" and current_question %}
+        <div class="interview-composer" id="answer-section">
+            <textarea name="answer_text" id="answer_text"
+                      class="form-control composer-input" rows="4" required
+                      placeholder="Type your answer here..."></textarea>
+            <div class="composer-footer">
+                <button type="button" id="submit-btn" class="btn btn-primary" onclick="submitAnswer()">Submit Answer</button>
+            </div>
+            <div id="evaluating-indicator" class="evaluating-indicator" style="display:none;">
+                <div class="spinner"></div>
+                <span>AI is evaluating your answer...</span>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const initialInterviewStatus = '{{ interview.status }}';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/{{ interview.id }}/ws';
+    let ws = null;
+    let reconnectTimer = null;
+    let currentQuestionId = '{{ current_question.question_id if current_question else "" }}';
+    const questionCount = {{ interview.question_count }};
+    let isSubmitting = false;
+
+    function updateProgressDisplay(order) {
+        const progressEl = document.getElementById('interview-progress');
+        if (!progressEl) return;
+        if (order == null) {
+            progressEl.textContent = 'All questions answered';
+        } else {
+            progressEl.textContent = 'Question ' + order + ' of ' + questionCount;
+        }
+    }
+
+    function connectWebSocket() {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = function() {
+            console.log('WebSocket connected');
+            isSubmitting = false;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            document.getElementById('submit-btn') && (document.getElementById('submit-btn').disabled = false);
+            document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = false);
+            ws.send(JSON.stringify({ type: 'ping' }));
+        };
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            handleWsMessage(data);
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket disconnected, reconnecting in 3s...');
+            reconnectTimer = setTimeout(function() {
+                connectWebSocket();
+            }, 3000);
+        };
+
+        ws.onerror = function(err) {
+            console.error('WebSocket error:', err);
+        };
+    }
+
+    function handleWsMessage(data) {
+        switch (data.type) {
+            case 'saved':
+                showAnswerBubble();
+                break;
+
+            case 'evaluating':
+                showEvaluating(true);
+                break;
+
+            case 'feedback':
+                showEvaluating(false);
+                showNextAfterFeedback(data);
+                break;
+
+            case 'interview_completed':
+                showEvaluating(false);
+                handleSessionCompleted(data);
+                break;
+
+            case 'pong':
+                if (data.status === 'completed' && initialInterviewStatus === 'active') {
+                    window.location.reload();
+                } else if (data.status === 'not_found') {
+                    window.location.href = '/';
+                } else if (data.status === 'error') {
+                    showError('Session error. Please reload the page.');
+                }
+                break;
+
+            case 'error':
+                showEvaluating(false);
+                isSubmitting = false;
+                enableForm(true);
+                showError(data.message);
+                break;
+        }
+    }
+
+    function submitAnswer() {
+        const textarea = document.getElementById('answer_text');
+        const answerText = textarea.value.trim();
+
+        if (!answerText) {
+            alert('Please enter your answer.');
+            return;
+        }
+
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        enableForm(false);
+
+        ws.send(JSON.stringify({
+            type: 'answer',
+            question_id: currentQuestionId,
+            answer_text: answerText
+        }));
+    }
+
+    function endInterview() {
+        if (!confirm('Are you sure you want to end this interview?')) return;
+
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = true);
+        showEvaluating(true);
+
+        ws.send(JSON.stringify({ type: 'complete' }));
+    }
+
+    function showAnswerBubble() {
+        const textarea = document.getElementById('answer_text');
+        const answerText = textarea.value.trim();
+
+        const chatContainer = document.getElementById('chat-container');
+        const answerDiv = document.createElement('div');
+        answerDiv.className = 'chat-message answer';
+        answerDiv.innerHTML = '<div class="chat-bubble answer-bubble"><strong>You:</strong> ' + escapeHtml(answerText) + '</div>';
+        chatContainer.appendChild(answerDiv);
+
+        textarea.value = '';
+        textarea.focus();
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function showEvaluating(visible) {
+        const indicator = document.getElementById('evaluating-indicator');
+        if (indicator) {
+            indicator.style.display = visible ? 'flex' : 'none';
+        }
+    }
+
+    function showNextAfterFeedback(data) {
+        const chatContainer = document.getElementById('chat-container');
+
+        if (data.follow_up_question) {
+            const followUpDiv = document.createElement('div');
+            followUpDiv.className = 'chat-message question';
+            followUpDiv.setAttribute('data-question-id', data.question_id);
+            followUpDiv.setAttribute('data-round', String(data.round + 1));
+            followUpDiv.innerHTML = '<div class="chat-bubble question-bubble"><strong>Q' + data.order + ':</strong> <em>(follow-up)</em> ' + escapeHtml(data.follow_up_question) + '</div>';
+            chatContainer.appendChild(followUpDiv);
+
+            currentQuestionId = data.question_id;
+            isSubmitting = false;
+            enableForm(true);
+        }
+        else if (data.next_question) {
+            const nq = data.next_question;
+            const nextQDiv = document.createElement('div');
+            nextQDiv.className = 'chat-message question';
+            nextQDiv.setAttribute('data-question-id', nq.question_id);
+            nextQDiv.setAttribute('data-round', '0');
+            let qHtml = '<div class="chat-bubble question-bubble">';
+            qHtml += '<strong>Q' + nq.order + ':</strong> ' + escapeHtml(nq.question_text);
+            if (nq.question_code) {
+                qHtml += '<pre class="code-block"><code>' + escapeHtml(nq.question_code) + '</code></pre>';
+            }
+            qHtml += '</div>';
+            nextQDiv.innerHTML = qHtml;
+            chatContainer.appendChild(nextQDiv);
+
+            currentQuestionId = nq.question_id;
+            updateProgressDisplay(nq.order);
+            isSubmitting = false;
+            enableForm(true);
+        } else {
+            updateProgressDisplay(null);
+            isSubmitting = false;
+            const answerSection = document.getElementById('answer-section');
+            if (answerSection) {
+                answerSection.innerHTML = '<p class="composer-done text-muted">All questions answered. Click "End Interview" to get your final evaluation.</p>';
+            }
+        }
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function handleSessionCompleted(data) {
+        document.getElementById('interview-status').textContent = 'Completed';
+
+        const answerSection = document.getElementById('answer-section');
+        if (answerSection) answerSection.style.display = 'none';
+
+        const endBtn = document.getElementById('end-btn');
+        if (endBtn) endBtn.style.display = 'none';
+
+        const alerts = document.getElementById('interview-alerts');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info';
+        alertDiv.innerHTML = '<strong>Interview completed!</strong> Final score: ' + data.score + ' / ' + (data.max_score || 0);
+        alerts.appendChild(alertDiv);
+
+        if (data.overall_feedback) {
+            const finalEval = document.getElementById('final-evaluation');
+            if (finalEval) {
+                finalEval.style.display = 'block';
+            } else {
+                buildFinalEvaluation(data.overall_feedback, data.score, data.max_score || 0);
+            }
+        }
+    }
+
+    function buildFinalEvaluation(feedback, score, maxScore) {
+        const sidebar = document.querySelector('.interview-sidebar');
+        const evalSection = document.createElement('div');
+        evalSection.className = 'interview-final-eval';
+        evalSection.id = 'final-evaluation';
+
+        let html = '<h2>Final Evaluation</h2>';
+
+        if (feedback.overall_feedback) {
+            html += '<div class="feedback-section"><h3>Overall Feedback</h3><p>' + escapeHtml(feedback.overall_feedback) + '</p></div>';
+        }
+        if (feedback.strengths_summary && feedback.strengths_summary.length > 0) {
+            html += '<div class="feedback-section"><h3>Strengths</h3><ul>';
+            feedback.strengths_summary.forEach(function(s) {
+                html += '<li>' + escapeHtml(s) + '</li>';
+            });
+            html += '</ul></div>';
+        }
+        if (feedback.topics_to_review && feedback.topics_to_review.length > 0) {
+            html += '<div class="feedback-section"><h3>Topics to Review</h3><ul>';
+            feedback.topics_to_review.forEach(function(t) {
+                html += '<li>' + escapeHtml(t) + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        if (feedback.score_breakdown) {
+            html += '<div class="feedback-section"><h3>Score Breakdown</h3>';
+            html += '<table class="score-table"><thead><tr>';
+            html += '<th>Question</th><th>Score</th><th>Max</th>';
+            html += '</tr></thead><tbody>';
+
+            for (const [qid, breakdown] of Object.entries(feedback.score_breakdown)) {
+                if (qid !== 'total') {
+                    html += '<tr>';
+                    html += '<td>' + escapeHtml(qid) + '</td>';
+                    html += '<td>' + escapeHtml(String(breakdown.score)) + '</td>';
+                    html += '<td>' + escapeHtml(String(breakdown.max)) + '</td>';
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody></table></div>';
+        }
+
+        evalSection.innerHTML = html;
+        const actions = document.getElementById('sidebar-actions');
+        sidebar.insertBefore(evalSection, actions);
+    }
+
+    function enableForm(enabled) {
+        const textarea = document.getElementById('answer_text');
+        const submitBtn = document.getElementById('submit-btn');
+        if (textarea) textarea.disabled = !enabled;
+        if (submitBtn) submitBtn.disabled = !enabled;
+    }
+
+    function showError(message) {
+        const chatContainer = document.getElementById('chat-container');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'chat-message error';
+        errorDiv.innerHTML = '<div class="chat-bubble error-bubble"><strong>Error:</strong> ' + escapeHtml(message) + '</div>';
+        chatContainer.appendChild(errorDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatContainer = document.getElementById('chat-container');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        if (initialInterviewStatus === 'active') {
+            connectWebSocket();
+        }
+    });
+</script>
+{% endblock %}

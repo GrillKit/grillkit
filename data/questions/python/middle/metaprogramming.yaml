@@ -1,0 +1,171 @@
+category: "Metaprogramming"
+language: "python"
+level: "middle"
+
+description: "Python metaprogramming: metaclasses, descriptors, decorators, introspection, and code generation"
+
+questions:
+  - id: "meta-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["metaclasses", "type"]
+    question:
+      text: "What are metaclasses in Python? How do you create one and when would you use them?"
+      code: |
+        class Meta(type):
+            def __new__(mcs, name, bases, namespace):
+                namespace['created_at'] = 'generated'
+                return super().__new__(mcs, name, bases, namespace)
+
+        class MyClass(metaclass=Meta):
+            pass
+    follow_ups:
+      - "How does type() work as a metaclass?"
+      - "What is the difference between __new__ and __init__ in a metaclass?"
+      - "How does Django or SQLAlchemy use metaclasses?"
+    expected_points:
+      - "Metaclasses are classes of classes — they control class creation"
+      - "Define by inheriting from type and overriding __new__ or __init__"
+      - "Use cases: ORM model registration, validation, API auto-generation"
+      - "Metaclasses are powerful but often overkill — prefer decorators or descriptors"
+
+  - id: "meta-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["descriptors", "__get__", "__set__"]
+    question:
+      text: "What are descriptors in Python? How do __get__, __set__, and __delete__ work?"
+      code: |
+        class ValidatedAttribute:
+            def __init__(self, validator):
+                self.validator = validator
+                self.data = {}
+
+            def __get__(self, obj, objtype=None):
+                if obj is None:
+                    return self
+                return self.data.get(id(obj))
+
+            def __set__(self, obj, value):
+                if not self.validator(value):
+                    raise ValueError(f"Invalid value: {value}")
+                self.data[id(obj)] = value
+    follow_ups:
+      - "What is the difference between a data descriptor and non-data descriptor?"
+      - "How does @property use the descriptor protocol?"
+      - "How does __slots__ relate to descriptors?"
+    expected_points:
+      - "Descriptor: object with __get__, __set__, or __delete__"
+      - "Data descriptors (__set__) override instance dict in attribute lookup"
+      - "Non-data descriptors (only __get__) are lower priority than instance dict"
+      - "@property is a high-level descriptor; __slots__ creates descriptors"
+
+  - id: "meta-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["decorators", "wraps"]
+    question:
+      text: "What is the difference between a function decorator and a class-based decorator? When would you use each?"
+      code: |
+        # Function decorator
+        def logged(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                print(f"Calling {func.__name__}")
+                return func(*args, **kwargs)
+            return wrapper
+
+        # Class decorator
+        class Logged:
+            def __init__(self, func):
+                self.func = func
+
+            def __call__(self, *args, **kwargs):
+                print(f"Calling {self.func.__name__}")
+                return self.func(*args, **kwargs)
+    follow_ups:
+      - "How do you create a decorator with arguments?"
+      - "Why is functools.wraps important?"
+      - "Can you stack multiple decorators and in what order do they apply?"
+    expected_points:
+      - "Function decorators are simpler and more Pythonic for typical cases"
+      - "Class decorators are better when you need to maintain state"
+      - "Decorators with args need a factory function: @decorator(args)"
+      - "functools.wraps preserves metadata (__name__, __doc__)"
+
+  - id: "meta-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["__init_subclass__", "class-hooks"]
+    question:
+      text: "How does __init_subclass__ work? How is it different from a metaclass?"
+      code: |
+        class PluginBase:
+            registry = {}
+
+            def __init_subclass__(cls, **kwargs):
+                super().__init_subclass__(**kwargs)
+                PluginBase.registry[cls.__name__] = cls
+
+        class MyPlugin(PluginBase):
+            pass
+    follow_ups:
+      - "When would you choose __init_subclass__ over a metaclass?"
+      - "Can you pass keyword arguments to __init_subclass__?"
+      - "How does __set_name__ in descriptors work?"
+    expected_points:
+      - "__init_subclass__ is called when a subclass is created"
+      - "It's simpler than metaclasses for many common patterns"
+      - "Useful for plugin systems, registration, and class configuration"
+      - "Python 3.6+ feature that reduces the need for custom metaclasses"
+
+  - id: "meta-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["AST", "code-generation"]
+    question:
+      text: "What is AST (Abstract Syntax Tree) in Python? How can you use it for code analysis or transformation?"
+      code: null
+    follow_ups:
+      - "How do you parse source code into an AST?"
+      - "What is the difference between ast.parse, ast.walk, and ast.NodeTransformer?"
+      - "What are real-world uses of AST manipulation in Python?"
+    expected_points:
+      - "AST is a tree representation of Python source code"
+      - "ast.parse() converts source to AST; ast.dump() visualizes it"
+      - "ast.NodeTransformer allows modifying nodes for code generation"
+      - "Uses: linters, formatters (Black), type checkers, transpilers"
+
+  - id: "meta-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["inspect", "introspection"]
+    question:
+      text: "What tools does Python's inspect module provide for runtime introspection?"
+      code: null
+    follow_ups:
+      - "How do you get the source code of a function at runtime?"
+      - "How does inspect.stack() work for debugging?"
+      - "What is inspect.signature() used for?"
+    expected_points:
+      - "inspect.getsource() returns source code of an object"
+      - "inspect.signature() returns parameters and annotations"
+      - "inspect.getmembers() lists all attributes of an object"
+      - "inspect.stack() gets the current call stack for debugging"
+
+  - id: "meta-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["__getattr__", "__getattribute__"]
+    question:
+      text: "What is the difference between __getattr__ and __getattribute__? How do they affect attribute lookup?"
+      code: null
+    follow_ups:
+      - "What is the order of attribute lookup in Python?"
+      - "How would you implement lazy initialization using __getattr__?"
+      - "Why is __getattribute__ dangerous to override?"
+    expected_points:
+      - "__getattribute__ is called unconditionally on every attribute access"
+      - "__getattr__ is only called when normal lookup fails"
+      - "Override __getattr__ for dynamic attributes (safe)"
+      - "Override __getattribute__ carefully — must call super() to avoid recursion"

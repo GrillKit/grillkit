@@ -1,0 +1,108 @@
+category: "Search Databases"
+language: "database"
+level: "senior"
+
+description: "Search engines and full-text search: Elasticsearch, OpenSearch, Lucene, and search architecture"
+
+questions:
+  - id: "es-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["elasticsearch", "inverted-index", "lucene"]
+    question:
+      text: "How does Elasticsearch index and search data? What is an inverted index?"
+      code: null
+    follow_ups:
+      - "How does Lucene's inverted index work?"
+      - "What is the difference between Elasticsearch and a traditional database?"
+      - "How does Elasticsearch handle full-text search vs structured queries?"
+    expected_points:
+      - "Elasticsearch builds an inverted index: term → document mapping"
+      - "Documents are JSON, indexed into shards across nodes"
+      - "Query DSL: full-text (match, multi_match) and structured (term, range)"
+      - "Scoring: TF-IDF or BM25 algorithm ranks search results"
+
+  - id: "es-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["elasticsearch-cluster", "shards", "replicas"]
+    question:
+      text: "How do Elasticsearch shards and replicas work? How do you plan capacity?"
+      code: null
+    follow_ups:
+      - "What is the relationship between primary shards, replicas, and nodes?"
+      - "How does Elasticsearch handle rebalancing when adding nodes?"
+      - "What is the optimal shard size and how do you choose shard count?"
+    expected_points:
+      - "Primary shards: split data horizontally; replicas: copies for HA"
+      - "Replicas also serve read requests — more replicas = better read throughput"
+      - "Optimal shard size: 10-50GB per shard"
+      - "Shard count is fixed at index creation — plan carefully"
+
+  - id: "es-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["mapping", "analysis", "tokenizers"]
+    question:
+      text: "What are Elasticsearch mappings and analyzers? How do you customize text analysis?"
+      code: null
+    follow_ups:
+      - "What is the difference between exact value and full-text fields?"
+      - "How do you define custom analyzers with tokenizers and filters?"
+      - "What is dynamic mapping and why might you disable it?"
+    expected_points:
+      - "Mapping defines field types and analysis rules"
+      - "Analyzer: character filters → tokenizer → token filters"
+      - "Common tokenizers: standard, whitespace, ngram, edge_ngram"
+      - "Disable dynamic mapping for production to avoid schema explosions"
+
+  - id: "es-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["search-relevance", "boosting"]
+    question:
+      text: "How do you tune search relevance and ranking in Elasticsearch?"
+      code: null
+    follow_ups:
+      - "How does function_score query boost results based on custom factors?"
+      - "What is the difference between boosting at index time vs query time?"
+      - "How do you measure search relevance (precision, recall, NDCG)?"
+    expected_points:
+      - "function_score: combine BM25 score with custom factors (recency, popularity)"
+      - "Query-time boosting: boost certain fields or values"
+      - "Multi-field search: boost title > description > body"
+      - "Evaluate relevance with user click data and A/B testing"
+
+  - id: "es-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["log-aggregation", "ELK-stack"]
+    question:
+      text: "What is the ELK stack (Elasticsearch, Logstash, Kibana)? How do you use it for log aggregation?"
+      code: null
+    follow_ups:
+      - "How does Logstash vs Filebeat vs Elastic Agent differ for log shipping?"
+      - "How do you design an index strategy for time-series log data?"
+      - "What is ILM (Index Lifecycle Management) and how does it manage rollover?"
+    expected_points:
+      - "ELK: ingest (Logstash/Beats), store/search (Elasticsearch), visualize (Kibana)"
+      - "Use data streams with ILM for time-series data"
+      - "ILM: hot → warm → cold → delete phases with automatic rollover"
+      - "Size-based rollover: rotate indices at 50GB for optimal shard size"
+
+  - id: "es-006"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["opensearch", "elasticsearch-comparison"]
+    question:
+      text: "Compare Elasticsearch and OpenSearch. When would you choose one over the other?"
+      code: null
+    follow_ups:
+      - "What features are Elasticsearch-only vs available in both?"
+      - "How does migration from Elasticsearch to OpenSearch work?"
+      - "What licensing differences exist (Elastic License vs Apache 2.0)?"
+    expected_points:
+      - "OpenSearch: fork of Elasticsearch 7.10, Apache 2.0 license"
+      - "Elasticsearch newer features: ELSER, inference API, searchable snapshots"
+      - "Both support the same core APIs (DSL, bulk, aggregation)"
+      - "Choose OpenSearch for full open-source, Elasticsearch for latest features"

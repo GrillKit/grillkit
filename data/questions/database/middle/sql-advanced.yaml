@@ -1,0 +1,132 @@
+category: "Advanced SQL"
+language: "database"
+level: "middle"
+
+description: "Advanced SQL: subqueries, CTEs, window functions, transactions, and query optimization"
+
+questions:
+  - id: "sqla-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["window-functions", "OVER", "PARTITION BY"]
+    question:
+      text: "How do window functions work in SQL? Explain ROW_NUMBER, RANK, and SUM with OVER."
+      code: |
+        SELECT
+            department,
+            salary,
+            ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) as rank,
+            AVG(salary) OVER (PARTITION BY department) as dept_avg
+        FROM employees;
+    follow_ups:
+      - "What is the difference between ROW_NUMBER, RANK, and DENSE_RANK?"
+      - "How does PARTITION BY differ from GROUP BY?"
+      - "What are frames (ROWS BETWEEN, RANGE BETWEEN)?"
+    expected_points:
+      - "Window functions compute across rows related to current row"
+      - "PARTITION BY divides result set into groups"
+      - "ROW_NUMBER assigns unique sequential number"
+      - "Frames define which rows are included in calculation"
+
+  - id: "sqla-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["CTE", "WITH", "recursive"]
+    question:
+      text: "What are Common Table Expressions (CTEs) and recursive queries in SQL?"
+      code: |
+        WITH dept_stats AS (
+            SELECT department_id, COUNT(*) as emp_count, AVG(salary) as avg_sal
+            FROM employees
+            GROUP BY department_id
+        )
+        SELECT d.name, s.emp_count, s.avg_sal
+        FROM departments d
+        JOIN dept_stats s ON d.id = s.department_id;
+    follow_ups:
+      - "What is the difference between CTE and subquery?"
+      - "How do recursive CTEs work (e.g., for tree data)?"
+      - "Can a CTE reference another CTE?"
+    expected_points:
+      - "CTEs make complex queries more readable and reusable"
+      - "Recursive CTEspecially useful for recursive data (org charts, categories)"
+      - "Multiple CTEs can be chained with commas"
+      - "CTEs can be referenced multiple times in the main query"
+
+  - id: "sqla-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["subqueries", "correlated", "EXISTS"]
+    question:
+      text: "What is the difference between correlated and non-correlated subqueries? When is EXISTS preferred over IN?"
+      code: |
+        -- Find departments with employees above average salary
+      follow_ups:
+        - "What is the difference between IN and EXISTS in terms of performance?"
+        - "How does a subquery in SELECT differ from one in WHERE?"
+        - "What are lateral joins (LATERAL / CROSS APPLY)?"
+      expected_points:
+        - "Non-correlated: independent, runs once"
+        - "Correlated: references outer query to inner"
+        - "EXISTS the first match — faster than IN for large datasets"
+        - "IN with subquery can return NULL causing unexpected results"
+
+  - id: "sqla-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["transactions", "ACID", "isolation"]
+    question:
+      text: "What are transaction isolation levels (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE)?"
+      code: null
+    follow_ups:
+      - "What phenomena can occur at each isolation level (dirty read, non-repeatable read, phantom read)?"
+      - "What are the default isolation levels in PostgreSQL vs MySQL?"
+      - "How do row-level locks and MVCC relate to isolation?"
+    expected_points:
+      - "READ UNCOMMITTED: dirty reads, all phenomena possible"
+      - "READ COMMITTED: no dirty reads, non-repeatable reads possible"
+      - "REPEATABLE READ: prevents non-repeatable, phantoms possible"
+      - "SERIALIZABLE: all phenomena prevented, but slowest"
+
+  - id: "sqla-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["query-plan", "EXPLAIN ANALYZE"]
+    question:
+      text: "How do you read and ANALYZE?"
+      code: null
+    follow_ups:
+      - "What does a seq scan vs index scan vs index-only scan mean?"
+      - "How do you interpret rows= and cost= in PostgreSQL?"
+      - "What does 'Using filesort' mean in MySQL?"
+    expected_points:
+      - "EXPLAIN shows the query plan without executing"
+      - "EXPLAIN ANALYZE really runs the query and shows actual timing"
+      - "Seq scan: full table read"
+      - "Index scan: reads index to find matching rows"
+      - "Each step shows cost, rows, and width"
+
+  - id: "sqla-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["views", "materialized-views"]
+    question:
+      text: "What are views and materialized views in SQL? When would you use each?"
+      code: |
+        CREATE VIEW active_users AS
+        SELECT * FROM users WHERE status = 'active';
+
+        CREATE MATERIALIZED VIEW monthly_sales AS
+        SELECT date_trunc('month', order_date) as month,
+               SUM(amount) as total
+        FROM orders
+        GROUP BY month;
+    follow_ups:
+      - "Can you INSERT/UPDATE through a view?"
+      - "How do you refresh a materialized view?"
+      - "What are the performance characteristics of each?"
+    expected_points:
+      - "View: virtual table based on a query (saved query definition)"
+      - "Materialized view: cached result set stored on disk"
+      - "Views always return current data; materialized need refresh"
+      - "Use materialized views for expensive aggregations that rarely change"

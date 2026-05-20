@@ -1,0 +1,123 @@
+category: "Strings"
+language: "python"
+level: "junior"
+
+description: "Python string operations, formatting, and manipulation"
+
+questions:
+  - id: "str-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["f-strings", "formatting"]
+    question:
+      text: "What are the different ways to format strings in Python? Compare f-strings, .format(), and %-formatting."
+      code: |
+        name, age = "Alice"name, age = "Alice", 30
+        # Compare these approaches
+        f"Hello, {name} is {age}"
+        "{} is {}".format(name, age)
+        "%s is %d" % (name, age)
+    follow_ups:
+      - "Why are f-strings preferred in modern Python?"
+      - "Can you use expressions inside f-strings?"
+    expected_points:
+      - "f-strings (Python 3.6+): fastest and most readable"
+      - ".format(): more flexible, good for templates"
+      - "%-formatting: legacy style from old Python"
+      - "f-strings support arbitrary expressions inside {}"
+
+  - id: "str-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["string-methods", "immutability"]
+    question:
+      text: "Are strings mutable or immutable in Python? How does this affect common string operations?"
+      code: |
+        s = "hello"
+        s_upper = s.upper()  # What does s contain after this?
+    follow_ups:
+      - "If strings are immutable, how does s += ' world' work?"
+      - "What string methods modify vs return new strings?"
+    expected_points:
+      - "Strings are immutable — all 'modification' methods return a new string"
+      - "s += ' world' creates a new string object"
+      - "Common methods: .upper(), .lower(), .strip(), .replace(), .split()"
+
+  - id: "str-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["slicing", "indexing"]
+    question:
+      text: "How does string slicing work in Python? Explain negative indexing and step values."
+      code: |
+        s = "Python"
+        # What do these produce?
+        s[0:3]    # ???
+        s[-3:]    # ???
+        s[::-1]   # ???
+        s[::2]    # ???
+    follow_ups:
+      - "What is the difference between s[0] and s[0:1]?"
+      - "What happens with out-of-range indices in slicing vs indexing?"
+    expected_points:
+      - "s[start:stop:step] — start inclusive, stop exclusive"
+      - "Negative indices count from end (-1 is last char)"
+      - "s[::-1] reverses the string"
+      - "Slicing handles out-of-range gracefully; indexing raises IndexError"
+
+  - id: "str-004"
+    type: "coding"
+    difficulty: 2
+    tags: ["join", "split", "concatenation"]
+    question:
+      text: "Why is ''.join(list) preferred over string concatenation in a loop?"
+      code: |
+        items = ["a", "b""a", "b", "c"]
+        # Bad approach
+        result = ""
+        for item in items:
+            result += item
+        # Good approach
+        result = "".join(items)
+    follow_ups:
+      - "How does .join() work internally?"
+      - "What is the opposite of .join()?"
+    expected_points:
+      - "String concatenation in loop creates many intermediate objects (O(n²))"
+      - ".join() allocates once, computes final size"
+      - "Opposite: .split() splits string into list"
+
+  - id: "str-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["encoding", "unicode"]
+    question:
+      text: "How does Python handle Unicode and string encoding? What is the difference between str and bytes?"
+      code: null
+    follow_ups:
+      - "What does .encode() and .decode() do?"
+      - "How do you handle UnicodeDecodeError?"
+      - "What is a BOM and encoding detection?"
+    expected_points:
+      - "str is Unicode text, bytes is raw byte sequences"
+      - ".encode(encoding) converts str to bytes"
+      - ".decode(encoding) converts bytes to str"
+      - "Common encodings: UTF-8, ASCII, Latin-1"
+      - "UTF-8 is the default in Python 3"
+
+  - id: "str-006"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["raw-strings", "escape"]
+    question:
+      text: "What are raw strings in Python? When would you use them?"
+      code: |
+        normal = "C:\Users\name"
+        raw = r"C:\Users\name"
+    follow_ups:
+      - "How do raw strings help with regular expressions?"
+      - "Can a raw string end with a backslash?"
+    expected_points:
+      - "Raw strings (r'...') treat backslashes as literal characters"
+      - "Commonly used for Windows paths and regex patterns"
+      - "Cannot end with an odd number of backslashes"

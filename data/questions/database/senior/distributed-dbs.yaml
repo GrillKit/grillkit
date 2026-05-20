@@ -1,0 +1,91 @@
+category: "Distributed Databases"
+language: "database"
+level: "senior"
+
+description: "Distributed database systems: sharding, replication, leader election, and distributed SQL"
+
+questions:
+  - id: "dbd-001"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["sharding", "consistent-hashing"]
+    question:
+      text: "How does database sharding work? How does consistent hashing distribute data?"
+      code: null
+    follow_ups:
+      - "What hash ring and virtual nodes mean in consistent hashing?"
+      - "How do you reshard data when adding new shards?"
+      - "What is the difference between application-level and database-level sharding?"
+    expected_points:
+      - "Sharding splits data across multiple database instances"
+      - "Consistent hashing minimizes rehashing when nodes change"
+      - "Virtual nodes improve load distribution across physical nodes"
+      - "Resharding is complex — plan for overprovisioning"
+
+  - id: "dbd-002"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["distributed-sql", "cockroachdb", "spanner"]
+    question:
+      text: "How do distributed SQL databases (CockroachDB, Google Spanner, YugabyteDB) work?"
+      code: null
+    follow_ups:
+      - "How does CockroachDB achieve serializable isolation across nodes?"
+      - "What is TrueTime (Spanner) vs hybrid logical clocks (CockroachDB)?"
+      - "How do distributed SQL databases handle transactions across regions?"
+    expected_points:
+      - "Distributed SQL: full SQL support with horizontal scaling"
+      - "CockroachDB: uses Raft for consensus, HLC for ordering"
+      - "Spanner: TrueTime API (GPS + atomic clocks) for external consistency"
+      - "Cross-region transactions have latency proportional to distance"
+
+  - id: "dbd-003"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["leader-election", "failover"]
+    question:
+      text: "How does leader election and automatic failover work in distributed databases?"
+      code: null
+    follow_ups:
+      - "How does Raft-based leader election compare to Paxos?"
+      - "What is split-brain and how is it prevented?"
+      - "How does Patroni manage PostgreSQL automatic failover?"
+    expected_points:
+      - "Leader election: nodes vote for a leader, majority required"
+      - "Raft: simpler than Paxos, uses term numbers and log replication"
+      - "Split-brain: two nodes think they are primary — use fencing/quorum"
+      - "Patroni: Raft/etcd-based high availability for PostgreSQL"
+
+  - id: "dbd-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["multi-region", "geo-distribution"]
+    question:
+      text: "How do you design a multi-region database topology? What are the trade-offs?"
+      code: null
+    follow_ups:
+      - "What is active-passive vs active-active multi-region setup?"
+      - "How do bidirectionally replication and conflict resolution work?"
+      - "What GDPR considerations affect multi-region database design?"
+    expected_points:
+      - "Active-passive: one primary region, others read replicas"
+      - "Active-active: all regions accept writes — needs conflict resolution"
+      - "Conflict resolution: last-writer-wins (LWW), CRDT, custom merge"
+      - "GDPR: data residency requirements may restrict database placement"
+
+  - id: "dbd-005"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["backup", "PITR", "disaster-recovery"]
+    question:
+      text: "How do you design backup and disaster recovery strategies for databases?"
+      code: null
+    follow_ups:
+      - "What is the difference between full, incremental, and differential backups?"
+      - "What is Point-In-Time Recovery (PITR) and how does WAL archiving work?"
+      - "How do you test backup recovery and what is RPO/RTO?"
+    expected_points:
+      - "RPO (Recovery Point Objective): max acceptable data loss"
+      - "RTO (Recovery Time Objective): max acceptable downtime"
+      - "PITR: restore database to any point in time using WAL archives"
+      - "Test recovery regularly — untested backups are as good as no backups"

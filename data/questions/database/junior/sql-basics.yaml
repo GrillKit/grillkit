@@ -1,0 +1,109 @@
+category: "SQL Basics"
+language: "database"
+level: "junior"
+
+description: "Fundamental SQL: SELECT, INSERT, UPDATE, DELETE, WHERE, JOIN basics, aggregations"
+
+questions:
+  - id: "sqlb-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["SELECT", "WHERE", "filters"]
+    question:
+      text: "Explain the basic structure of a SELECT query. How does WHERE clause filter data?"
+      code: |
+        SELECT column1, column2
+        FROM table_name
+        WHERE condition;
+    follow_ups:
+      - "What is the order of execution of SQL clauses?"
+      - "How do NULL values behave in WHERE conditions?"
+      - "What is the difference between WHERE and HAVING?"
+    expected_points:
+      - "SELECT specifies columns, FROM specifies source, WHERE filters rows"
+      - "Execution order: FROM → WHERE → SELECT → ORDER BY"
+      - "NULL comparisons use IS NULL / IS NOT NULL, not = NULL"
+      - "HAVING filters after aggregation, WHERE filters before"
+
+  - id: "sqlb-002"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["INSERT", "UPDATE", "DELETE"]
+    question:
+      text: "How do INSERT, UPDATE, and DELETE statements work? What are the risks of each?"
+      code: |
+        INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
+        UPDATE users SET email = 'new@example.com' WHERE id = 1;
+        DELETE FROM users WHERE id = 1;
+    follow_ups:
+      - "What happens if you omit the WHERE clause on UPDATE or DELETE?"
+      - "How do transactions protect DML operations?"
+      - "What is INSERT ... ON DUPLICATE KEY UPDATE / UPSERT?"
+    expected_points:
+      - "INSERT adds new rows, UPDATE modifies existing, DELETE removes"
+      - "Omitting WHERE on UPDATE/DELETE affects ALL rows"
+      - "Always use transactions (BEGIN/COMMIT) for multi-step DML"
+      - "Use SELECT to preview affected rows before DELETE/UPDATE"
+
+  - id: "sqlb-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["JOIN", "INNER-JOIN", "LEFT-JOIN"]
+    question:
+      text: "What are the different types of JOINs in SQL? Explain INNER, LEFT, RIGHT, and FULL OUTER JOIN."
+      code: |
+        SELECT u.name, o.amount
+        FROM users u
+        INNER JOIN orders o ON u.id = o.user_id;
+    follow_ups:
+      - "What rows does each JOIN type return?"
+      - "How do you handle NULLs from LEFT JOIN?"
+      - "What is a CROSS JOIN and when would you use it?"
+    expected_points:
+      - "INNER JOIN: only matching rows from both tables"
+      - "LEFT JOIN: all rows from left, NULLs where right missing"
+      - "RIGHT JOIN: all rows from right, NULLs where left missing"
+      - "FULL OUTER JOIN: all rows from both, NULLs where no match"
+
+  - id: "sqlb-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["aggregation", "GROUP BY", "HAVING"]
+    question:
+      text: "How does GROUP BY work with aggregate functions? What is the difference between WHERE and HAVING?"
+      code: |
+        SELECT department, COUNT(*) as emp_count, AVG(salary) as avg_salary
+        FROM employees
+        WHERE status = 'active'
+        GROUP BY department
+        HAVING COUNT(*) > 5;
+    follow_ups:
+      - "What aggregate functions does SQL provide (COUNT, SUM, AVG, MIN, MAX)?"
+      - "Why can't you use WHERE after GROUP BY?"
+      - "How does COUNT(*) differ from COUNT(column)?"
+    expected_points:
+      - "GROUP BY groups rows by column values"
+      - "WHERE filters before grouping, HAVING filters after"
+      - "COUNT(*) counts all rows, COUNT(col) counts non-NULL values"
+      - "SELECT columns must be in GROUP BY or be aggregate functions"
+
+  - id: "sqlb-005"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["ORDER BY", "LIMIT", "DISTINCT"]
+    question:
+      text: "How do ORDER BY, LIMIT, and DISTINCT work in SQL queries?"
+      code: |
+        SELECT DISTINCT department
+        FROM employees
+        ORDER BY department DESC
+        LIMIT 10;
+    follow_ups:
+      - "What is the default sort order in ORDER BY?"
+      - "How does LIMIT work in different databases (MySQL vs PostgreSQL)?"
+      - "What is the difference between DISTINCT and GROUP BY?"
+    expected_points:
+      - "ORDER BY sorts results (ASC default, DESC descending)"
+      - "LIMIT restricts number of rows returned"
+      - "DISTINCT removes duplicate rows from results"
+      - "GROUP BY is more flexible — can use with aggregates"

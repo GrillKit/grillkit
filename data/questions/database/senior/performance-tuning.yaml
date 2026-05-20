@@ -1,0 +1,108 @@
+category: "Performance Tuning"
+language: "database"
+level: "senior"
+
+description: "Database performance optimization: query tuning, indexing strategies, vacuum tuning, benchmarking"
+
+questions:
+  - id: "dbt-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["query-optimization", "N+1", "slow-queries"]
+    question:
+      text: "How do you identify and fix slow database queries? How do you deal with the N+1 query problem?"
+      code: null
+    follow_ups:
+      - "How do you use pg_stat_statements or slow query log to find bottlenecks?"
+      - "How does eager loading (JOIN) vs lazy loading affect performance?"
+      - "What is the difference between optimizer and statistic-based tuning?"
+    expected_points:
+      - "Enable slow query logging or use pg_stat_statements"
+      - "N+1: loading related data in a loop — fix with eager loading (JOIN)"
+      - "Use EXPLAIN ANALYZE to identify sequential scans and bad estimates"
+      - "Keep statistics up to date (ANALYZE, autovacuum)"
+
+  - id: "dbt-002"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["index-tuning", "bloat", "maintenance"]
+    question:
+      text: "How do you maintain indexes and manage index bloat in high-write databases?"
+      code: null
+    follow_ups:
+      - "What causes index bloat in PostgreSQL and MySQL?"
+      - "How does REINDEX vs pg_repack handle index rebuild?"
+      - "How do you find unused or duplicate indexes?"
+    expected_points:
+      - "B-tree index bloat from page splits during updates"
+      - "pg_repack rebuilds indexes without locks"
+      - "REINDEX CONCURRENTLY rebuilds without blocking writes"
+      - "pg_stat_user_indexes shows index usage stats"
+
+  - id: "dbt-003"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["connection-pooling", "pgbouncer"]
+    question:
+      text: "How do connection poolers work? Compare PgBouncer modes and connection management strategies."
+      code: null
+    follow_ups:
+      - "What is the difference between session, transaction, and statement pooling?"
+      - "How does pgbouncer affect prepared statements?"
+      - "How many connections is too many for PostgreSQL?"
+    expected_points:
+      - "PgBouncer: session, transaction, statement pooling modes"
+      - "Transaction pooling is most common — reuses connections per transaction"
+      - "Each PostgreSQL connection costs ~10MB RAM — limit connections"
+      - "Use pool_size based on CPU cores * (2x-3x)"
+
+  - id: "dbt-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["vacuum-tuning", "autovacuum"]
+    question:
+      text: "How do you tune autovacuum in PostgreSQL for high-volume tables?"
+      code: null
+    follow_ups:
+      - "What are autovacuum_vacuum_scale_factor and autovacuum_vacuum_threshold?"
+      - "How do you set per-table autovacuum parameters?"
+      - "What happens when autovacuum cannot keep up with dead tuples?"
+    expected_points:
+      - "Per-table autovacuum settings override global defaults"
+      - "For large tables: set low scale_factor (0.01) and high cost_limit"
+      - "Monitor bloat with pgstattuple extension"
+      - "Aggressive VACUUM FREEZE prevents transaction ID wraparound"
+
+  - id: "dbt-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["benchmarking", "pgbench"]
+    question:
+      text: "How do you benchmark database performance? What metrics matter?"
+      code: null
+    follow_ups:
+      - "How does pgbench work and what scenarios does it simulate?"
+      - "What is the difference between latency, throughput, and TPS?"
+      - "How do you measure P99 latency for database queries?"
+    expected_points:
+      - "pgbench: runs custom SQL or TPC-B-like workloads"
+      - "Key metrics: TPS (transactions per second), latency distribution"
+      - "P99 latency: 99th percentile — tail latency matters for user experience"
+      - "Benchmark with representative data and query patterns"
+
+  - id: "dbt-006"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["read-replicas", "load-distribution"]
+    question:
+      text: "How do you distribute read load across replicas? What are the trade-offs?"
+      code: null
+    follow_ups:
+      - "How does read replica lag affect consistency?"
+      - "How do connection routers (pgpool, HAProxy) distribute reads?"
+      - "How do you handle stale reads from replicas?"
+    expected_points:
+      - "Read replicas offload SELECT queries from primary"
+      - "Use connection proxy (pgpool, HAProxy) for read/write splitting"
+      - "Replica lag can cause stale reads — use synchronous for critical data"
+      - "Monitor replica lag (pg_stat_replication) to prevent stale reads"

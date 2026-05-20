@@ -1,0 +1,152 @@
+category: "Type Hints"
+language: "python"
+level: "middle"
+
+description: "Advanced Python type hints: generics, protocols, overloads, and static type checking"
+
+questions:
+  - id: "th-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["generics", "TypeVar"]
+    question:
+      text: "How do generics work in Python? Explain TypeVar, Generic, and bounded type variables."
+      code: |
+        from typing import TypeVar, Generic
+
+        T = TypeVar('T')
+
+        class Stack(Generic[T]):
+            def push(self, item: T) -> None: ...
+            def pop(self) -> T: ...
+
+        Number = TypeVar('Number', int, float)
+        def add(a: Number, b: Number) -> Number: ...
+    follow_ups:
+      - "What is the difference between TypeVar with and without constraints?"
+      - "How do you define covariant, contravariant, and invariant TypeVars?"
+      - "What is TypeVarTuple (Python 3.11+) for variadic generics?"
+    expected_points:
+      - "TypeVar defines a generic type parameter"
+      - "Generic[T] marks a class as generic over T"
+      - "Bounded TypeVar restricts to specific types"
+      - "covariant=True for producers, contravariant=True for consumers"
+
+  - id: "th-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["protocols", "structural-typing"]
+    question:
+      text: "What are Protocols in Python? How do they enable structural subtyping?"
+      code: |
+        from typing import Protocol
+
+        class Drawable(Protocol):
+            def draw(self) -> None: ...
+
+        def render(obj: Drawable) -> None:
+            obj.draw()
+
+        class Circle:
+            def draw(self) -> None:
+                print("Drawing circle")
+
+        render(Circle())  # OK — structurally matches Drawable
+    follow_ups:
+      - "How does Protocol differ from ABC?"
+      - "What is @runtime_checkable decorator?"
+      - "When would you prefer Protocol over ABC?"
+    expected_points:
+      - "Protocol: structural typing — check by shape, not inheritance"
+      - "ABC: nominal typing — explicit inheritance required"
+      - "@runtime_checkable allows isinstance checks on Protocols"
+      - "Use Protocols for duck typing with static type safety"
+
+  - id: "th-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["overload"]
+    question:
+      text: "How does @typing.overload work? How does it differ from overloading in other languages?"
+      code: |
+        from typing import overload
+
+        @overload
+        def process(value: int) -> str: ...
+
+        @overload
+        def process(value: list[int]) -> list[str]: ...
+
+        def process(value: int | list[int]) -> str | list[str]:
+            if isinstance(value, list):
+                return [str(x) for x in value]
+            return str(value)
+    follow_ups:
+      - "Why doesn't Python have true method overloading?"
+      - "When would you use @overload in practice?"
+      - "How do type checkers use overload signatures?"
+    expected_points:
+      - "@overload provides multiple type signatures for a single implementation"
+      - "Only the last function (without @overload) is the actual implementation"
+      - "Useful for functions that return different types based on input types"
+      - "No runtime effect — purely for static type checkers"
+
+  - id: "th-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["mypy", "static-analysis"]
+    question:
+      text: "How does mypy work? What are the benefits of static type checking in a Python project?"
+      code: null
+    follow_ups:
+      - "How do you configure mypy (--strict, pyproject.toml)?"
+      - "What is the difference between gradual typing and full typing?"
+      - "How do you integrate mypy into CI/CD pipelines?"
+    expected_points:
+      - "mypy analyzes type hints without executing code"
+      - "Catches type errors early — reduces runtime surprises"
+      - "Supports gradual adoption: untyped code is treated as Any"
+      - "Use --strict for maximum safety (no implicit Any)"
+
+  - id: "th-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["Literal", "TypedDict", "Final"]
+    question:
+      text: "What are Literal, TypedDict, and Final types in Python? How do they improve type safety?"
+      code: |
+        from typing import Literal, TypedDict, Final
+
+        def open_file(mode: Literal['r', 'w', 'a']) -> None: ...
+
+        class User(TypedDict):
+            name: str
+            age: int
+
+        MAX_RETRIES: Final = 3
+    follow_ups:
+      - "How does TypedDict differ from dataclasses or NamedTuple?"
+      - "Can TypedDict have optional keys (total=False)?"
+      - "What is the difference between Final and just using a constant?"
+    expected_points:
+      - "Literal constrains values to specific literals"
+      - "TypedDict defines exact dict shape with per-key types"
+      - "Final prevents reassignment detected by type checkers"
+      - "These types have no runtime effect — pure type checker hints"
+
+  - id: "th-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["cast", "TypeGuard", "reveal_type"]
+    question:
+      text: "What tools does typing provide for type narrowing and debugging type hints?"
+      code: null
+    follow_ups:
+      - "How does isinstance() affect type narrowing?"
+      - "What is the difference between cast() and TypeGuard?"
+      - "How does reveal_type help debug mypy issues?"
+    expected_points:
+      - "isinstance() narrows union types in conditional branches"
+      - "cast(T, x) tells the type checker to treat x as type T"
+      - "TypeGuard (3.10+) gives custom narrowing functions"
+      - "reveal_type(x) prints inferred type at a point (mypy-only)"

@@ -1,0 +1,107 @@
+category: "Packaging and Distribution"
+language: "python"
+level: "middle"
+
+description: "Python packaging: pyproject.toml, setuptools, wheels, dependency management, and publishing"
+
+questions:
+  - id: "pkg-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pyproject.toml", "build-system"]
+    question:
+      text: "What is pyproject.toml? How does it replace setup.py and setup.cfg?"
+      code: null
+    follow_ups:
+      - "What is the difference between build-system and project in pyproject.toml?"
+      - "What build backends exist (setuptools, flit, poetry, hatch)?"
+      - "How do you define dependencies in pyproject.toml?"
+    expected_points:
+      - "pyproject.toml is the standard Python project metadata file (PEP 517/518)"
+      - "build-system specifies the build backend and requirements"
+      - "project section defines metadata: name, version, dependencies"
+      - "Can specify optional dependencies with [project.optional-dependencies]"
+
+  - id: "pkg-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["uv", "pip", "poetry"]
+    question:
+      text: "Compare pip, pipenv, poetry, and uv for dependency management. What are the trade-offs?"
+      code: null
+    follow_ups:
+      - "What makes uv faster than pip?"
+      - "How does poetry manage virtual environments?"
+      - "What is a lock file and why is it important?"
+    expected_points:
+      - "pip: simplest, no lock file by default, requirements.txt"
+      - "Poetry: pyproject.toml native, lock file, virtual env management"
+      - "uv: Rust-based, extremely fast, pip-compatible, lock file support"
+      - "Lock files ensure reproducible installs across environments"
+
+  - id: "pkg-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["wheels", "sdist"]
+    question:
+      text: "What is the difference between a source distribution (sdist) and a wheel? How are they built?"
+      code: null
+    follow_ups:
+      - "Why are wheels preferred for distribution?"
+      - "What is a pure Python wheel vs a platform-specific wheel?"
+      - "How do you build wheels with C extensions?"
+    expected_points:
+      - "sdist: source code + setup script, requires build step on install"
+      - "wheel: pre-built archive, faster install (no compilation)"
+      - "Wheels are preferred — pip installs them directly"
+      - "cibuildwheel automates building wheels for multiple platforms"
+
+  - id: "pkg-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["publishing", "pypi"]
+    question:
+      text: "How do you publish a Python package to PyPI? What are the steps?"
+      code: null
+    follow_ups:
+      - "What is the difference between PyPI and TestPyPI?"
+      - "How do API tokens for PyPI publishing work?"
+      - "What should you include in a README and CHANGELOG for a package?"
+    expected_points:
+      - "Build: python -m build creates sdist and wheel"
+      - "Publish: twine upload dist/*"
+      - "Use TestPyPI first to verify"
+      - "Use API tokens instead of username/password for CI/CD"
+
+  - id: "pkg-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["entry-points", "console-scripts"]
+    question:
+      text: "How do you create CLI entry points for a Python package? What are console_scripts?"
+      code: null
+    follow_ups:
+      - "How do entry points work with the plugin system (entry point groups)?"
+      - "How does pip use entry points internally?"
+      - "What is the difference between console_scripts and gui_scripts?"
+    expected_points:
+      - "console_scripts in pyproject.toml creates CLI commands"
+      - "Entry point groups allow third-party plugins"
+      - "Example: [project.scripts] mycli = 'mypackage.cli:main'"
+      - "pip generates executable wrappers in PATH"
+
+  - id: "pkg-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["namespace-packages", "implicit-namespace"]
+    question:
+      text: "What are namespace packages in Python? How do implicit namespace packages work?"
+      code: null
+    follow_ups:
+      - "What is the difference between pkgutil-style and pkg_resources-style?"
+      - "When would you need namespace packages (e.g., google.cloud.*)?"
+    expected_points:
+      - "Namespace packages allow splitting packages across directories"
+      - "Implicit namespace packages (PEP 420): directory without __init__.py"
+      - "Multiple distributions can contribute to the same namespace"
+      - "Used by large ecosystems (Google, Apache) for modular sub-packages"

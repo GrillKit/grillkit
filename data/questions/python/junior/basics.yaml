@@ -1,0 +1,135 @@
+category: "Basics"
+language: "python"
+level: "junior"
+
+description: "Core Python fundamentals: types, variables, operators, and language essentials"
+
+questions:
+  - id: "bas-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["types", "mutability"]
+
+    question:
+      text: "What is the difference between mutable and immutable types in Python? Give examples of each."
+      code: null
+
+    follow_ups:
+      - "Why are tuples considered immutable but can contain mutable objects?"
+      - "How does mutability affect performance?"
+
+    expected_points:
+      - "Mutable types can be changed after creation (list, dict, set)"
+      - "Immutable types cannot be changed after creation (int, str, tuple, frozenset)"
+      - "Immutability enables hashability (keys in dicts/sets)"
+
+  - id: "bas-002"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["is-vs-==", "comparison"]
+
+    question:
+      text: "Explain the difference between '==' and 'is' in Python."
+      code: |
+        a = [1, 2, 3]
+        b = [1, 2, 3]
+        c = a
+        print(a == b)  # ???
+        print(a is b)  # ???
+        print(a is c)  # ???
+
+    follow_ups:
+      - "When should you use 'is' instead of '=='?"
+      - "What is the difference between 'is None' and '== None'?"
+
+    expected_points:
+      - "'==' compares value equality"
+      - "'is' compares identity (same object in memory)"
+      - "Use 'is' for None, True, False, and singletons"
+      - "Small integers (-5 to 256) are cached so 'is' may return True"
+
+  - id: "bas-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["none", "truthiness"]
+
+    question:
+      text: "What values are considered falsy in Python? How does 'None' differ from other falsy values?"
+      code: null
+
+    follow_ups:
+      - "Why does 'if not some_list' work to check for an empty list?"
+      - "How does short-circuit evaluation work with 'and'/'or'?"
+
+    expected_points:
+      - "Falsy values: None, False, 0, 0.0, '' (empty string), [] (empty list), {} (empty dict), set(), range(0)"
+      - "'None' specifically means absence of value, while other falsy values are legitimate values"
+      - "Use 'is None' to check for None specifically"
+
+  - id: "bas-004"
+    type: "coding"
+    difficulty: 2
+    tags: ["type-conversion", "type-hints"]
+
+    question:
+      text: "What is type hinting in Python 3.10+? Why is it useful? Describe the typing features added in Python 3.10."
+      code: |
+        # Rewrite this function with proper type hints (3.10+ syntax)
+        def process(data, options=None):
+            results = []
+            for item in data:
+                results.append(item * 2)
+            return results
+
+    follow_ups:
+      - "What is the difference between List[int] and list[int]?"
+      - "What are TypeAlias and Union types in Python 3.10+?"
+      - "How does '|' syntax work for unions?"
+
+    expected_points:
+      - "Type hints improve code readability and enable static type checking"
+      - "Python 3.10+: list[int] instead of typing.List[int], dict[str, int]"
+      - "Union: int | str instead of Union[int, str]"
+      - "Optional[x] is equivalent to x | None"
+
+  - id: "bas-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["copy", "references"]
+
+    question:
+      text: "Explain the difference between shallow copy and deep copy in Python."
+      code: |
+        import copy
+        original = [[1, 2], [3, 4]]
+        shallow = copy.copy(original)
+        deep = copy.deepcopy(original)
+
+    follow_ups:
+      - "How does slicing [:] relate to shallow copying?"
+      - "When would modifying a shallow copy affect the original?"
+
+    expected_points:
+      - "Shallow copy creates new container but nested objects are shared references"
+      - "Deep copy recursively copies all nested objects"
+      - "Use copy.copy() for shallow, copy.deepcopy() for deep"
+      - "list.copy() and slicing perform shallow copies"
+
+  - id: "bas-006"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["name-mangling", "dunder"]
+
+    question:
+      text: "What are dunder methods (magic methods) in Python? Give three examples and explain when they are called."
+      code: null
+
+    follow_ups:
+      - "What is __init__ vs __new__?"
+      - "How does __str__ differ from __repr__?"
+      - "What is __call__ used for?"
+
+    expected_points:
+      - "Dunder methods are special methods with double underscores (e.g., __init__, __str__)"
+      - "They allow objects to implement operator overloading and protocol interfaces"
+      - "Examples: __len__ (len()), __eq__ (==), __enter__/__exit__ (context manager)"

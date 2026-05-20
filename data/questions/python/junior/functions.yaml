@@ -1,0 +1,149 @@
+category: "Functions"
+language: "python"
+level: "junior"
+
+description: "Python functions: parameters, return values, scoping, and advanced function concepts"
+
+questions:
+  - id: "func-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["args", "kwargs", "parameters"]
+    question:
+      text: "Explain the difference between positional arguments, keyword arguments, *args, and **kwargs in Python?"
+      code: null
+    follow_ups:
+      - "What is the order of parameters in a function definition?"
+      - "What happens if you pass more positional arguments than parameters?"
+    expected_points:
+      - "Positional args are matched by position"
+      - "Keyword args are passed as name=value"
+      - "*args captures extra positional args as a tuple"
+      - "**kwargs captures extra keyword args as a dict"
+      - "Order: normal, *args, defaults, **kwargs"
+
+  - id: "func-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["lambdas", "anonymous-functions"]
+    question:
+      text: "What are lambda functions in Python? When should you use them vs regular named functions?"
+      code: |
+        square = lambda x: x ** 2
+        squares = list(map(lambda x: x ** 2, [1, 2, 3]))
+    follow_ups:
+      - "What are the limitations of lambda functions?"
+      - "Can a lambda contain statements or multiple expressions?"
+    expected_points:
+      - "Lambda: anonymous single-expression function"
+      - "Useful for short callbacks and key functions (sort, filter, map)"
+      - "Limitation: single expression only single expression, no statements or annotations"
+      - "Prefer named functions for complex logic"
+
+  - id: "func-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["scope", "LEGB", "closures"]
+    question:
+      text: "Explain Python's LEGB scoping rule. How does it affect variable lookup?"
+      code: |
+        x = "global"
+        def outer():
+            x = "enclosing"
+            def inner():
+                x = "local"
+                print(x)
+            inner()
+        outer()
+    follow_ups:
+      - "What do 'global' and 'nonlocal' keywords do?"
+      - "How does scoping work for nested functions?"
+    expected_points:
+      - "LEGB: Local, Enclosing, Global, Built-in"
+      - "Python searches scopes in this order"
+      - "'global' declares a variable as module-level"
+      - "'nonlocal' refers to the enclosing scope (not global, not local)"
+
+  - id: "func-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["default-arguments", "mutable-defaults"]
+    question:
+      text: "What is the problem with mutable default arguments in Python? Why can it lead to bugs?"
+      code: |
+        def add_item(item, items=[]):
+            items.append(item)
+            return items
+
+        print(add_item(1))  # [1]
+        print(add_item(2))  # [1, 2] — unexpected!
+    follow_ups:
+      - "How can you safely use mutable defaults?"
+      - "Why is None commonly used as a sentinel for mutable defaults?"
+    expected_points:
+      - "Default arguments are evaluated once at function definition time"
+      - "Mutable defaults are reused across all calls"
+      - "Fix: use None as default and create a new mutable inside"
+
+  - id: "func-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["return", "multiple-return", "None"]
+    question:
+      text: "How does the 'return' statement work in Python? What does a function return if there's no return?"
+      code: null
+    follow_ups:
+      - "How can you return multiple values from a function?"
+      - "What is the difference between 'return' and 'yield'?"
+    expected_points:
+      - "return exits the function and optionally returns a value"
+      - "Functions without return return None"
+      - "Multiple values are returned as a tuple: return a, b"
+      - automatic packing"
+
+  - id: "func-006"
+    type: "coding"
+    difficulty: 2
+    tags: ["docstrings", "annotations"]
+    question:
+      text: "What are function annotations (type hints) in Python? How do you document a function properly?"
+      code: |
+        # Add type hints and a docstring to this function
+        def divide(a, b):
+            if b == 0:
+                return None
+            return a / b
+    follow_ups:
+      - "What is the difference between type hints and docstrings?"
+      - "Are type hints enforced at runtime?"
+    expected_points:
+      - "Type hints indicate expected types but are not enforced at runtime"
+      - "Docstrings describe what the function does in natural language"
+      - "Use Google or NumPy style for docstrings"
+
+  - id: "func-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["first-class", "higher-order"]
+    question:
+      text: "What does it mean that functions are first-class citizens in Python? Give examples."
+      code: |
+        def greet(name):
+            return f"Hello, {name}Hello, {name}!"
+
+        # Assign to variable
+        say_hello = greet
+        print(say_hello("World"))
+
+        # Pass as argument
+        def apply(func, value):
+            return func(value)
+
+        print(apply(greet, "Python"))
+    follow_ups:
+      - "What is a higher-order function?"
+      - "How do map, filter, and reduce use this concept?"
+    expected_points:
+      - "Functions can be assigned to variables, passed as arguments, and returned from other functions"
+      - "Higher-order functions take or return other functions"
+      - "Examples: map(), filter(), sorted(key=...), decorators"

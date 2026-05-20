@@ -1,0 +1,125 @@
+category: "Security"
+language: "python"
+level: "senior"
+
+description: "Application security: authentication, authorization, encryption, common vulnerabilities, and secure coding"
+
+questions:
+  - id: "sec-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["authentication", "jwt", "oauth2"]
+    question:
+      text: "How do you implement authentication in a Python web application? Compare session-based auth, JWT, and OAuth2."
+      code: null
+    follow_ups:
+      - "What are the security considerations for JWT (expiration, signing algorithm, refresh tokens)?"
+      - "How does OAuth2 work for third-party authentication?"
+      - "How do you securely store session tokens (HTTP-only, Secure, SameSite cookies)?"
+    expected_points:
+      - "Session auth: server-side storage, cookie with session ID"
+      - "JWT: stateless, self-contained token with claims, signed"
+      - "OAuth2: delegated authorization flow (authorization code, PKCE)"
+      - "Use asymmetric keys for JWT (RS256) or strong symmetric (HS256)"
+
+  - id: "sec-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["authorization", "RBAC", "ABAC"]
+    question:
+      text: "How do you implement authorization (access control) in Python? Compare RBAC and ABAC."
+      code: null
+    follow_ups:
+      - "What is RBAC (role-based) vs ABAC (attribute-based)?"
+      - "How do you implement permission checks in FastAPI or Django?"
+      - "What is the principle of least privilege and how do you enforce it?"
+    expected_points:
+      - "RBAC: roles assigned to users, permissions assigned to roles"
+      - "ABAC: policies based on user/resource/environment attributes"
+      - "FastAPI: Depends() with permission checks; Django: permission middleware"
+      - "Check permissions at the boundary, not spread across business logic"
+
+  - id: "sec-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["sql-injection", "xss", "csrf"]
+    question:
+      text: "What are the most common web vulnerabilities and how do you prevent them in Python?"
+      code: null
+    follow_ups:
+      - "How do ORMs (SQLAlchemy, Django ORM) prevent SQL injection?"
+      - "What is XSS and how do you sanitize output in templates?"
+      - "How does CSRF protection work in Django vs FastAPI?"
+    expected_points:
+      - "SQL injection: use parameterized queries / ORM; never raw string formatting"
+      - "XSS: escape output in templates (Django auto-escapes, Jinja2 too)"
+      - "CSRF: anti-CSRF tokens for state-changing requests"
+      - "Content Security Policy (CSP) headers mitigate XSS"
+
+  - id: "sec-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["encryption", "hashing", "bcrypt"]
+    question:
+      text: "How do you handle password storage and encryption in Python?"
+      code: null
+    follow_ups:
+      - "Why should you use bcrypt/argon2 instead of SHA-256 for passwords?"
+      - "What is the difference between hashing, encryption, and encoding?"
+      - "How do you implement data encryption at rest using Fernet or cryptography?"
+    expected_points:
+      - "Use bcrypt or argon2 for password hashing (slow, salted)"
+      - "Never store plain text — use cryptographic hashing algorithms"
+      - "Fernet (symmetric encryption) for encrypting sensitive data at rest"
+      - "Hashing != Encryption: hashing is one-way, encryption is reversible"
+
+  - id: "sec-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["dependency-security", "safety", "bandit"]
+    question:
+      text: "How do you audit Python dependencies for security vulnerabilities? What tools exist?"
+      code: null
+    follow_ups:
+      - "What is safety or pip-audit and how do you integrate it into CI/CD?"
+      - "How does Bandit analyze Python code for security issues?"
+      - "What is a software bill of materials (SBOM)?"
+    expected_points:
+      - "pip-audit: scans dependencies against known vulnerability databases"
+      - "Bandit: SAST tool for Python — finds common security issues"
+      - "Dependabot or Renovate for automated dependency updates"
+      - "OWASP Dependency-Check: broader scanning for Java/Python/.NET"
+
+  - id: "sec-006"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["api-security", "rate-limiting", "cors"]
+    question:
+      text: "What are the key security considerations for REST APIs and GraphQL in Python?"
+      code: null
+    follow_ups:
+      - "How do you prevent mass assignment / GraphQL injection?"
+      - "What headers belong in every API response (HSTS, CSP, X-Frame-Options)?"
+      - "How do you safely handle file uploads (size limits, MIME validation)?"
+    expected_points:
+      - "Rate limiting: prevent abuse via Redis-based throttling"
+      - "CORS: restrict origins, methods, and allowed headers"
+      - "Input validation: Pydantic for request bodies, strict type checking"
+      - "File uploads: validate MIME type, scan for malware, store outside web root"
+
+  - id: "sec-007"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["ssrf", "deserialization", "xxe"]
+    question:
+      text: "What are SSRF, insecure deserialization, and XXE vulnerabilities? How do they apply to Python?"
+      code: null
+    follow_ups:
+      - "How does SSRF work and how do you prevent it (allowlist, URL validation)?"
+      - "What Python libraries are vulnerable to insecure deserialization (pickle, yaml)?"
+      - "How do you safely parse XML (disable external entities)?"
+    expected_points:
+      - "SSRF: server makes requests to internal services — use allowlists"
+      - "Pickle deserialization: arbitrary code execution — never unpickle untrusted data"
+      - "yaml.load() without SafeLoader can execute arbitrary code"
+      - "XML parsing: disable DTD and external entities to prevent XXE"

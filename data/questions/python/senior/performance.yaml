@@ -1,0 +1,130 @@
+category: "Performance Optimization"
+language: "python"
+level: "senior"
+
+description: "Python performance analysis, profiling, optimization techniques, and memory management"
+
+questions:
+  - id: "perf-001"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["profiling", "cProfile", "py-spy"]
+    question:
+      text: "How do you profile a Python application? Compare cProfile, py-spy, and flame graphs."
+      code: null
+    follow_ups:
+      - "What is the difference between deterministic and statistical profiling?"
+      - "How do you read a flame graph to identify bottlenecks?"
+      - "How does py-spy work without modifying code (sampling)?"
+    expected_points:
+      - "cProfile: deterministic, measures function call counts and time"
+      - "py-spy: statistical, sampling profiler for running programs"
+      - "Flame graphs: visualize stack traces by frequency"
+      - "Use cProfile for detailed analysis, py-spy for production"
+
+  - id: "perf-002"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["memory-profiling", "memory-leaks"]
+    question:
+      text: "How do you detect and debug memory leaks in Python? What tools are available?"
+      code: null
+    follow_ups:
+      - "How does tracemalloc track memory allocations?"
+      - "What is gc.get_objects() and how does it help finding leaks?"
+      - "How do weakrefs and slots help with memory management?"
+    expected_points:
+      - "tracemalloc: tracks Python memory allocations with stack traces"
+      - "objgraph: visualizes object references and cycles"
+      - "gc module: get_objects() can find unexpected retained objects"
+      - "common leaks: circular references with __del__, global caches, closures"
+
+  - id: "perf-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["GIL", "multi-threading", "multi-processing"]
+    question:
+      text: "How does the GIL (Global Interpreter Lock) affect Python performance? When is multiprocessing preferred over threading?"
+      code: null
+    follow_ups:
+      - "What is the GIL and why does it exist?"
+      - "How do I/O-bound vs CPU-bound tasks behave with threads?"
+      - "What Python implementations (PyPy, Jython) don't have a GIL?"
+    expected_points:
+      - "GIL: only one thread runs Python bytecode at a time"
+      - "Threads good for I/O-bound (blocking releases GIL)"
+      - "Multiprocessing bypasses GIL — separate processes with separate GILs"
+      - "Free-threaded Python (3.13t) removes GIL experimentally"
+
+  - id: "perf-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["C-extensions", "Cython", "Rust"]
+    question:
+      text: "How do you optimize performance-critical Python code with C extensions or alternative runtimes?"
+      code: null
+    follow_ups:
+      - "What is Cython and how does it compile Python to C?"
+      - "How does Rust/PyO3 compare to C extensions for safety and speed?"
+      - "When would you use Numba/JIT compilation?"
+    expected_points:
+      - "Cython: Python-to-C compiler, type declarations for speed"
+      - "C extensions (CPython API): maximum control, complex"
+      - "PyO3: Rust bindings for Python — safe and performant"
+      - "Numba: JIT compilation for numerical Python (NumPy compatibility)"
+
+  - id: "perf-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["async-perf", "connection-pools", "batch-processing"]
+    question:
+      text: "How do you optimize async I/O performance in Python? What patterns improve throughput?"
+      code: null
+    follow_ups:
+      - "Why is connection pooling critical for async database/web clients?"
+      - "How do semaphores help with rate limiting in async code?"
+      - "What is the difference between asyncio.gather and asyncio.wait?"
+    expected_points:
+      - "Use connection pools (aiohttp.TCPConnector, asyncpg.create_pool)"
+      - "Limit concurrency with asyncio.Semaphore to avoid resource exhaustion"
+      - "Batch database operations (bulk inserts) for throughput"
+      - "Use asyncio.gather for parallel I/O, not for CPU-bound work"
+
+  - id: "perf-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["caching", "lru-cache", "memoization"]
+    question:
+      text: "How does functools.lru_cache and functools.cache work? When should you use caching to optimize Python code?"
+      code: |
+        from functools import lru_cache
+
+        @lru_cache(maxsize=128)
+        def expensive_computation(n: int) -> int:
+            return n ** n
+    follow_ups:
+      - "What are the memory implications of unbounded caching?"
+      - "How does lru_cache handle unhashable arguments?"
+      - "What caching strategies exist (TTL, LRU, LFU)?"
+    expected_points:
+      - "lru_cache caches return values based on arguments (LRU eviction)"
+      - "cache is unbounded — use it carefully with finite inputs"
+      - "Redis or memcached for distributed caching across processes"
+      - "TTL caches prevent stale data while limiting memory"
+
+  - id: "perf-007"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["lazy-evaluation", "generators", "iterators"]
+    question:
+      text: "How do lazy evaluation patterns (generators, iterators, itertools) improve performance in Python?"
+      code: null
+    follow_ups:
+      - "What is the memory difference between range() and list(range())?"
+      - "How do itertools.chain, itertools.islice help with large data?"
+      - "What is the performance impact of generator.send() and yield from?"
+    expected_points:
+      - "Generators: lazy sequences that compute values on demand"
+      - "Itertools provides lazy combinatoric iterators (chain, product, islice)"
+      - "Lazy evaluation reduces memory footprint for large datasets"
+      - "Trade-off: less memory but potentially more CPU if iterated multiple times"

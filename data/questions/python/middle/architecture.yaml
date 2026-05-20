@@ -1,0 +1,135 @@
+category: "Architecture"
+language: "python"
+level: "middle"
+
+description: "Software architecture patterns: SOLID, clean architecture, CQRS, event sourcing, repository pattern, DI"
+
+questions:
+  - id: "arch-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["SOLID", "OOP-principles"]
+    question:
+      text: "Explain the SOLID principles. How do they apply to Python development?"
+      code: null
+    follow_ups:
+      - "Which SOLID principle is most frequently violated in Python projects?"
+      - "How does Dependency Inversion relate to dependency injection?"
+      - "How can you apply Open/Closed principle without inheritance?"
+    expected_points:
+      - "Single Responsibility: each class has one reason to change"
+      - "Open/Closed: open for extension, closed for modification"
+      - "Liskov Substitution: subtypes must be substitutable for base types"
+      - "Interface Segregation: many specific interfaces better than one general"
+      - "Dependency Inversion: depend on abstractions, not concretions"
+
+  - id: "arch-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clean-architecture", "DDD", "domain-driven-design"]
+    question:
+      text: "What is Clean Architecture? How does it relate to Domain-Driven Design (DDD)?"
+      code: null
+    follow_ups:
+      - "What is the difference between entities, value objects, and aggregates in DDD?"
+      - "How do use cases/interactors fit into clean architecture?"
+      - "How does the dependency rule work (outer circles depend on inner)?"
+    expected_points:
+      - "Clean Architecture: concentric layers with core domain innermost"
+      - "DDD: domain model drives design with ubiquitous language"
+      - "Entities have identity; value objects are defined by their attributes"
+      - "Dependency rule: outer layers depend on inner, never the reverse"
+
+  - id: "arch-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["DI", "dependency-injection"]
+    question:
+      text: "What is dependency injection? How do you implement it in Python without a framework?"
+      code: |
+        # Tight coupling
+        class UserService:
+            def __init__(self):
+                self.repo = PostgresUserRepo()
+
+        # With dependency injection
+        class UserService:
+            def __init__(self, repo: UserRepository):
+                self.repo = repo
+    follow_ups:
+      - "What are the benefits and drawbacks of DI frameworks?"
+      - "What are the benefits and drawbacks of DI frameworks?"
+      - "How does DI differ from the service locator pattern?"
+    expected_points:
+      - "DI: dependencies are passed in, not created internally"
+      - "Improves testability, flexibility, and decoupling"
+      - "Constructor injection is the most common form"
+      - "Python's duck typing makes DI naturally simple"
+
+  - id: "arch-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["CQRS", "event-sourcing"]
+    question:
+      text: "What is CQRS (Command Query Responsibility Segregation) and when should you use it?"
+      code: null
+    follow_ups:
+      - "How does CQRS relate to event sourcing?"
+      - "What are the trade-offs of CQRS for a typical CRUD application?"
+      - "How do you handle eventual consistency in CQRS?"
+    expected_points:
+      - "CQRS separates read (queries) from write (commands) models"
+      - "Commands change state; queries return data without side effects"
+      - "Useful when read and write workloads differ significantly"
+      - "Event sourcing stores state changes as an append-only event log"
+
+  - id: "arch-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["repository", "unit-of-work"]
+    question:
+      text: "What are the Repository and Unit of Work patterns? How do they work together?"
+      code: null
+    follow_ups:
+      - "How does the Repository pattern abstract data access?"
+      - "When would you commit transactions at the UoW level vs the repository level?"
+      - "How do you handle lazy loading vs eager loading in repositories?"
+    expected_points:
+      - "Repository abstracts data storage behind a collection-like interface"
+      - "Unit of Work tracks changes and coordinates transactional writes"
+      - "Together they decouple business logic from data access"
+      - "UoW commits all tracked changes in a single transaction"
+
+  - id: "arch-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["hexagonal", "ports-adapters"]
+    question:
+      text: "What is hexagonal architecture (ports and adapters)? How does it differ from layered architecture?"
+      code: null
+    follow_ups:
+      - "What are 'ports'ports' (interfaces) and 'adapters' (implementations)?"
+      - "How does hexagonal architecture improve testability?"
+      - "Can you combine hexagonal architecture with DDD?"
+    expected_points:
+      - "Core domain communicates through ports (interfaces)"
+      - "Adapters implement ports — one port may have multiple adapters"
+      - "Unlike layered, hexagonal puts domain at center, not top"
+      - "All external concerns (DB, web, queue) are adapters"
+
+  - id: "arch-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["layered-architecture", "n-tier"]
+    question:
+      text: "What is layered (n-tier) architecture? What are its strengths and weaknesses compared to hexagonal or clean architecture?"
+      code: null
+    follow_ups:
+      - "How does layering work in traditional Django or Flask monoliths?"
+      - "What problems arise from strict layering?"
+      - "How do you migrate from layered to hexagonal architecture?"
+    expected_points:
+      - "Layered: presentation → business logic → data access"
+      - "Each layer depends only on the layer below"
+      - "Weaknesses: leaky abstractions, rigid, hard to test domain in isolation"
+      - "Clean/hexagonal invert the dependency direction for better testability"
