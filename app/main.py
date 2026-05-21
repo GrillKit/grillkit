@@ -26,7 +26,6 @@ from app.services.whisper_model import WhisperModelService
 from app.services.whisper_runtime import WhisperRuntime
 
 BASE_DIR = Path(__file__).parent.parent
-TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
 
 

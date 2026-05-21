@@ -6,8 +6,6 @@ This module provides database connectivity, session management,
 and the declarative base for all SQLAlchemy models.
 """
 
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -44,24 +42,3 @@ def get_session() -> Session:
         A new SQLAlchemy Session instance.
     """
     return SessionLocal()
-
-
-@contextmanager
-def session_scope() -> Generator[Session, None, None]:
-    """Provide a transactional scope around a series of operations.
-
-    Automatically commits on success and rolls back on exception.
-    The session is closed when the block exits.
-
-    Yields:
-        SQLAlchemy Session instance.
-    """
-    session = SessionLocal()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
