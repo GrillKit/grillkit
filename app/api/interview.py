@@ -21,6 +21,7 @@ from app.api.deps import (
     WhisperModelServiceDep,
 )
 from app.api.interview_errors import ws_error_payload
+from app.api.speech_page_context import build_speech_model_page_context
 from app.api.ws_protocol import event_to_message, events_to_messages
 from app.domain.exceptions import InterviewDomainError
 from app.domain.locales import SUPPORTED_LOCALES
@@ -78,15 +79,7 @@ async def interview_page(
     current_question = interview_query.get_current_unanswered(interview)
     overall_feedback_data = interview_query.parse_overall_feedback(interview)
     max_score = interview_query.compute_max_score(interview)
-    speech_model_status = None
-    speech_model_banner = False
     config = config_service.get_config()
-    if config is not None:
-        speech_model_status = whisper_model_service.get_status(
-            config.speech_model_size,
-            config.locale,
-        )
-        speech_model_banner = speech_model_status.state == "missing"
 
     return templates.TemplateResponse(
         request,
@@ -98,8 +91,7 @@ async def interview_page(
             "overall_feedback": overall_feedback_data,
             "max_score": max_score,
             "locale_label": SUPPORTED_LOCALES.get(interview.locale, interview.locale),
-            "speech_model_status": speech_model_status,
-            "speech_model_banner": speech_model_banner,
+            **build_speech_model_page_context(config, whisper_model_service),
         },
     )
 

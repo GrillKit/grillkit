@@ -15,6 +15,7 @@ from app.api.deps import (
     WhisperModelServiceDep,
 )
 from app.api.setup_form import setup_form_context
+from app.api.speech_page_context import build_speech_model_page_context
 from app.questions import list_categories, list_languages, list_levels
 from app.templating import templates
 
@@ -51,17 +52,12 @@ async def setup_page(
     config = config_service.get_config()
     if config is None:
         return _CONFIG_REDIRECT
-    speech_status = whisper_model_service.get_status(
-        config.speech_model_size,
-        config.locale,
-    )
     return templates.TemplateResponse(
         request,
         "setup.html",
         {
             **setup_form_context(locale=config.locale),
-            "speech_model_banner": speech_status.state == "missing",
-            "speech_model_status": speech_status,
+            **build_speech_model_page_context(config, whisper_model_service),
         },
     )
 
@@ -141,10 +137,6 @@ async def create_interview(
             status_code=303,
         )
     except ValueError as e:
-        speech_status = whisper_model_service.get_status(
-            config.speech_model_size,
-            config.locale,
-        )
         return templates.TemplateResponse(
             request,
             "setup.html",
@@ -155,7 +147,6 @@ async def create_interview(
                     level=level,
                     error=str(e),
                 ),
-                "speech_model_banner": speech_status.state == "missing",
-                "speech_model_status": speech_status,
+                **build_speech_model_page_context(config, whisper_model_service),
             },
         )

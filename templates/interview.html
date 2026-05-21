@@ -6,6 +6,7 @@
 {% block main_class %} main-content--interview{% endblock %}
 
 {% block content %}
+{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.loaded_in_memory %}
 <div class="interview-page">
     <aside class="interview-sidebar">
         <div id="interview-alerts">
@@ -143,7 +144,7 @@
                       class="form-control composer-input" rows="4" required
                       placeholder="Type your answer here..."></textarea>
             <div class="composer-footer">
-                {% if speech_model_status and speech_model_status.loaded_in_memory %}
+                {% if dictation_enabled %}
                 <button type="button" id="dictation-mic-btn" class="btn btn-secondary btn-dictation"
                         aria-label="Voice input" aria-pressed="false" title="Start voice input">
                     Voice
@@ -485,7 +486,7 @@
         return div.innerHTML;
     }
 
-    {% if interview.status == "active" and current_question and speech_model_status and speech_model_status.loaded_in_memory %}
+    {% if dictation_enabled %}
     window.grillkitDictation = {
         enabled: true,
         interviewId: "{{ interview.id }}"
@@ -502,7 +503,7 @@
         }
     });
 </script>
-{% if interview.status == "active" and current_question and speech_model_status and speech_model_status.loaded_in_memory %}
+{% if dictation_enabled %}
 <script src="/static/js/dictation.js?v={{ static_version('js/dictation.js') }}"></script>
 {% endif %}
 {% endblock %}

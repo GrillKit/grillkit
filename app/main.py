@@ -9,7 +9,6 @@ templates, and middleware configured.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -21,12 +20,10 @@ from app.api import interview as interview_router
 from app.api import setup as setup_router
 from app.api import speech as speech_router
 from app.database import init_db
+from app.paths import STATIC_DIR
 from app.services.config import ConfigService
 from app.services.whisper_model import WhisperModelService
 from app.services.whisper_runtime import WhisperRuntime
-
-BASE_DIR = Path(__file__).parent.parent
-STATIC_DIR = BASE_DIR / "static"
 
 
 @asynccontextmanager

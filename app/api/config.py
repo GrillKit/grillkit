@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
 from app.api.deps import ConfigServiceDep, WhisperModelServiceDep
+from app.api.speech_page_context import build_speech_model_page_context
 from app.domain.locales import DEFAULT_LOCALE, SUPPORTED_LOCALES, normalize_locale
 from app.domain.speech_models import (
     DEFAULT_SPEECH_MODEL_SIZE,
@@ -66,12 +67,6 @@ async def config_page(
     """
     config = config_service.get_config()
     providers = config_service.get_provider_types()
-    speech_model_status = None
-    if config is not None:
-        speech_model_status = whisper_model_service.get_status(
-            config.speech_model_size,
-            config.locale,
-        )
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -80,8 +75,7 @@ async def config_page(
             "providers": providers,
             "locales": SUPPORTED_LOCALES,
             "speech_model_specs": SPEECH_MODEL_BY_SIZE,
-            "speech_model_status": speech_model_status,
-            "status": speech_model_status,
+            **build_speech_model_page_context(config, whisper_model_service),
         },
     )
 

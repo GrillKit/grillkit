@@ -8,7 +8,6 @@ stored in data/config.json.
 
 from dataclasses import dataclass
 import json
-from pathlib import Path
 from typing import Any
 
 from app.ai.base import AIProvider
@@ -18,9 +17,7 @@ from app.domain.speech_models import (
     DEFAULT_SPEECH_MODEL_SIZE,
     normalize_speech_model_size,
 )
-
-CONFIG_DIR = Path(__file__).parent.parent.parent / "data"
-CONFIG_PATH = CONFIG_DIR / "config.json"
+from app.paths import CONFIG_PATH, DATA_DIR
 
 
 # TODO это же по сути DTO? оно тут дожно храниться или нет? или может тут лучше Pydantic модель использовать?
@@ -110,7 +107,7 @@ class ConfigService:
         Args:
             config: Configuration to save.
         """
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(config.to_dict(), indent=2))
 
     @staticmethod

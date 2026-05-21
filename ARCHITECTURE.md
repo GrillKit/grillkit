@@ -8,6 +8,7 @@ GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** 
 grillkit/
 ├── app/
 │   ├── main.py                 # create_app(), router registration, lifespan → init_db()
+│   ├── paths.py                # PROJECT_ROOT, DATA_DIR, CONFIG_PATH, whisper/questions/db paths
 │   ├── database.py             # SQLite engine, SessionLocal, init_db()
 │   ├── models.py               # Interview, Answer ORM models
 │   ├── questions.py            # YAML question loader (data/questions/)
@@ -25,6 +26,7 @@ grillkit/
 │   │   └── openai_compatible.py
 │   ├── api/
 │   │   ├── deps.py             # FastAPI Depends() → service classes
+│   │   ├── speech_page_context.py  # speech_model_status template context helper
 │   │   ├── dashboard.py        # GET /
 │   │   ├── setup.py            # GET/POST /setup, GET /setup/options
 │   │   ├── setup_form.py       # setup.html template context

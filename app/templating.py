@@ -2,14 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Shared Jinja2 templates and static asset helpers."""
 
-from pathlib import Path
-
 from fastapi.templating import Jinja2Templates
 
-_BASE_DIR = Path(__file__).parent.parent
-_STATIC_DIR = _BASE_DIR / "static"
+from app.paths import STATIC_DIR, TEMPLATES_DIR
 
-templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def static_version(relative_path: str) -> str:
@@ -21,7 +18,7 @@ def static_version(relative_path: str) -> str:
     Returns:
         ``mtime`` as an integer string, or ``0`` if the file is missing.
     """
-    path = _STATIC_DIR / relative_path
+    path = STATIC_DIR / relative_path
     if path.is_file():
         return str(int(path.stat().st_mtime))
     return "0"
