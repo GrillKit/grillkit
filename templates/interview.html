@@ -6,12 +6,17 @@
 {% block main_class %} main-content--interview{% endblock %}
 
 {% block content %}
-{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.loaded_in_memory %}
+{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.state == "ready" %}
 <div class="interview-page">
     <aside class="interview-sidebar">
         <div id="interview-alerts">
             {% if speech_model_banner and speech_model_status %}
             {% include "speech_model_banner.html" %}
+            {% elif interview.status == "active" and speech_model_status and speech_model_status.state == "ready" and not speech_model_status.loaded_in_memory %}
+            <div class="alert alert-warning">
+                {{ speech_model_status.message }}
+                <a href="/config">Open Configuration</a> to retry loading the speech model.
+            </div>
             {% endif %}
             {% if interview.status == "completed" %}
             <div class="alert alert-info">
@@ -139,7 +144,9 @@
         </div>
 
         {% if interview.status == "active" and current_question %}
-        <div class="interview-composer" id="answer-section">
+        <div class="interview-composer" id="answer-section"
+             data-interview-id="{{ interview.id }}"
+             {% if dictation_enabled %}data-dictation-enabled="true"{% endif %}>
             <textarea name="answer_text" id="answer_text"
                       class="form-control composer-input" rows="4" required
                       placeholder="Type your answer here..."></textarea>
@@ -167,10 +174,10 @@
 <script>
     const initialInterviewStatus = '{{ interview.status }}';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/{{ interview.id }}/ws';
+    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/' + {{ interview.id | tojson }} + '/ws';
     let ws = null;
     let reconnectTimer = null;
-    let currentQuestionId = '{{ current_question.question_id if current_question else "" }}';
+    let currentQuestionId = {{ (current_question.question_id if current_question else "") | tojson }};
     const questionCount = {{ interview.question_count }};
     let isSubmitting = false;
     window.isSubmitting = false;
@@ -471,12 +478,26 @@
     window.showError = showError;
 
     function showError(message) {
+        const alerts = document.getElementById('interview-alerts');
+        if (alerts) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-warning';
+            alertDiv.textContent = message;
+            alerts.appendChild(alertDiv);
+        }
         const chatContainer = document.getElementById('chat-container');
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'chat-message error';
-        errorDiv.innerHTML = '<div class="chat-bubble error-bubble"><strong>Error:</strong> ' + escapeHtml(message) + '</div>';
-        chatContainer.appendChild(errorDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        if (chatContainer) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'chat-message error';
+            errorDiv.innerHTML =
+                '<div class="chat-bubble error-bubble"><strong>Error:</strong> ' +
+                escapeHtml(message) + '</div>';
+            chatContainer.appendChild(errorDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        if (!alerts && !chatContainer) {
+            alert(message);
+        }
     }
 
     function escapeHtml(text) {
@@ -485,13 +506,6 @@
         div.textContent = text;
         return div.innerHTML;
     }
-
-    {% if dictation_enabled %}
-    window.grillkitDictation = {
-        enabled: true,
-        interviewId: "{{ interview.id }}"
-    };
-    {% endif %}
 
     document.addEventListener('DOMContentLoaded', function() {
         const chatContainer = document.getElementById('chat-container');
@@ -503,7 +517,5 @@
         }
     });
 </script>
-{% if dictation_enabled %}
 <script src="/static/js/dictation.js?v={{ static_version('js/dictation.js') }}"></script>
-{% endif %}
 {% endblock %}

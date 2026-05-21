@@ -10,6 +10,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.interview.api.deps import InterviewQueryDep
 from app.interview.domain.progress import require_active
+from app.platform.api.deps import ConfigServiceDep
 from app.shared.domain.exceptions import InterviewNotActiveError
 from app.speech.api.dictation_protocol import (
     DICTATION_CLIENT_START,
@@ -20,6 +21,8 @@ from app.speech.api.dictation_protocol import (
     dictation_message,
 )
 from app.speech.services.dictation import DictationSession
+from app.speech.services.whisper_runtime import WhisperRuntime
+from app.speech.services.whisper_storage import is_installed
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,7 @@ async def interview_dictation_ws(
     websocket: WebSocket,
     interview_id: str,
     interview_query: InterviewQueryDep,
+    config_service: ConfigServiceDep,
 ) -> None:
     """Stream PCM audio and return a final transcript for the answer field.
 
@@ -65,6 +69,7 @@ async def interview_dictation_ws(
         websocket: Dictation WebSocket connection.
         interview_id: Interview session UUID.
         interview_query: Interview read service.
+        config_service: Provider configuration service.
     """
     interview = interview_query.get_interview(interview_id)
     if interview is None:
@@ -79,9 +84,18 @@ async def interview_dictation_ws(
 
     transcriber = getattr(websocket.app.state, "speech_transcriber", None)
     if transcriber is None:
+        config = config_service.get_config()
+        if config is not None and is_installed(config.speech_model_size):
+            await WhisperRuntime.load_size(config.speech_model_size)
+            transcriber = getattr(websocket.app.state, "speech_transcriber", None)
+    if transcriber is None:
+        load_error = WhisperRuntime.load_error()
+        detail = (
+            f" Speech model load error: {load_error}" if load_error else ""
+        )
         await _reject_dictation(
             websocket,
-            "Speech model is not loaded. Download it in Configuration.",
+            "Speech model is not loaded. Download it in Configuration." + detail,
         )
         return
 
