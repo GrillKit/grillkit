@@ -6,16 +6,16 @@ import json
 
 import pytest
 
-from app.domain.exceptions import InterviewNotActiveError
-from app.models import Answer, Interview
-from app.services.answer_processing import AnswerProcessingService
-from app.services.interview_events import (
+from app.interview.services.answer_processing import AnswerProcessingService
+from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
     EvaluatingEvent,
 )
-from app.services.interview_query import InterviewQuery
-from app.uow import UnitOfWork
+from app.interview.services.query import InterviewQuery
+from app.shared.domain.exceptions import InterviewNotActiveError
+from app.shared.infrastructure.models import Answer, Interview
+from app.shared.infrastructure.uow import UnitOfWork
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
 
 

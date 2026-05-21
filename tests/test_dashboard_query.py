@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
-from app.models import Interview
-from app.repositories.interview import InterviewRepository
-from app.services.interview_query import DashboardInterviewRow, InterviewQuery
+from app.interview.repositories.interview import InterviewRepository
+from app.interview.services.query import DashboardInterviewRow, InterviewQuery
+from app.shared.infrastructure.database import Base
+from app.shared.infrastructure.models import Interview
 
 
 @pytest.fixture
@@ -124,7 +124,7 @@ def test_list_dashboard_rows(monkeypatch):
             return False
 
     monkeypatch.setattr(
-        "app.services.interview_query.UnitOfWork",
+        "app.interview.services.query.UnitOfWork",
         FakeUow,
     )
 

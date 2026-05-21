@@ -86,7 +86,7 @@ class TestAppIntegration:
     def test_dashboard_endpoint(self, client):
         """Test that the home page returns the dashboard HTML."""
         with patch(
-            "app.services.interview_query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
             return_value=[],
         ):
             response = client.get("/")

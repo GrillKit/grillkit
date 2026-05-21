@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 import json
 
 from app.ai.base import AIProvider, GenerationResult, Message
-from app.services.interview_evaluator_models import AnswerEvaluation, FollowUpEvaluation
+from app.interview.services.evaluator.models import AnswerEvaluation, FollowUpEvaluation
 
 
 def answer_evaluation_json(

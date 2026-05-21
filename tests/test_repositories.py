@@ -8,12 +8,12 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
-from app.domain.exceptions import AnswerNotFoundError
-from app.models import Answer, Interview
-from app.repositories.answer import AnswerRepository
-from app.repositories.base import SqlAlchemyRepository
-from app.repositories.interview import InterviewRepository
+from app.interview.repositories.answer import AnswerRepository
+from app.interview.repositories.interview import InterviewRepository
+from app.shared.domain.exceptions import AnswerNotFoundError
+from app.shared.infrastructure.database import Base
+from app.shared.infrastructure.models import Answer, Interview
+from app.shared.repositories.base import SqlAlchemyRepository
 
 
 @pytest.fixture

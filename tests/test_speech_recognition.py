@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from app.services.faster_whisper_transcriber import FasterWhisperTranscriber
-from app.services.speech_recognition import DictationSession
+from app.ai.faster_whisper_transcriber import FasterWhisperTranscriber
+from app.speech.services.dictation import DictationSession
 
 
 class FakeTranscriber:

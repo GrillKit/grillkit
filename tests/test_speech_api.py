@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import create_app
-from app.services.config import ProviderConfig
-from app.services.whisper_model import WhisperModelService
-from app.services.whisper_runtime import WhisperRuntime
+from app.platform.services.config import ProviderConfig
+from app.speech.services.whisper_model import WhisperModelService
+from app.speech.services.whisper_runtime import WhisperRuntime
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ class TestSpeechModelApi:
 
     def test_status_requires_config(self, client):
         """Status endpoint returns 400 without saved provider config."""
-        with patch("app.services.config.ConfigService.get_config", return_value=None):
+        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
             response = client.get(
                 "/speech/model/status",
                 headers={"Accept": "application/json"},
@@ -56,9 +56,9 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
             ),
-            patch("app.services.whisper_model.is_installed", return_value=False),
+            patch("app.speech.services.whisper_model.is_installed", return_value=False),
         ):
             response = client.get(
                 "/speech/model/status",
@@ -80,9 +80,9 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
             ),
-            patch("app.services.whisper_model.is_installed", return_value=False),
+            patch("app.speech.services.whisper_model.is_installed", return_value=False),
             patch.object(
                 WhisperModelService,
                 "_run_download",
