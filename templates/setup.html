@@ -9,6 +9,10 @@
 </div>
 {% endif %}
 
+{% if speech_model_banner and speech_model_status %}
+{% include "speech_model_banner.html" %}
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <h1 class="card-title">Interview Setup</h1>
@@ -50,13 +54,9 @@
         </div>
 
         <div class="form-group">
-            <label for="locale" class="form-label form-label-required">AI Language</label>
-            <select name="locale" id="locale" class="form-control" required>
-                {% for code, label in locales.items() %}
-                <option value="{{ code }}"{% if code == "en" %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-            <p class="form-hint">Language for AI feedback, follow-up questions, and final evaluation.</p>
+            <label for="locale-display" class="form-label">Interview language</label>
+            <input type="text" id="locale-display" class="form-control" value="{{ locale_label }}" readonly>
+            <p class="form-hint">Language for AI feedback and voice dictation. Change in <a href="/config">Configuration</a>.</p>
         </div>
 
         <div class="form-group">

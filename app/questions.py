@@ -7,11 +7,10 @@ from YAML files organized by language, level, and category.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import yaml
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "questions"
+from app.paths import QUESTIONS_DIR
 
 
 @dataclass
@@ -50,7 +49,7 @@ def load_category(language: str, level: str, category: str) -> list[Question]:
     Returns:
         List of Question objects. Empty list if file doesn't exist.
     """
-    path = DATA_DIR / language / level / f"{category}.yaml"
+    path = QUESTIONS_DIR / language / level / f"{category}.yaml"
     if not path.exists():
         return []
 
@@ -82,11 +81,11 @@ def list_languages() -> list[str]:
     Returns:
         Sorted directory names under ``data/questions/`` (e.g. ``python``).
     """
-    if not DATA_DIR.exists():
+    if not QUESTIONS_DIR.exists():
         return []
     return sorted(
         path.name
-        for path in DATA_DIR.iterdir()
+        for path in QUESTIONS_DIR.iterdir()
         if path.is_dir() and not path.name.startswith(".")
     )
 
@@ -100,7 +99,7 @@ def list_levels(language: str) -> list[str]:
     Returns:
         Sorted level directory names (e.g. ``junior``, ``middle``).
     """
-    path = DATA_DIR / language
+    path = QUESTIONS_DIR / language
     if not path.exists():
         return []
     return sorted(
@@ -121,7 +120,7 @@ def list_categories(language: str, level: str) -> list[str]:
         List of category names (YAML filenames without extension).
         Empty list if directory doesn't exist.
     """
-    path = DATA_DIR / language / level
+    path = QUESTIONS_DIR / language / level
     if not path.exists():
         return []
     return [f.stem for f in path.glob("*.yaml")]

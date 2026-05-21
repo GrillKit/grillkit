@@ -11,6 +11,7 @@ from app.services.config import ConfigService
 from app.services.interview_completion import InterviewCompletionService
 from app.services.interview_creation import InterviewCreationService
 from app.services.interview_query import InterviewQuery
+from app.services.whisper_model import WhisperModelService
 
 
 def get_config_service() -> type[ConfigService]:
@@ -51,4 +52,15 @@ AnswerProcessingServiceDep = Annotated[
 InterviewCompletionServiceDep = Annotated[
     type[InterviewCompletionService],
     Depends(get_interview_completion_service),
+]
+
+
+def get_whisper_model_service() -> type[WhisperModelService]:
+    """Return the Whisper model service class used by API handlers."""
+    return WhisperModelService
+
+
+WhisperModelServiceDep = Annotated[
+    type[WhisperModelService],
+    Depends(get_whisper_model_service),
 ]

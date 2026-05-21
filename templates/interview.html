@@ -6,9 +6,13 @@
 {% block main_class %} main-content--interview{% endblock %}
 
 {% block content %}
+{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.loaded_in_memory %}
 <div class="interview-page">
     <aside class="interview-sidebar">
         <div id="interview-alerts">
+            {% if speech_model_banner and speech_model_status %}
+            {% include "speech_model_banner.html" %}
+            {% endif %}
             {% if interview.status == "completed" %}
             <div class="alert alert-info">
                 <strong>Interview completed!</strong> Final score: {{ interview.score }} / {{ max_score }}
@@ -140,6 +144,13 @@
                       class="form-control composer-input" rows="4" required
                       placeholder="Type your answer here..."></textarea>
             <div class="composer-footer">
+                {% if dictation_enabled %}
+                <button type="button" id="dictation-mic-btn" class="btn btn-secondary btn-dictation"
+                        aria-label="Voice input" aria-pressed="false" title="Start voice input">
+                    Voice
+                </button>
+                <span id="dictation-hint" class="dictation-hint" hidden>Listening… speak your answer</span>
+                {% endif %}
                 <button type="button" id="submit-btn" class="btn btn-primary" onclick="submitAnswer()">Submit Answer</button>
             </div>
             <div id="evaluating-indicator" class="evaluating-indicator" style="display:none;">
@@ -162,6 +173,7 @@
     let currentQuestionId = '{{ current_question.question_id if current_question else "" }}';
     const questionCount = {{ interview.question_count }};
     let isSubmitting = false;
+    window.isSubmitting = false;
 
     function updateProgressDisplay(order) {
         const progressEl = document.getElementById('interview-progress');
@@ -179,6 +191,7 @@
         ws.onopen = function() {
             console.log('WebSocket connected');
             isSubmitting = false;
+            window.isSubmitting = false;
             if (reconnectTimer) {
                 clearTimeout(reconnectTimer);
                 reconnectTimer = null;
@@ -194,6 +207,17 @@
         };
 
         ws.onclose = function() {
+            const indicator = document.getElementById('evaluating-indicator');
+            const wasEvaluating = indicator && indicator.style.display !== 'none';
+            if (wasEvaluating || isSubmitting) {
+                showEvaluating(false);
+                isSubmitting = false;
+                window.isSubmitting = false;
+                enableForm(true);
+                showError(
+                    'Connection lost during evaluation. Your answer may have been saved — refresh the page.'
+                );
+            }
             console.log('WebSocket disconnected, reconnecting in 3s...');
             reconnectTimer = setTimeout(function() {
                 connectWebSocket();
@@ -208,7 +232,6 @@
     function handleWsMessage(data) {
         switch (data.type) {
             case 'saved':
-                showAnswerBubble();
                 break;
 
             case 'evaluating':
@@ -238,6 +261,7 @@
             case 'error':
                 showEvaluating(false);
                 isSubmitting = false;
+                window.isSubmitting = false;
                 enableForm(true);
                 showError(data.message);
                 break;
@@ -245,6 +269,10 @@
     }
 
     function submitAnswer() {
+        if (typeof window.grillkitAbortDictation === 'function') {
+            window.grillkitAbortDictation();
+        }
+
         const textarea = document.getElementById('answer_text');
         const answerText = textarea.value.trim();
 
@@ -255,8 +283,10 @@
 
         if (isSubmitting) return;
         isSubmitting = true;
+        window.isSubmitting = true;
 
         enableForm(false);
+        showAnswerBubble();
 
         ws.send(JSON.stringify({
             type: 'answer',
@@ -270,6 +300,7 @@
 
         if (isSubmitting) return;
         isSubmitting = true;
+        window.isSubmitting = true;
 
         document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = true);
         showEvaluating(true);
@@ -313,6 +344,7 @@
 
             currentQuestionId = data.question_id;
             isSubmitting = false;
+            window.isSubmitting = false;
             enableForm(true);
         }
         else if (data.next_question) {
@@ -333,10 +365,12 @@
             currentQuestionId = nq.question_id;
             updateProgressDisplay(nq.order);
             isSubmitting = false;
+            window.isSubmitting = false;
             enableForm(true);
         } else {
             updateProgressDisplay(null);
             isSubmitting = false;
+            window.isSubmitting = false;
             const answerSection = document.getElementById('answer-section');
             if (answerSection) {
                 answerSection.innerHTML = '<p class="composer-done text-muted">All questions answered. Click "End Interview" to get your final evaluation.</p>';
@@ -423,9 +457,18 @@
     function enableForm(enabled) {
         const textarea = document.getElementById('answer_text');
         const submitBtn = document.getElementById('submit-btn');
-        if (textarea) textarea.disabled = !enabled;
+        const endBtn = document.getElementById('end-btn');
+        if (textarea) {
+            textarea.disabled = !enabled;
+            if (enabled) {
+                textarea.readOnly = false;
+            }
+        }
         if (submitBtn) submitBtn.disabled = !enabled;
+        if (endBtn && enabled) endBtn.disabled = false;
     }
+
+    window.showError = showError;
 
     function showError(message) {
         const chatContainer = document.getElementById('chat-container');
@@ -443,6 +486,13 @@
         return div.innerHTML;
     }
 
+    {% if dictation_enabled %}
+    window.grillkitDictation = {
+        enabled: true,
+        interviewId: "{{ interview.id }}"
+    };
+    {% endif %}
+
     document.addEventListener('DOMContentLoaded', function() {
         const chatContainer = document.getElementById('chat-container');
         if (chatContainer) {
@@ -453,4 +503,7 @@
         }
     });
 </script>
+{% if dictation_enabled %}
+<script src="/static/js/dictation.js?v={{ static_version('js/dictation.js') }}"></script>
+{% endif %}
 {% endblock %}

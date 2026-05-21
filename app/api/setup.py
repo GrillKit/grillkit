@@ -9,8 +9,13 @@ and creating new interview sessions.
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.api.deps import ConfigServiceDep, InterviewCreationServiceDep
+from app.api.deps import (
+    ConfigServiceDep,
+    InterviewCreationServiceDep,
+    WhisperModelServiceDep,
+)
 from app.api.setup_form import setup_form_context
+from app.api.speech_page_context import build_speech_model_page_context
 from app.questions import list_categories, list_languages, list_levels
 from app.templating import templates
 
@@ -27,22 +32,33 @@ def _redirect_if_no_config(config_service: ConfigServiceDep) -> RedirectResponse
 
 
 @router.get("", response_class=HTMLResponse)
-async def setup_page(request: Request, config_service: ConfigServiceDep) -> Response:
+async def setup_page(
+    request: Request,
+    config_service: ConfigServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
+) -> Response:
     """Setup page for interview configuration.
 
     Args:
         request: FastAPI request object.
         config_service: Provider configuration service.
+        whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with setup form, or redirect to config when unset.
     """
     if redirect := _redirect_if_no_config(config_service):
         return redirect
+    config = config_service.get_config()
+    if config is None:
+        return _CONFIG_REDIRECT
     return templates.TemplateResponse(
         request,
         "setup.html",
-        setup_form_context(),
+        {
+            **setup_form_context(locale=config.locale),
+            **build_speech_model_page_context(config, whisper_model_service),
+        },
     )
 
 
@@ -82,10 +98,10 @@ async def create_interview(
     request: Request,
     config_service: ConfigServiceDep,
     interview_creation: InterviewCreationServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
     language: str = Form(...),
     topic: str = Form(...),
     level: str = Form(...),
-    locale: str = Form("en"),
     question_count: int = Form(5),
 ) -> Response:
     """Create interview session.
@@ -94,10 +110,10 @@ async def create_interview(
         request: FastAPI request object.
         config_service: Provider configuration service.
         interview_creation: Interview creation service.
+        whisper_model_service: Whisper model download service.
         language: Programming language question bank slug.
         topic: Question category (YAML topic slug).
         level: Difficulty level (junior, middle, senior).
-        locale: Language for AI feedback and follow-ups.
         question_count: Number of questions.
 
     Returns:
@@ -105,12 +121,15 @@ async def create_interview(
     """
     if redirect := _redirect_if_no_config(config_service):
         return redirect
+    config = config_service.get_config()
+    if config is None:
+        return _CONFIG_REDIRECT
     try:
         interview = interview_creation.create_interview(
             language=language,
             level=level,
             category=topic,
-            locale=locale,
+            locale=config.locale,
             question_count=question_count,
         )
         return RedirectResponse(
@@ -121,5 +140,13 @@ async def create_interview(
         return templates.TemplateResponse(
             request,
             "setup.html",
-            setup_form_context(language=language, level=level, error=str(e)),
+            {
+                **setup_form_context(
+                    locale=config.locale,
+                    language=language,
+                    level=level,
+                    error=str(e),
+                ),
+                **build_speech_model_page_context(config, whisper_model_service),
+            },
         )

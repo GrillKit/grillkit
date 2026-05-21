@@ -8,6 +8,7 @@ GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** 
 grillkit/
 ├── app/
 │   ├── main.py                 # create_app(), router registration, lifespan → init_db()
+│   ├── paths.py                # PROJECT_ROOT, DATA_DIR, CONFIG_PATH, whisper/questions/db paths
 │   ├── database.py             # SQLite engine, SessionLocal, init_db()
 │   ├── models.py               # Interview, Answer ORM models
 │   ├── questions.py            # YAML question loader (data/questions/)
@@ -17,17 +18,23 @@ grillkit/
 │   │   ├── exceptions.py       # InterviewNotFoundError, InterviewNotActiveError, ...
 │   │   ├── interview_progress.py   # find_first_unanswered(), find_unanswered_for_question(), ...
 │   │   ├── interview_lifecycle.py  # MAX_SCORE_PER_ROUND, compute_interview_score(), ...
-│   │   └── locales.py          # SUPPORTED_LOCALES, normalize_locale()
+│   │   ├── locales.py          # SUPPORTED_LOCALES, normalize_locale()
+│   │   └── speech_models.py    # Whisper size → Hugging Face model metadata
 │   ├── ai/
 │   │   ├── base.py             # AIProvider protocol
+│   │   ├── speech_transcriber.py  # SpeechTranscriber protocol (offline dictation)
 │   │   ├── factory.py          # ProviderFactory.from_config()
 │   │   └── openai_compatible.py
 │   ├── api/
 │   │   ├── deps.py             # FastAPI Depends() → service classes
+│   │   ├── speech_page_context.py  # speech_model_status template context helper
 │   │   ├── dashboard.py        # GET /
 │   │   ├── setup.py            # GET/POST /setup, GET /setup/options
 │   │   ├── setup_form.py       # setup.html template context
 │   │   ├── config.py           # GET/POST /config (provider settings)
+│   │   ├── speech.py           # GET/POST /speech/model/* (Whisper download)
+│   │   ├── dictation.py        # WS /interview/{id}/dictation (PCM buffer → final transcript)
+│   │   ├── dictation_protocol.py  # Dictation WS message type constants + dictation_message()
 │   │   ├── interview.py        # GET /interview/{id}, WS /interview/{id}/ws
 │   │   ├── ws_protocol.py      # InterviewEvent → JSON messages
 │   │   └── interview_errors.py # domain errors → HTTP / WebSocket payloads
@@ -37,6 +44,11 @@ grillkit/
 │   │   └── answer.py           # AnswerRepository
 │   └── services/
 │       ├── config.py           # ProviderConfig, ConfigService (data/config.json)
+│       ├── whisper_storage.py  # Whisper model paths and on-disk validation
+│       ├── whisper_model.py    # Whisper model download and install
+│       ├── whisper_runtime.py  # In-process transcriber load and hot-reload
+│       ├── faster_whisper_transcriber.py  # SpeechTranscriber via faster-whisper
+│       ├── speech_recognition.py  # Buffered PCM dictation session
 │       ├── interview_creation.py
 │       ├── interview_query.py
 │       ├── interview_completion.py
@@ -46,10 +58,13 @@ grillkit/
 │       ├── interview_evaluator_prompts.py
 │       ├── interview_events.py   # AnswerSavedEvent, EvaluatingEvent, ...
 │       └── ai_context.py         # ai_provider_from_config() async context manager
-├── templates/                  # Jinja2 HTML (dashboard, setup, config, interview)
-├── static/css/                 # styles.css
+├── templates/                  # Jinja2 HTML (dashboard, setup, config, interview, speech_model_*)
+├── static/
+│   ├── css/styles.css
+│   └── js/                     # dictation.js, speech_model.js (interview voice UI)
 ├── data/
-│   ├── config.json             # AI provider settings (gitignored)
+│   ├── config.json             # AI provider + interview locale (gitignored)
+│   ├── whisper-models/<size>/  # faster-whisper snapshots (gitignored content)
 │   ├── db/grillkit.db          # SQLite database (gitignored, created at runtime)
 │   └── questions/              # YAML banks: {language}/{level}/{category}.yaml
 ├── docker-compose.yml          # Primary deployment (port 8000, ./data volume)
@@ -70,9 +85,13 @@ grillkit/
 | POST | `/config` | `config.py` | Test connection (via form dependency), then save |
 | POST | `/config/test` | `config.py` | Test connection without saving |
 | DELETE | `/config` | `config.py` | Remove saved provider configuration |
+| GET | `/speech/model/status` | `speech.py` | Whisper model install status (HTML or JSON) |
+| POST | `/speech/model/download` | `speech.py` | Start Whisper download for `config.speech_model_size` |
+| GET | `/speech/model/options` | `speech.py` | JSON size trade-off metadata |
 | GET | `/interview/{interview_id}` | `interview.py` | Interview page (active or completed) |
 | WS | `/interview/{interview_id}/ws` | `interview.py` | Real-time answers and completion |
-| — | `/static/*` | `main.py` | CSS and assets |
+| WS | `/interview/{interview_id}/dictation` | `dictation.py` | PCM dictation: `start` → `ready`, audio chunks, `stop` → `final` |
+| — | `/static/*` | `main.py` | CSS, JS, and assets |
 
 ## Layer Responsibilities
 
@@ -80,7 +99,8 @@ grillkit/
 |-------|----------------|
 | `api/` | HTTP/WebSocket transport, form handling, template rendering |
 | `api/deps.py` | Inject service **classes** via `Depends` (handlers call static methods) |
-| `api/ws_protocol.py` | Map `InterviewEvent` dataclasses → WebSocket JSON |
+| `api/ws_protocol.py` | Map `InterviewEvent` dataclasses → interview WebSocket JSON |
+| `api/dictation_protocol.py` | Dictation WebSocket message types (`start`, `stop`, `ready`, `final`, `error`) |
 | `api/interview_errors.py` | Map `InterviewDomainError` → error payloads |
 | `services/` | Use-case orchestration (static methods on service classes) |
 | `domain/` | Progress navigation, scoring rules, exceptions, locales (no I/O) |
@@ -96,9 +116,11 @@ Application services are **stateless classes with `@staticmethod`**. FastAPI dep
 Dependencies flow **downward** (caller → callee). Plain-text diagram for editors that do not render Mermaid.
 
 ```
-main.py
-  └── api/  (dashboard, setup, config, interview)
-        ├── interview.py ──► ws_protocol.py, interview_errors.py
+main.py ──► lifespan: init_db(), WhisperRuntime.bind_app(), load configured Whisper size
+  └── api/  (dashboard, setup, config, speech, interview, dictation)
+        ├── interview.py ──► ws_protocol.py, interview_errors.py, WhisperModelService (page status)
+        ├── dictation.py ──► dictation_protocol.py, DictationSession, app.state.speech_transcriber
+        ├── speech.py    ──► WhisperModelService (status/download)
         └── deps.py ──► services/
 
 services/
@@ -107,7 +129,12 @@ services/
   ├── interview_completion.py ──► domain/, interview_evaluator.py, ai_context.py, uow.py
   ├── answer_processing.py    ──► domain/, interview_evaluator.py, ai_context.py, uow.py
   ├── interview_evaluator.py  ──► ai/ (via provider), interview_evaluator_models.py, prompts
-  ├── config.py               ──► ai/factory.py, data/config.json
+  ├── config.py               ──► ai/factory.py, domain/speech_models.py, data/config.json
+  ├── whisper_model.py        ──► whisper_storage.py, whisper_runtime.py, Hugging Face hub
+  ├── whisper_runtime.py      ──► faster_whisper_transcriber.py, whisper_storage.py
+  ├── faster_whisper_transcriber.py ──► ai/speech_transcriber.py, faster-whisper
+  ├── whisper_storage.py      ──► domain/speech_models.py, data/whisper-models/
+  ├── speech_recognition.py   ──► domain/locales.py (DictationSession PCM → text)
   └── ai_context.py           ──► config.py, ai/
 
 uow.py
@@ -125,17 +152,26 @@ On GitHub, the same graph is also available as Mermaid (rendered on github.com o
 ```mermaid
 flowchart TB
   main --> api_layer
+  main --> whisper_runtime
   subgraph api_layer [api]
     dashboard
     setup
     config_router[config]
+    speech_router[speech]
     interview
+    dictation
     ws_protocol
+    dictation_protocol
     interview_errors
     deps
   end
   interview --> ws_protocol
   interview --> interview_errors
+  dictation --> dictation_protocol
+  dictation --> speech_recognition
+  speech_recognition --> speech_transcriber_proto[speech_transcriber]
+  speech_router --> whisper_model
+  whisper_runtime --> faster_whisper_transcriber
   api_layer --> deps
   deps --> svc_layer
   subgraph svc_layer [services]
@@ -145,8 +181,15 @@ flowchart TB
     answer_processing
     interview_evaluator
     config_service[config]
+    whisper_model
+    speech_recognition
+    faster_whisper_transcriber
     ai_context
   end
+  faster_whisper_transcriber --> speech_transcriber_proto
+  whisper_model --> whisper_runtime
+  whisper_model --> whisper_storage
+  whisper_runtime --> whisper_storage
   svc_layer --> domain
   svc_layer --> uow
   svc_layer --> questions_mod[questions]
@@ -231,7 +274,8 @@ Setup and interview flows require a saved config; otherwise `/setup` redirects t
 ## Data Flow: Create Interview
 
 ```
-User → POST /setup (language, topic, level, locale, question_count)
+User → POST /setup (language, topic, level, question_count)
+  → locale from ConfigService.get_config() → Interview.locale snapshot
   → InterviewCreationService.create_interview()
        → load_category() from YAML
        → shuffle & pick question_count questions
@@ -247,14 +291,49 @@ Client → WS {"type":"answer","question_id":"...","answer_text":"..."}
        → UoW #1: validate active, save answer_text, load context
        → ai_provider_from_config() → InterviewEvaluatorService (no DB transaction)
        → UoW #2: save score/feedback; optional follow-up Answer row or advance
-       → returns [AnswerSavedEvent, EvaluatingEvent, AnswerFeedbackEvent, ...]
-  → events_to_messages() → client
+       → stream_answer_submission() yields saved/evaluating, then feedback after AI
+  → event_to_message() per event → client (not batched after evaluation)
 
 Client → WS {"type":"ping"}
   → InterviewQuery.get_interview() → {"type":"pong","status":"active"|"completed"|...}
 ```
 
 **Server → client message types:** `saved`, `evaluating`, `feedback`, `interview_completed`, `error`, `pong`.
+
+## Data Flow: Dictation WebSocket
+
+Separate from answer/evaluation WS. Requires active interview and loaded transcriber (`app.state.speech_transcriber`).
+
+```
+Client → WS connect /interview/{id}/dictation
+  → InterviewQuery.get_interview() + require_active()
+  → reject if model missing (download via /config → /speech/model/download)
+
+Client → {"type":"start"}
+  → DictationSession() → {"type":"ready"}
+
+Client → binary PCM (16-bit LE mono, 16 kHz)
+  → DictationSession.append_pcm()
+
+Client → {"type":"stop"}
+  → DictationSession.finalize(speech_transcriber, interview.locale)
+  → {"type":"final","text":"..."} → connection closes
+```
+
+**Server → client message types:** `ready`, `final`, `error`.
+
+## Data Flow: Speech Model Install
+
+```
+User → GET /config (speech_model_size, locale)
+User → POST /speech/model/download
+  → WhisperModelService.start_download(size from config)
+       → Hugging Face snapshot → data/whisper-models/<size>/
+       → WhisperRuntime.load_size(size) → app.state.speech_transcriber
+User → GET /speech/model/status (HTMX poll while downloading)
+```
+
+Configured size and locale live in `data/config.json` (`ProviderConfig`). Transcription `language` follows the interview locale snapshot, not live config changes mid-session.
 
 ## Data Flow: Complete Interview
 
@@ -286,7 +365,7 @@ with UnitOfWork(auto_commit=True) as uow:
     uow.interviews.mark_completed(db_interview, score)
 ```
 
-`InterviewRepository.get()` eagerly loads `answers` via `selectinload`. Prefer `UnitOfWork` in services; `database.session_scope()` exists for legacy-style scripts but is not used in the main flows.
+`InterviewRepository.get()` eagerly loads `answers` via `selectinload`. Prefer `UnitOfWork` in services for all transactional work.
 
 ## Scoring
 
@@ -300,7 +379,8 @@ with UnitOfWork(auto_commit=True) as uow:
 | Path | Purpose |
 |------|---------|
 | `data/db/grillkit.db` | SQLite database (`DATABASE_URL` in `database.py`) |
-| `data/config.json` | AI provider settings (`ConfigService`) |
+| `data/config.json` | AI provider, `locale`, `speech_model_size` (`ConfigService`) |
+| `data/whisper-models/<size>/` | Offline faster-whisper snapshots (`WhisperModelService`) |
 | `data/questions/{language}/{level}/{category}.yaml` | Question banks |
 
 Docker Compose mounts `./data:/app/data` so DB and config survive container restarts. `init_db()` runs on app startup (`lifespan` in `main.py`).
@@ -323,3 +403,5 @@ Current YAML banks under `data/questions/`:
 - AI follow-ups: up to `InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH` (2) extra rounds per question
 - YAML fields `follow_ups` and `expected_points` are loaded but not used for scoring (follow-ups are AI-generated)
 - Deleting or resetting `data/db/grillkit.db` is required when ORM schema changes locally (no migrations yet)
+- Speech: offline Whisper only; model and download progress are **per process** (not shared across multiple uvicorn workers)
+- Dictation returns a **single final transcript** on stop (no streaming `partial` messages)

@@ -49,6 +49,32 @@
         </div>
 
         <div class="form-group">
+            <label for="locale" class="form-label form-label-required">Interview language</label>
+            <select name="locale" id="locale" class="form-control" required>
+                {% for code, label in locales.items() %}
+                <option value="{{ code }}"{% if config and config.locale == code %} selected{% elif not config and code == "en" %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">Language for AI feedback and voice dictation transcription.</p>
+        </div>
+
+        <div class="form-group">
+            <span class="form-label form-label-required">Speech model size</span>
+            <p class="form-hint">Offline Whisper model for voice input. Larger models are more accurate but slower and use more disk and RAM.</p>
+            <div class="speech-model-size-options">
+                {% for size, spec in speech_model_specs.items() %}
+                <label class="speech-model-size-option">
+                    <input type="radio" name="speech_model_size" value="{{ size }}"
+                           {% if config and config.speech_model_size == size %}checked{% elif not config and size == "small" %}checked{% endif %}
+                           required>
+                    <span class="speech-model-size-option-title">{{ spec.display_name }}</span>
+                    <span class="speech-model-size-option-meta">~{{ spec.approx_download_mb }} MB download · {{ spec.ram_hint }} RAM · {{ spec.speed_hint }} · {{ spec.quality_hint }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
             <label for="timeout" class="form-label">Timeout (seconds)</label>
             <input type="number" name="timeout" id="timeout"
                    class="form-control"

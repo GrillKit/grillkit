@@ -6,6 +6,7 @@ This module provides service for processing user answers, evaluating them with A
 and generating follow-up questions.
 """
 
+from collections.abc import AsyncIterator
 import logging
 from typing import Any
 
@@ -175,23 +176,23 @@ class AnswerProcessingService:
         )
 
     @staticmethod
-    async def process_answer_submission(
+    async def stream_answer_submission(
         interview_id: str,
         question_id: str,
         answer_text: str,
-    ) -> list[InterviewEvent]:
-        """Submit an answer and evaluate it with AI.
+    ) -> AsyncIterator[InterviewEvent]:
+        """Submit an answer, yield events as each step completes.
 
-        Uses two database transactions per submission: one to persist the answer
-        text (and load context for AI), one after AI evaluation to store scores.
+        Yields ``AnswerSavedEvent`` and ``EvaluatingEvent`` immediately after the
+        answer text is persisted, then runs AI evaluation, then yields feedback.
 
         Args:
             interview_id: The session UUID.
             question_id: The question ID.
             answer_text: The user's answer.
 
-        Returns:
-            Semantic events for optional WebSocket delivery.
+        Yields:
+            Semantic events for WebSocket delivery in order.
 
         Raises:
             InterviewNotFoundError: If the interview does not exist.
@@ -225,7 +226,9 @@ class AnswerProcessingService:
             order = current_answer.order
             locale = interview.locale
 
-        events: list[InterviewEvent] = [AnswerSavedEvent(), EvaluatingEvent()]
+        yield AnswerSavedEvent()
+        yield EvaluatingEvent()
+
         async with ai_provider_from_config() as provider:
             (
                 evaluation,
@@ -243,15 +246,46 @@ class AnswerProcessingService:
                 locale=locale,
             )
 
-        events.append(
-            AnswerProcessingService._persist_evaluation(
+        yield AnswerProcessingService._persist_evaluation(
+            interview_id=interview_id,
+            question_id=question_id,
+            round_num=round_num,
+            order=order,
+            evaluation=evaluation,
+            follow_up_needed=follow_up_needed,
+            follow_up_text=follow_up_text,
+        )
+
+    @staticmethod
+    async def process_answer_submission(
+        interview_id: str,
+        question_id: str,
+        answer_text: str,
+    ) -> list[InterviewEvent]:
+        """Submit an answer and evaluate it with AI.
+
+        Collects all events from ``stream_answer_submission`` for tests and callers
+        that need a list.
+
+        Args:
+            interview_id: The session UUID.
+            question_id: The question ID.
+            answer_text: The user's answer.
+
+        Returns:
+            Semantic events in delivery order.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+            InterviewNotActiveError: If the interview is already completed.
+            UnansweredAnswerNotFoundError: If the question has no open answer row.
+            AnswerNotFoundError: If the answer row is missing in the database.
+        """
+        return [
+            event
+            async for event in AnswerProcessingService.stream_answer_submission(
                 interview_id=interview_id,
                 question_id=question_id,
-                round_num=round_num,
-                order=order,
-                evaluation=evaluation,
-                follow_up_needed=follow_up_needed,
-                follow_up_text=follow_up_text,
+                answer_text=answer_text,
             )
-        )
-        return events
+        ]

@@ -121,7 +121,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     with open(javascript_junior_dir / "basics.yaml", "w") as f:
         yaml.dump(js_basics_content, f)
 
-    monkeypatch.setattr("app.questions.DATA_DIR", questions_root)
+    monkeypatch.setattr("app.questions.QUESTIONS_DIR", questions_root)
 
     yield questions_root
 

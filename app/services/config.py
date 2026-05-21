@@ -8,17 +8,18 @@ stored in data/config.json.
 
 from dataclasses import dataclass
 import json
-from pathlib import Path
 from typing import Any
 
 from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
+from app.domain.locales import DEFAULT_LOCALE, normalize_locale
+from app.domain.speech_models import (
+    DEFAULT_SPEECH_MODEL_SIZE,
+    normalize_speech_model_size,
+)
+from app.paths import CONFIG_PATH, DATA_DIR
 
-CONFIG_DIR = Path(__file__).parent.parent.parent / "data"
-CONFIG_PATH = CONFIG_DIR / "config.json"
 
-
-# TODO это же по сути DTO? оно тут дожно храниться или нет? или может тут лучше Pydantic модель использовать?
 @dataclass
 class ProviderConfig:
     """AI provider configuration.
@@ -29,6 +30,8 @@ class ProviderConfig:
         model: Model name to use.
         api_key: API key for authentication (optional for local providers).
         timeout: Request timeout in seconds.
+        locale: Interview language for AI feedback and voice input.
+        speech_model_size: Whisper model size for offline dictation.
     """
 
     provider_type: str
@@ -36,6 +39,8 @@ class ProviderConfig:
     model: str
     api_key: str | None = None
     timeout: float = 60.0
+    locale: str = DEFAULT_LOCALE
+    speech_model_size: str = DEFAULT_SPEECH_MODEL_SIZE
 
     def to_dict(self, mask_secret: bool = False) -> dict[str, Any]:
         """Convert to dictionary.
@@ -52,6 +57,8 @@ class ProviderConfig:
             "model": self.model,
             "api_key": "***" if mask_secret and self.api_key else self.api_key,
             "timeout": self.timeout,
+            "locale": self.locale,
+            "speech_model_size": self.speech_model_size,
         }
 
     @classmethod
@@ -70,6 +77,10 @@ class ProviderConfig:
             model=data.get("model", ""),
             api_key=data.get("api_key"),
             timeout=data.get("timeout", 60.0),
+            locale=normalize_locale(data.get("locale", DEFAULT_LOCALE)),
+            speech_model_size=normalize_speech_model_size(
+                data.get("speech_model_size", DEFAULT_SPEECH_MODEL_SIZE)
+            ),
         )
 
 
@@ -95,7 +106,7 @@ class ConfigService:
         Args:
             config: Configuration to save.
         """
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(config.to_dict(), indent=2))
 
     @staticmethod

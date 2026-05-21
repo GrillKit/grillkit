@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import create_app
+from app.services.config import ProviderConfig
 
 
 @pytest.fixture
@@ -100,10 +101,30 @@ class TestSetupConfigRedirect:
                     "language": "python",
                     "topic": "basics",
                     "level": "junior",
-                    "locale": "en",
                     "question_count": "5",
                 },
                 follow_redirects=False,
             )
         assert response.status_code == 303
         assert response.headers["location"] == "/config"
+
+    def test_setup_get_shows_configured_locale(self, client):
+        """GET /setup displays interview language from saved config."""
+        mock_config = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4",
+            locale="ru",
+        )
+        with (
+            patch(
+                "app.services.config.ConfigService.get_config", return_value=mock_config
+            ),
+            patch("app.api.setup.list_languages", return_value=["python"]),
+            patch("app.api.setup.list_levels", return_value=["junior"]),
+            patch("app.api.setup.list_categories", return_value=["basics"]),
+        ):
+            response = client.get("/setup")
+        assert response.status_code == 200
+        assert "Russian" in response.text
+        assert 'name="locale"' not in response.text
