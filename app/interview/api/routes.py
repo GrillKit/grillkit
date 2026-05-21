@@ -25,8 +25,6 @@ from app.shared.domain.exceptions import InterviewDomainError
 from app.shared.domain.locales import SUPPORTED_LOCALES
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.api.page_context import build_speech_model_page_context
-from app.speech.services.whisper_runtime import WhisperRuntime
-from app.speech.services.whisper_storage import is_installed
 from app.templating import templates
 
 router = APIRouter(prefix="/interview", tags=["interview"])
@@ -78,19 +76,10 @@ async def interview_page(
     if not interview:
         return RedirectResponse(url="/", status_code=303)
 
-    interview_status = interview.status
     current_question = interview_query.get_current_unanswered(interview)
     overall_feedback_data = interview_query.parse_overall_feedback(interview)
     max_score = interview_query.compute_max_score(interview)
     config = config_service.get_config()
-    WhisperRuntime.bind_app(request.app)
-    if (
-        config is not None
-        and interview_status == "active"
-        and is_installed(config.speech_model_size)
-        and not WhisperRuntime.is_loaded(config.speech_model_size)
-    ):
-        await WhisperRuntime.load_size(config.speech_model_size)
 
     return templates.TemplateResponse(
         request,
