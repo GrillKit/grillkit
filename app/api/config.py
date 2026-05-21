@@ -17,6 +17,7 @@ from app.domain.speech_models import (
 )
 from app.services.config import ProviderConfig
 from app.services.whisper_runtime import WhisperRuntime
+from app.services.whisper_storage import is_installed
 from app.templating import templates
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -113,7 +114,7 @@ async def save_config(
         )
 
     config_service.save_config(config)
-    if whisper_model_service.is_installed(config.speech_model_size):
+    if is_installed(config.speech_model_size):
         await WhisperRuntime.load_size(config.speech_model_size)
     else:
         WhisperRuntime.unload()

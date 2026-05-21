@@ -22,8 +22,8 @@ from app.api import speech as speech_router
 from app.database import init_db
 from app.paths import STATIC_DIR
 from app.services.config import ConfigService
-from app.services.whisper_model import WhisperModelService
 from app.services.whisper_runtime import WhisperRuntime
+from app.services.whisper_storage import is_installed
 
 
 @asynccontextmanager
@@ -35,9 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
     WhisperRuntime.bind_app(app)
     config = ConfigService.get_config()
-    if config is not None and WhisperModelService.is_installed(
-        config.speech_model_size
-    ):
+    if config is not None and is_installed(config.speech_model_size):
         await WhisperRuntime.load_size(config.speech_model_size)
     yield
     WhisperRuntime.unload()
