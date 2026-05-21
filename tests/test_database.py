@@ -9,8 +9,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, get_session
-from app.models import Interview
+from app.shared.infrastructure.database import Base, get_session
+from app.shared.infrastructure.models import Interview
 
 
 @pytest.fixture
@@ -166,7 +166,7 @@ class TestDatabaseFunctions:
     def test_get_session_returns_session(self, test_engine, monkeypatch):
         """Test that get_interview returns a Session object."""
         # Patch the engine used by get_interview
-        from app import database
+        from app.shared.infrastructure import database
 
         original_engine = database.engine
         monkeypatch.setattr(database, "engine", test_engine)

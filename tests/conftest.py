@@ -10,8 +10,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base
-from app.uow import UnitOfWork
+from app.shared.infrastructure.database import Base
+from app.shared.infrastructure.uow import UnitOfWork
 from tests.fakes import FakeProvider
 
 
@@ -22,8 +22,8 @@ def isolated_db(monkeypatch):
     Yields:
         SQLAlchemy engine bound to the in-memory database.
     """
-    from app import database as db_module
-    from app import uow as uow_module
+    from app.shared.infrastructure import database as db_module
+    from app.shared.infrastructure import uow as uow_module
 
     engine = create_engine(
         "sqlite://",
@@ -55,11 +55,11 @@ def patch_ai_provider(monkeypatch) -> Callable[[list[str]], FakeProvider]:
             yield provider
 
         monkeypatch.setattr(
-            "app.services.answer_processing.ai_provider_from_config",
+            "app.interview.services.answer_processing.ai_provider_from_config",
             _fake_context,
         )
         monkeypatch.setattr(
-            "app.services.interview_completion.ai_provider_from_config",
+            "app.interview.services.completion.ai_provider_from_config",
             _fake_context,
         )
         return provider

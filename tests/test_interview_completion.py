@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.models import Answer, Interview
-from app.services.interview_completion import InterviewCompletionService
-from app.services.interview_evaluator import InterviewEvaluation
-from app.services.interview_query import InterviewQuery
-from app.uow import UnitOfWork
+from app.interview.services.completion import InterviewCompletionService
+from app.interview.services.evaluator.service import InterviewEvaluation
+from app.interview.services.query import InterviewQuery
+from app.shared.infrastructure.models import Answer, Interview
+from app.shared.infrastructure.uow import UnitOfWork
 
 
 @pytest.mark.asyncio
@@ -49,7 +49,7 @@ async def test_complete_interview_persists_completed_status(isolated_db):
     )
 
     with patch(
-        "app.services.interview_completion.InterviewEvaluatorService.evaluate_interview",
+        "app.interview.services.completion.InterviewEvaluatorService.evaluate_interview",
         new_callable=AsyncMock,
         return_value=mock_eval,
     ):

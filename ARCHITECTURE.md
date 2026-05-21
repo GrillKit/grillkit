@@ -1,6 +1,6 @@
 # GrillKit Architecture
 
-GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Jinja2** templates, and an **OpenAI-compatible** AI adapter. Business logic lives in `services/`; transport in `api/`; pure rules in `domain/`; persistence in `repositories/` behind `UnitOfWork`.
+GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Jinja2** templates, and an **OpenAI-compatible** AI adapter. Code is organized **by feature** (`interview/`, `speech/`, `platform/`) with shared infrastructure in `shared/`. Within each feature: transport in `api/`, orchestration in `services/`, pure rules in `domain/`, persistence in `repositories/` (interview only), all transactional work via `UnitOfWork` in `shared/infrastructure/`.
 
 ## Project Map
 
@@ -9,55 +9,70 @@ grillkit/
 ├── app/
 │   ├── main.py                 # create_app(), router registration, lifespan → init_db()
 │   ├── paths.py                # PROJECT_ROOT, DATA_DIR, CONFIG_PATH, whisper/questions/db paths
-│   ├── database.py             # SQLite engine, SessionLocal, init_db()
-│   ├── models.py               # Interview, Answer ORM models
 │   ├── questions.py            # YAML question loader (data/questions/)
 │   ├── templating.py           # Shared Jinja2Templates + static_version()
-│   ├── uow.py                  # UnitOfWork: uow.interviews, uow.answers, uow.session
-│   ├── domain/
-│   │   ├── exceptions.py       # InterviewNotFoundError, InterviewNotActiveError, ...
-│   │   ├── interview_progress.py   # find_first_unanswered(), find_unanswered_for_question(), ...
-│   │   ├── interview_lifecycle.py  # MAX_SCORE_PER_ROUND, compute_interview_score(), ...
-│   │   ├── locales.py          # SUPPORTED_LOCALES, normalize_locale()
-│   │   └── speech_models.py    # Whisper size → Hugging Face model metadata
+│   ├── shared/
+│   │   ├── domain/
+│   │   │   ├── exceptions.py   # InterviewNotFoundError, InterviewNotActiveError, ...
+│   │   │   └── locales.py      # SUPPORTED_LOCALES, normalize_locale()
+│   │   ├── infrastructure/
+│   │   │   ├── database.py     # SQLite engine, SessionLocal, init_db()
+│   │   │   ├── models.py       # Interview, Answer ORM models
+│   │   │   └── uow.py          # UnitOfWork: uow.interviews, uow.answers, uow.session
+│   │   └── repositories/
+│   │       └── base.py         # Repository[T], SqlAlchemyRepository[T]
 │   ├── ai/
 │   │   ├── base.py             # AIProvider protocol
 │   │   ├── speech_transcriber.py  # SpeechTranscriber protocol (offline dictation)
 │   │   ├── factory.py          # ProviderFactory.from_config()
-│   │   └── openai_compatible.py
-│   ├── api/
-│   │   ├── deps.py             # FastAPI Depends() → service classes
-│   │   ├── speech_page_context.py  # speech_model_status template context helper
-│   │   ├── dashboard.py        # GET /
-│   │   ├── setup.py            # GET/POST /setup, GET /setup/options
-│   │   ├── setup_form.py       # setup.html template context
-│   │   ├── config.py           # GET/POST /config (provider settings)
-│   │   ├── speech.py           # GET/POST /speech/model/* (Whisper download)
-│   │   ├── dictation.py        # WS /interview/{id}/dictation (PCM buffer → final transcript)
-│   │   ├── dictation_protocol.py  # Dictation WS message type constants + dictation_message()
-│   │   ├── interview.py        # GET /interview/{id}, WS /interview/{id}/ws
-│   │   ├── ws_protocol.py      # InterviewEvent → JSON messages
-│   │   └── interview_errors.py # domain errors → HTTP / WebSocket payloads
-│   ├── repositories/
-│   │   ├── base.py             # Repository[T], SqlAlchemyRepository[T]
-│   │   ├── interview.py        # InterviewRepository
-│   │   └── answer.py           # AnswerRepository
-│   └── services/
-│       ├── config.py           # ProviderConfig, ConfigService (data/config.json)
-│       ├── whisper_storage.py  # Whisper model paths and on-disk validation
-│       ├── whisper_model.py    # Whisper model download and install
-│       ├── whisper_runtime.py  # In-process transcriber load and hot-reload
-│       ├── faster_whisper_transcriber.py  # SpeechTranscriber via faster-whisper
-│       ├── speech_recognition.py  # Buffered PCM dictation session
-│       ├── interview_creation.py
-│       ├── interview_query.py
-│       ├── interview_completion.py
-│       ├── answer_processing.py
-│       ├── interview_evaluator.py
-│       ├── interview_evaluator_models.py
-│       ├── interview_evaluator_prompts.py
-│       ├── interview_events.py   # AnswerSavedEvent, EvaluatingEvent, ...
-│       └── ai_context.py         # ai_provider_from_config() async context manager
+│   │   ├── openai_compatible.py
+│   │   └── faster_whisper_transcriber.py  # SpeechTranscriber via faster-whisper
+│   ├── platform/
+│   │   ├── api/
+│   │   │   ├── config.py       # GET/POST /config (provider settings)
+│   │   │   └── deps.py         # ConfigServiceDep
+│   │   └── services/
+│   │       ├── config.py       # ProviderConfig, ConfigService (data/config.json)
+│   │       └── ai_context.py   # ai_provider_from_config() async context manager
+│   ├── interview/
+│   │   ├── domain/
+│   │   │   ├── progress.py     # find_first_unanswered(), require_active(), ...
+│   │   │   └── lifecycle.py    # MAX_SCORE_PER_ROUND, compute_interview_score(), ...
+│   │   ├── repositories/
+│   │   │   ├── interview.py    # InterviewRepository
+│   │   │   └── answer.py       # AnswerRepository
+│   │   ├── services/
+│   │   │   ├── creation.py
+│   │   │   ├── query.py
+│   │   │   ├── completion.py
+│   │   │   ├── answer_processing.py
+│   │   │   ├── events.py       # AnswerSavedEvent, EvaluatingEvent, ...
+│   │   │   └── evaluator/
+│   │   │       ├── service.py
+│   │   │       ├── models.py
+│   │   │       └── prompts.py
+│   │   └── api/
+│   │       ├── deps.py         # Interview* service Depends
+│   │       ├── dashboard.py    # GET /
+│   │       ├── setup.py        # GET/POST /setup, GET /setup/options
+│   │       ├── setup_form.py   # setup.html template context
+│   │       ├── routes.py       # GET /interview/{id}, WS /interview/{id}/ws
+│   │       ├── ws_protocol.py  # InterviewEvent → JSON messages
+│   │       └── errors.py       # domain errors → HTTP / WebSocket payloads
+│   └── speech/
+│       ├── domain/
+│       │   └── models.py       # Whisper size → Hugging Face model metadata
+│       ├── services/
+│       │   ├── whisper_storage.py
+│       │   ├── whisper_model.py
+│       │   ├── whisper_runtime.py
+│       │   └── dictation.py    # DictationSession (PCM buffer → final transcript)
+│       └── api/
+│           ├── deps.py         # WhisperModelServiceDep
+│           ├── routes.py       # GET/POST /speech/model/*
+│           ├── page_context.py # speech_model_status template context helper
+│           ├── dictation.py    # WS /interview/{id}/dictation
+│           └── dictation_protocol.py
 ├── templates/                  # Jinja2 HTML (dashboard, setup, config, interview, speech_model_*)
 ├── static/
 │   ├── css/styles.css
@@ -77,39 +92,40 @@ grillkit/
 
 | Method | Path | Module | Purpose |
 |--------|------|--------|---------|
-| GET | `/` | `dashboard.py` | Interview history (last 20) |
-| GET | `/setup` | `setup.py` | New interview form (redirects to `/config` if unset) |
-| POST | `/setup` | `setup.py` | Create interview → redirect `/interview/{id}` |
-| GET | `/setup/options` | `setup.py` | Cascaded JSON: languages → levels → categories |
-| GET | `/config` | `config.py` | AI provider configuration form |
-| POST | `/config` | `config.py` | Test connection (via form dependency), then save |
-| POST | `/config/test` | `config.py` | Test connection without saving |
-| DELETE | `/config` | `config.py` | Remove saved provider configuration |
-| GET | `/speech/model/status` | `speech.py` | Whisper model install status (HTML or JSON) |
-| POST | `/speech/model/download` | `speech.py` | Start Whisper download for `config.speech_model_size` |
-| GET | `/speech/model/options` | `speech.py` | JSON size trade-off metadata |
-| GET | `/interview/{interview_id}` | `interview.py` | Interview page (active or completed) |
-| WS | `/interview/{interview_id}/ws` | `interview.py` | Real-time answers and completion |
-| WS | `/interview/{interview_id}/dictation` | `dictation.py` | PCM dictation: `start` → `ready`, audio chunks, `stop` → `final` |
+| GET | `/` | `interview/api/dashboard.py` | Interview history (last 20) |
+| GET | `/setup` | `interview/api/setup.py` | New interview form (redirects to `/config` if unset) |
+| POST | `/setup` | `interview/api/setup.py` | Create interview → redirect `/interview/{id}` |
+| GET | `/setup/options` | `interview/api/setup.py` | Cascaded JSON: languages → levels → categories |
+| GET | `/config` | `platform/api/config.py` | AI provider configuration form |
+| POST | `/config` | `platform/api/config.py` | Test connection (via form dependency), then save |
+| POST | `/config/test` | `platform/api/config.py` | Test connection without saving |
+| DELETE | `/config` | `platform/api/config.py` | Remove saved provider configuration |
+| GET | `/speech/model/status` | `speech/api/routes.py` | Whisper model install status (HTML or JSON) |
+| POST | `/speech/model/download` | `speech/api/routes.py` | Start Whisper download for `config.speech_model_size` |
+| GET | `/speech/model/options` | `speech/api/routes.py` | JSON size trade-off metadata |
+| GET | `/interview/{interview_id}` | `interview/api/routes.py` | Interview page (active or completed) |
+| WS | `/interview/{interview_id}/ws` | `interview/api/routes.py` | Real-time answers and completion |
+| WS | `/interview/{interview_id}/dictation` | `speech/api/dictation.py` | PCM dictation: `start` → `ready`, audio chunks, `stop` → `final` |
 | — | `/static/*` | `main.py` | CSS, JS, and assets |
 
 ## Layer Responsibilities
 
-| Layer | Responsibility |
-|-------|----------------|
-| `api/` | HTTP/WebSocket transport, form handling, template rendering |
-| `api/deps.py` | Inject service **classes** via `Depends` (handlers call static methods) |
-| `api/ws_protocol.py` | Map `InterviewEvent` dataclasses → interview WebSocket JSON |
-| `api/dictation_protocol.py` | Dictation WebSocket message types (`start`, `stop`, `ready`, `final`, `error`) |
-| `api/interview_errors.py` | Map `InterviewDomainError` → error payloads |
-| `services/` | Use-case orchestration (static methods on service classes) |
-| `domain/` | Progress navigation, scoring rules, exceptions, locales (no I/O) |
-| `repositories/` | Persistence only (SQLAlchemy via `SqlAlchemyRepository`) |
-| `uow.py` | Single transaction boundary; exposes `interviews` and `answers` repos |
-| `ai/` | Provider adapters (`AIProvider` protocol) |
+| Package / layer | Responsibility |
+|-----------------|----------------|
+| `interview/api/`, `speech/api/`, `platform/api/` | HTTP/WebSocket transport, forms, template rendering |
+| `*/api/deps.py` | Inject service **classes** via `Depends` (handlers call static methods) |
+| `interview/api/ws_protocol.py` | Map `InterviewEvent` dataclasses → interview WebSocket JSON |
+| `speech/api/dictation_protocol.py` | Dictation WebSocket message types (`start`, `stop`, `ready`, `final`, `error`) |
+| `interview/api/errors.py` | Map `InterviewDomainError` → error payloads |
+| `*/services/` | Use-case orchestration (static methods on service classes) |
+| `interview/domain/`, `speech/domain/`, `shared/domain/` | Pure rules (no I/O); shared holds cross-cutting exceptions and locales |
+| `interview/repositories/` | Interview persistence (SQLAlchemy via `SqlAlchemyRepository`) |
+| `shared/infrastructure/uow.py` | Single transaction boundary; exposes `interviews` and `answers` repos |
+| `shared/infrastructure/models.py` | ORM models |
+| `ai/` | Provider adapters (`AIProvider`, `SpeechTranscriber`) |
 | `questions.py` | Read-only YAML question bank access |
 
-Application services are **stateless classes with `@staticmethod`**. FastAPI dependencies in `deps.py` return the class (e.g. `InterviewQuery`), not instances.
+Application services are **stateless classes with `@staticmethod`**. FastAPI dependencies in each feature's `deps.py` return the class (e.g. `InterviewQuery`), not instances.
 
 ## Module Dependency Graph
 
@@ -117,31 +133,28 @@ Dependencies flow **downward** (caller → callee). Plain-text diagram for edito
 
 ```
 main.py ──► lifespan: init_db(), WhisperRuntime.bind_app(), load configured Whisper size
-  └── api/  (dashboard, setup, config, speech, interview, dictation)
-        ├── interview.py ──► ws_protocol.py, interview_errors.py, WhisperModelService (page status)
-        ├── dictation.py ──► dictation_protocol.py, DictationSession, app.state.speech_transcriber
-        ├── speech.py    ──► WhisperModelService (status/download)
-        └── deps.py ──► services/
+  ├── interview/api/  (dashboard, setup, routes)
+  │     ├── routes.py ──► ws_protocol, errors, speech/api/page_context
+  │     └── deps.py ──► interview/services/*
+  ├── platform/api/config.py ──► platform/services/config, speech/api/page_context
+  └── speech/api/  (routes, dictation)
+        ├── dictation.py ──► dictation_protocol, dictation session, app.state.speech_transcriber
+        └── routes.py ──► speech/services/whisper_model
 
-services/
-  ├── interview_creation.py ──► domain/, questions.py, uow.py
-  ├── interview_query.py      ──► domain/, uow.py
-  ├── interview_completion.py ──► domain/, interview_evaluator.py, ai_context.py, uow.py
-  ├── answer_processing.py    ──► domain/, interview_evaluator.py, ai_context.py, uow.py
-  ├── interview_evaluator.py  ──► ai/ (via provider), interview_evaluator_models.py, prompts
-  ├── config.py               ──► ai/factory.py, domain/speech_models.py, data/config.json
-  ├── whisper_model.py        ──► whisper_storage.py, whisper_runtime.py, Hugging Face hub
-  ├── whisper_runtime.py      ──► faster_whisper_transcriber.py, whisper_storage.py
-  ├── faster_whisper_transcriber.py ──► ai/speech_transcriber.py, faster-whisper
-  ├── whisper_storage.py      ──► domain/speech_models.py, data/whisper-models/
-  ├── speech_recognition.py   ──► domain/locales.py (DictationSession PCM → text)
-  └── ai_context.py           ──► config.py, ai/
+interview/services/
+  ├── creation.py ──► interview/domain/, questions.py, uow
+  ├── query.py      ──► interview/domain/, uow
+  ├── completion.py ──► evaluator, platform/ai_context, uow
+  └── answer_processing.py ──► evaluator, platform/ai_context, uow
 
-uow.py
-  └── repositories/ (interview.py, answer.py, base.py)
-        └── models.py
+platform/services/config.py ──► ai/factory, speech/domain/models, data/config.json
+speech/services/
+  ├── whisper_model.py ──► whisper_runtime, whisper_storage, Hugging Face hub
+  ├── whisper_runtime.py ──► ai/faster_whisper_transcriber, whisper_storage
+  └── dictation.py ──► ai/speech_transcriber
 
-database.py ──► models.py (Base, engine)
+shared/infrastructure/uow.py
+  └── interview/repositories/ (interview, answer) ──► shared/repositories/base, models
 ```
 
 On GitHub, the same graph is also available as Mermaid (rendered on github.com only):
@@ -153,59 +166,64 @@ On GitHub, the same graph is also available as Mermaid (rendered on github.com o
 flowchart TB
   main --> api_layer
   main --> whisper_runtime
-  subgraph api_layer [api]
+  subgraph interview_api [interview/api]
     dashboard
     setup
-    config_router[config]
-    speech_router[speech]
-    interview
-    dictation
+    interview_routes[routes]
     ws_protocol
-    dictation_protocol
-    interview_errors
-    deps
+    interview_errors[errors]
   end
-  interview --> ws_protocol
-  interview --> interview_errors
+  subgraph platform_api [platform/api]
+    config_router[config]
+  end
+  subgraph speech_api [speech/api]
+    speech_router[routes]
+    dictation
+    dictation_protocol
+  end
+  interview_routes --> ws_protocol
+  interview_routes --> interview_errors
   dictation --> dictation_protocol
-  dictation --> speech_recognition
-  speech_recognition --> speech_transcriber_proto[speech_transcriber]
+  dictation --> dictation_svc[dictation session]
+  dictation_svc --> speech_transcriber_proto[speech_transcriber]
   speech_router --> whisper_model
   whisper_runtime --> faster_whisper_transcriber
-  api_layer --> deps
-  deps --> svc_layer
-  subgraph svc_layer [services]
-    interview_creation
-    interview_query
-    interview_completion
+  subgraph interview_svc [interview/services]
+    interview_creation[creation]
+    interview_query[query]
+    interview_completion[completion]
     answer_processing
-    interview_evaluator
+    interview_evaluator[evaluator]
+  end
+  subgraph platform_svc [platform/services]
     config_service[config]
-    whisper_model
-    speech_recognition
-    faster_whisper_transcriber
     ai_context
+  end
+  subgraph speech_svc [speech/services]
+    whisper_model
+    dictation_svc
   end
   faster_whisper_transcriber --> speech_transcriber_proto
   whisper_model --> whisper_runtime
   whisper_model --> whisper_storage
   whisper_runtime --> whisper_storage
-  svc_layer --> domain
-  svc_layer --> uow
-  svc_layer --> questions_mod[questions]
+  interview_svc --> interview_domain[interview/domain]
+  interview_svc --> uow
+  interview_svc --> questions_mod[questions]
   interview_creation --> questions_mod
   ai_context --> config_service
   ai_context --> ai_layer
   subgraph ai_layer [ai]
     factory
     openai_compatible
+    faster_whisper_transcriber
   end
   uow --> repos
-  subgraph repos [repositories]
+  subgraph interview_repos [interview/repositories]
     interview_repo[interview]
     answer_repo[answer]
   end
-  repos --> models
+  interview_repos --> models
 ```
 
 </details>
@@ -218,10 +236,10 @@ flowchart TB
 | Primary key column | `Interview.id` (UUID string) |
 | Route / WS path param | `interview_id` (same value as `Interview.id`) |
 | Answer FK | `Answer.interview_id` → `interviews.id` |
-| Create flow | `InterviewCreationService.create_interview()` |
-| Read flow | `InterviewQuery.get_interview()`, `list_dashboard_rows()` |
-| Answer flow | `AnswerProcessingService.process_answer_submission()` |
-| Complete flow | `InterviewCompletionService.complete_interview()` |
+| Create flow | `interview.services.creation.InterviewCreationService.create_interview()` |
+| Read flow | `interview.services.query.InterviewQuery.get_interview()`, `list_dashboard_rows()` |
+| Answer flow | `interview.services.answer_processing.AnswerProcessingService` |
+| Complete flow | `interview.services.completion.InterviewCompletionService.complete_interview()` |
 | UoW repositories | `uow.interviews`, `uow.answers` |
 | SQLAlchemy session | `uow.session` |
 
@@ -349,9 +367,9 @@ Client → WS {"type":"complete"}
 ## Data Access Pattern
 
 ```python
-from app.domain.interview_lifecycle import compute_interview_score
-from app.models import Interview
-from app.uow import UnitOfWork
+from app.interview.domain.lifecycle import compute_interview_score
+from app.shared.infrastructure.models import Interview
+from app.shared.infrastructure.uow import UnitOfWork
 
 with UnitOfWork(auto_commit=True) as uow:
     interview = Interview(id=..., level=..., status="active", ...)
@@ -370,7 +388,7 @@ with UnitOfWork(auto_commit=True) as uow:
 ## Scoring
 
 - Each answered round (initial or follow-up) is scored **1–5** by the AI.
-- Maximum points per round: `MAX_SCORE_PER_ROUND` (5) in `app/domain/interview_lifecycle.py`.
+- Maximum points per round: `MAX_SCORE_PER_ROUND` (5) in `app/interview/domain/lifecycle.py`.
 - Session total: `compute_interview_score()` sums all non-null answer scores.
 - Per-question breakdown: `build_per_question_score_breakdown()` for completion feedback.
 
@@ -379,7 +397,7 @@ with UnitOfWork(auto_commit=True) as uow:
 | Path | Purpose |
 |------|---------|
 | `data/db/grillkit.db` | SQLite database (`DATABASE_URL` in `database.py`) |
-| `data/config.json` | AI provider, `locale`, `speech_model_size` (`ConfigService`) |
+| `data/config.json` | AI provider, `locale`, `speech_model_size` (`platform.services.config.ConfigService`) |
 | `data/whisper-models/<size>/` | Offline faster-whisper snapshots (`WhisperModelService`) |
 | `data/questions/{language}/{level}/{category}.yaml` | Question banks |
 

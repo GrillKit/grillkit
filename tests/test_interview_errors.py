@@ -5,8 +5,8 @@
 from fastapi import HTTPException
 import pytest
 
-from app.api.interview_errors import http_exception_from_domain_error, ws_error_payload
-from app.domain.exceptions import (
+from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
+from app.shared.domain.exceptions import (
     AnswerNotFoundError,
     InterviewNotActiveError,
     InterviewNotFoundError,

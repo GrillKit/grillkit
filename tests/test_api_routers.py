@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 import pytest
 
-from app.domain.exceptions import InterviewNotActiveError, InterviewNotFoundError
 from app.main import create_app
-from app.services.config import ProviderConfig
+from app.platform.services.config import ProviderConfig
+from app.shared.domain.exceptions import InterviewNotActiveError, InterviewNotFoundError
 
 
 async def _raising_answer_stream(
@@ -70,7 +70,7 @@ class TestDashboardRouter:
             )(),
         ]
         with patch(
-            "app.services.interview_query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
             return_value=mock_rows,
         ):
             response = client.get("/")
@@ -81,7 +81,7 @@ class TestDashboardRouter:
     def test_dashboard_returns_html(self, client):
         """Dashboard always returns HTML, even without provider config."""
         with patch(
-            "app.services.interview_query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
             return_value=[],
         ):
             response = client.get("/")
@@ -104,10 +104,10 @@ class TestConfigRouter:
 
         with (
             patch(
-                "app.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
             ),
             patch(
-                "app.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
             ),
         ):
             response = client.get("/config")
@@ -117,9 +117,9 @@ class TestConfigRouter:
     def test_config_page_get_no_config(self, client):
         """Test GET /config without existing config."""
         with (
-            patch("app.services.config.ConfigService.get_config", return_value=None),
+            patch("app.platform.services.config.ConfigService.get_config", return_value=None),
             patch(
-                "app.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
             ),
         ):
             response = client.get("/config")
@@ -130,12 +130,12 @@ class TestConfigRouter:
         """Test POST /config with successful connection test."""
         with (
             patch(
-                "app.services.config.ConfigService.test_connection",
+                "app.platform.services.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch("app.services.config.ConfigService.save_config") as mock_save,
+            patch("app.platform.services.config.ConfigService.save_config") as mock_save,
             patch(
-                "app.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
             ),
         ):
             response = client.post(
@@ -158,11 +158,11 @@ class TestConfigRouter:
         """Test POST /config with failed connection test."""
         with (
             patch(
-                "app.services.config.ConfigService.test_connection",
+                "app.platform.services.config.ConfigService.test_connection",
                 return_value=(False, "Connection failed"),
             ),
             patch(
-                "app.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
             ),
         ):
             response = client.post(
@@ -182,9 +182,9 @@ class TestConfigRouter:
     def test_delete_config(self, client):
         """Test DELETE /config endpoint."""
         with (
-            patch("app.services.config.ConfigService.delete_config") as mock_delete,
+            patch("app.platform.services.config.ConfigService.delete_config") as mock_delete,
             patch(
-                "app.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
             ),
         ):
             response = client.delete("/config")
@@ -196,7 +196,7 @@ class TestConfigRouter:
     async def test_test_config_success(self, client):
         """Test POST /config/test with successful connection."""
         with patch(
-            "app.services.config.ConfigService.test_connection",
+            "app.platform.services.config.ConfigService.test_connection",
             return_value=(True, "Connection successful"),
         ):
             response = client.post(
@@ -217,7 +217,7 @@ class TestConfigRouter:
     async def test_test_config_failure(self, client):
         """Test POST /config/test with failed connection."""
         with patch(
-            "app.services.config.ConfigService.test_connection",
+            "app.platform.services.config.ConfigService.test_connection",
             return_value=(False, "Invalid API key"),
         ):
             response = client.post(
@@ -258,7 +258,7 @@ class TestInterviewWebSocket:
     def test_websocket_unknown_message(self, client):
         """Test WebSocket returns error for unknown message type."""
         with (
-            patch("app.services.interview_query.InterviewQuery.get_interview"),
+            patch("app.interview.services.query.InterviewQuery.get_interview"),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):
             ws.send_json({"type": "unknown_command"})
@@ -281,7 +281,7 @@ class TestInterviewWebSocket:
 
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
                 side_effect=mock_stream,
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
@@ -302,7 +302,7 @@ class TestInterviewWebSocket:
     def test_websocket_answer_missing_fields(self, client):
         """Test WebSocket returns error when question_id or answer_text is missing."""
         with (
-            patch("app.services.interview_query.InterviewQuery.get_interview"),
+            patch("app.interview.services.query.InterviewQuery.get_interview"),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):
             ws.send_json({"type": "answer", "question_id": ""})
@@ -314,7 +314,7 @@ class TestInterviewWebSocket:
         """Test WebSocket rejects answer on completed session."""
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotActiveError("test-id"), *args, **kwargs
                 ),
@@ -336,7 +336,7 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error when session is not found."""
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotFoundError("test-id"), *args, **kwargs
                 ),
@@ -360,7 +360,7 @@ class TestInterviewWebSocket:
 
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
@@ -376,7 +376,7 @@ class TestInterviewWebSocket:
 
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
@@ -390,7 +390,7 @@ class TestInterviewWebSocket:
         """Test WebSocket complete message triggers session completion."""
         with (
             patch(
-                "app.services.interview_completion.InterviewCompletionService.complete_interview",
+                "app.interview.services.completion.InterviewCompletionService.complete_interview",
                 new_callable=AsyncMock,
                 return_value=[],
             ) as mock_complete,
@@ -407,7 +407,7 @@ class TestInterviewWebSocket:
         """Test WebSocket handles ValueError from service layer."""
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     ValueError("Invalid question"), *args, **kwargs
                 ),

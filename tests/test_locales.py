@@ -4,7 +4,7 @@
 
 import pytest
 
-from app.domain.locales import (
+from app.shared.domain.locales import (
     DEFAULT_LOCALE,
     SUPPORTED_LOCALES,
     language_instruction,

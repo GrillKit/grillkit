@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from app.services.interview_creation import InterviewCreationService
-from app.services.interview_query import InterviewQuery
-from app.uow import UnitOfWork
+from app.interview.services.creation import InterviewCreationService
+from app.interview.services.query import InterviewQuery
+from app.shared.infrastructure.uow import UnitOfWork
 
 
 def test_create_interview_persists_questions(

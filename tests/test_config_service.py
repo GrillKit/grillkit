@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.config import ConfigService, ProviderConfig
+from app.platform.services.config import ConfigService, ProviderConfig
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def config_path(tmp_path):
 @pytest.fixture
 def mock_provider_factory():
     """Fixture for mocking ProviderFactory."""
-    with patch("app.services.config.ProviderFactory") as mock_factory:
+    with patch("app.platform.services.config.ProviderFactory") as mock_factory:
         mock_provider = AsyncMock()
         mock_provider.validate.return_value = True
         mock_factory.from_config.return_value = mock_provider
@@ -118,7 +118,7 @@ class TestConfigService:
     def mock_config_path(self, tmp_path):
         """Fixture providing a patched CONFIG_PATH in a temp directory."""
         test_path = tmp_path / "test_config.json"
-        with patch("app.services.config.CONFIG_PATH", test_path):
+        with patch("app.platform.services.config.CONFIG_PATH", test_path):
             yield test_path
 
     def test_save_and_get_config(self, mock_config_path, config_path):

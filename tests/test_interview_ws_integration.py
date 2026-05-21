@@ -8,9 +8,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 import pytest
 
-from app.models import Answer, Interview
-from app.services.interview_query import InterviewQuery
-from app.uow import UnitOfWork
+from app.interview.services.query import InterviewQuery
+from app.shared.infrastructure.models import Answer, Interview
+from app.shared.infrastructure.uow import UnitOfWork
 from tests.fakes import answer_evaluation_json
 
 

@@ -6,12 +6,12 @@ import json
 
 import pytest
 
-from app.services.interview_evaluator import (
-    InterviewEvaluation,
-)
-from app.services.interview_evaluator_prompts import (
+from app.interview.services.evaluator.prompts import (
     looks_like_json_schema_fragment,
     parse_json_response,
+)
+from app.interview.services.evaluator.service import (
+    InterviewEvaluation,
 )
 
 

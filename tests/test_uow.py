@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
-from app.models import Answer, Interview
-from app.uow import UnitOfWork
+from app.shared.infrastructure.database import Base
+from app.shared.infrastructure.models import Answer, Interview
+from app.shared.infrastructure.uow import UnitOfWork
 
 
 @pytest.fixture
@@ -24,12 +24,12 @@ def engine():
 def patch_session_local(engine, monkeypatch):
     """Monkeypatch SessionLocal to use the in-memory engine.
 
-    Patches both ``app.database.SessionLocal`` (the canonical source)
-    and ``app.uow.SessionLocal`` (the import-time copy) so that
+    Patches both ``app.shared.infrastructure.database.SessionLocal`` (the canonical source)
+    and ``app.shared.infrastructure.uow.SessionLocal`` (the import-time copy) so that
     ``UnitOfWork`` uses the test engine.
     """
-    from app import database as db_module
-    from app import uow as uow_module
+    from app.shared.infrastructure import database as db_module
+    from app.shared.infrastructure import uow as uow_module
 
     maker = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     monkeypatch.setattr(db_module, "SessionLocal", maker)
@@ -103,8 +103,8 @@ class TestUnitOfWork:
     def test_repository_accessors(self, patch_session_local):
         """Test that .sessions and .answers return the correct repository types."""
         with UnitOfWork() as uow:
-            from app.repositories.answer import AnswerRepository
-            from app.repositories.interview import InterviewRepository
+            from app.interview.repositories.answer import AnswerRepository
+            from app.interview.repositories.interview import InterviewRepository
 
             assert isinstance(uow.interviews, InterviewRepository)
             assert isinstance(uow.answers, AnswerRepository)

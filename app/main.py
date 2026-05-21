@@ -13,17 +13,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import config as config_router
-from app.api import dashboard as dashboard_router
-from app.api import dictation as dictation_router
-from app.api import interview as interview_router
-from app.api import setup as setup_router
-from app.api import speech as speech_router
-from app.database import init_db
+from app.interview.api import dashboard as dashboard_router
+from app.interview.api import routes as interview_router
+from app.interview.api import setup as setup_router
 from app.paths import STATIC_DIR
-from app.services.config import ConfigService
-from app.services.whisper_runtime import WhisperRuntime
-from app.services.whisper_storage import is_installed
+from app.platform.api import config as config_router
+from app.platform.services.config import ConfigService
+from app.shared.infrastructure.database import init_db
+from app.speech.api import dictation as dictation_router
+from app.speech.api import routes as speech_router
+from app.speech.services.whisper_runtime import WhisperRuntime
+from app.speech.services.whisper_storage import is_installed
 
 
 @asynccontextmanager

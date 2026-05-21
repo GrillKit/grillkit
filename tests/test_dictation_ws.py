@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import create_app
-from app.services.speech_recognition import DictationSession
+from app.speech.services.dictation import DictationSession
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def client():
     with (
         patch("app.main.init_db"),
         patch(
-            "app.services.whisper_runtime.WhisperRuntime.load_size", return_value=False
+            "app.speech.services.whisper_runtime.WhisperRuntime.load_size", return_value=False
         ),
     ):
         app = create_app()
@@ -42,7 +42,7 @@ class TestDictationWebSocket:
         """Connection closes with error when speech_transcriber is absent."""
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=_active_interview(),
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,
@@ -59,10 +59,10 @@ class TestDictationWebSocket:
 
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=_active_interview(),
             ),
-            patch("app.api.dictation.DictationSession", return_value=mock_session),
+            patch("app.speech.api.dictation.DictationSession", return_value=mock_session),
         ):
             client.app.state.speech_transcriber = mock_transcriber
             with client.websocket_connect("/interview/test-session/dictation") as ws:
@@ -73,9 +73,7 @@ class TestDictationWebSocket:
                 final = ws.receive_json()
                 assert final == {"type": "final", "text": "hello world"}
                 mock_session.append_pcm.assert_called()
-                mock_session.finalize.assert_awaited_once_with(
-                    mock_transcriber, "en"
-                )
+                mock_session.finalize.assert_awaited_once_with(mock_transcriber, "en")
 
     def test_rejects_completed_interview(self, client):
         """Completed interviews receive an error and close."""
@@ -83,7 +81,7 @@ class TestDictationWebSocket:
         interview.status = "completed"
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=interview,
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,

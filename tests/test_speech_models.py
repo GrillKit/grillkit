@@ -4,7 +4,7 @@
 
 import pytest
 
-from app.domain.speech_models import (
+from app.speech.domain.models import (
     SPEECH_MODEL_BY_SIZE,
     normalize_speech_model_size,
     speech_model_spec_for_size,

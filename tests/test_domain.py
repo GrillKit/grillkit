@@ -4,23 +4,23 @@
 
 import pytest
 
-from app.domain.exceptions import (
-    InterviewNotActiveError,
-    InterviewNotFoundError,
-    UnansweredAnswerNotFoundError,
-)
-from app.domain.interview_lifecycle import (
+from app.interview.domain.lifecycle import (
     MAX_SCORE_PER_ROUND,
     build_per_question_score_breakdown,
     compute_interview_score,
 )
-from app.domain.interview_progress import (
+from app.interview.domain.progress import (
     find_first_unanswered,
     find_next_unanswered_after,
     find_unanswered_for_question,
     require_active,
 )
-from app.models import Answer, Interview
+from app.shared.domain.exceptions import (
+    InterviewNotActiveError,
+    InterviewNotFoundError,
+    UnansweredAnswerNotFoundError,
+)
+from app.shared.infrastructure.models import Answer, Interview
 
 
 def test_compute_interview_score():

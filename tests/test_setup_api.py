@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import create_app
-from app.services.config import ProviderConfig
+from app.platform.services.config import ProviderConfig
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ class TestSetupOptions:
     def test_lists_languages(self, client):
         """Options without params returns available programming languages."""
         with patch(
-            "app.api.setup.list_languages",
+            "app.interview.api.setup.list_languages",
             return_value=["database", "python"],
         ):
             response = client.get("/setup/options")
@@ -37,11 +37,11 @@ class TestSetupOptions:
         """Options with language returns levels for that language."""
         with (
             patch(
-                "app.api.setup.list_languages",
+                "app.interview.api.setup.list_languages",
                 return_value=["python"],
             ),
             patch(
-                "app.api.setup.list_levels",
+                "app.interview.api.setup.list_levels",
                 return_value=["junior", "middle"],
             ),
         ):
@@ -53,15 +53,15 @@ class TestSetupOptions:
         """Options with language and level returns topic categories."""
         with (
             patch(
-                "app.api.setup.list_languages",
+                "app.interview.api.setup.list_languages",
                 return_value=["python"],
             ),
             patch(
-                "app.api.setup.list_levels",
+                "app.interview.api.setup.list_levels",
                 return_value=["junior"],
             ),
             patch(
-                "app.api.setup.list_categories",
+                "app.interview.api.setup.list_categories",
                 return_value=["basics", "oop"],
             ),
         ):
@@ -75,7 +75,7 @@ class TestSetupOptions:
     def test_unknown_language_returns_404(self, client):
         """Unknown language slug returns 404."""
         with patch(
-            "app.api.setup.list_languages",
+            "app.interview.api.setup.list_languages",
             return_value=["python"],
         ):
             response = client.get("/setup/options", params={"language": "java"})
@@ -87,14 +87,14 @@ class TestSetupConfigRedirect:
 
     def test_setup_get_redirects_without_config(self, client):
         """GET /setup redirects to /config when provider is not configured."""
-        with patch("app.services.config.ConfigService.get_config", return_value=None):
+        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
             response = client.get("/setup", follow_redirects=False)
         assert response.status_code == 303
         assert response.headers["location"] == "/config"
 
     def test_setup_post_redirects_without_config(self, client):
         """POST /setup redirects to /config when provider is not configured."""
-        with patch("app.services.config.ConfigService.get_config", return_value=None):
+        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
             response = client.post(
                 "/setup",
                 data={
@@ -118,11 +118,11 @@ class TestSetupConfigRedirect:
         )
         with (
             patch(
-                "app.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
             ),
-            patch("app.api.setup.list_languages", return_value=["python"]),
-            patch("app.api.setup.list_levels", return_value=["junior"]),
-            patch("app.api.setup.list_categories", return_value=["basics"]),
+            patch("app.interview.api.setup.list_languages", return_value=["python"]),
+            patch("app.interview.api.setup.list_levels", return_value=["junior"]),
+            patch("app.interview.api.setup.list_categories", return_value=["basics"]),
         ):
             response = client.get("/setup")
         assert response.status_code == 200
