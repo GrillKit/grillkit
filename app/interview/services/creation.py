@@ -45,7 +45,7 @@ class InterviewCreationService:
             ValueError: If no questions found for the given criteria.
         """
         locale = normalize_locale(locale)
-        questions = load_category(language, level, category)
+        questions = load_category(language, level, category, locale=locale)
         if not questions:
             raise ValueError(f"No questions found for {language}/{level}/{category}")
 

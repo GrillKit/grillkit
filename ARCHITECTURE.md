@@ -412,6 +412,22 @@ Current YAML banks under `data/questions/`:
 
 `questions.py` discovers languages and categories from the filesystem. Setup uses `GET /setup/options` for cascaded form updates.
 
+Question text is stored in English today. **Planned:** per-locale maps in YAML (`text.en`, `text.ru`, …) with `code` shared across locales — see [`docs/design/question-voice-and-i18n.md`](docs/design/question-voice-and-i18n.md).
+
+## Planned: question voice and localization
+
+Approved design (not implemented). Full spec: [`docs/design/question-voice-and-i18n.md`](docs/design/question-voice-and-i18n.md).
+
+| Topic | Decision |
+|-------|----------|
+| Localization | Multilingual YAML fields; loader resolves by `Interview.locale`; fallback to `en` |
+| Code in questions | `question_code` never translated or spoken; only `question_text` localized/TTS |
+| TTS engine | MOSS-TTS-Nano in sidecar image `grillkit-tts` |
+| Deployment | `tts` service in default `docker compose up`; `question_voice_enabled` in config only gates API/UI |
+| UX | Auto-play question audio when voice enabled; WAV cache on first play under `data/tts-cache/` |
+
+Planned compose addition: service `tts` with `TTS_BASE_URL=http://tts:8001` on `app`. Planned paths: `data/tts-cache/{locale}/`. Planned routes: question audio endpoint, `GET /speech/tts/status`.
+
 ## Current Limitations
 
 - Only one AI adapter type is implemented: `openai-compatible` (`ProviderFactory`)
@@ -423,3 +439,4 @@ Current YAML banks under `data/questions/`:
 - Deleting or resetting `data/db/grillkit.db` is required when ORM schema changes locally (no migrations yet)
 - Speech: offline Whisper only; model and download progress are **per process** (not shared across multiple uvicorn workers)
 - Dictation returns a **single final transcript** on stop (no streaming `partial` messages)
+- Question banks are English-only in YAML; no question TTS yet (design in `docs/design/question-voice-and-i18n.md`)

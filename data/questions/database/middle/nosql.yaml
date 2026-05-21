@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["nosql-types", "document", "key-value"]
     question:
-      text: "What types of NoSQL databases exist? Compare document, key-value, wide-column, and graph databases."
+      text:
+        en: "What types of NoSQL databases exist? Compare document, key-value, wide-column, and graph databases."
+        ru: "Какие типы NoSQL-баз существуют? Сравните документные, key-value, wide-column и графовые СУБД."
       code: null
     follow_ups:
-      - "When would you choose a document store (MongoDB) over a relational DB?"
-      - "What is the difference between DynamoDB (key-value) and MongoDB (document)?"
-      - "How do graph databases (Neo4j) model relationships differently?"
+      en:
+        - "When would you choose a document store (MongoDB) over a relational DB?"
+        - "What is the difference between DynamoDB (key-value) and MongoDB (document)?"
+        - "How do graph databases (Neo4j) model relationships differently?"
+      ru:
+        - "Когда выбрать документное хранилище (MongoDB) вместо реляционной БД?"
+        - "В чём разница между DynamoDB (key-value) и MongoDB (document)?"
+        - "Как графовые БД (Neo4j) по-другому моделируют связи?"
     expected_points:
       - "Document: MongoDB, CouchDB — flexible schema, JSON-like documents"
       - "Key-value: Redis, DynamoDB — simple, fast lookups by key"
@@ -27,12 +34,19 @@ questions:
     difficulty: 3
     tags: ["mongodb", "aggregation", "indexing"]
     question:
-      text: "How does MongoDB's aggregation pipeline work? How do you index documents?"
+      text:
+        en: "How does MongoDB's aggregation pipeline work? How do you index documents?"
+        ru: "Как работает aggregation pipeline в MongoDB? Как индексировать документы?"
       code: null
     follow_ups:
-      - "What stages exist in a pipeline ($match, $group, $sort, $lookup)?"
-      - "How does MongoDB indexing differ from relational indexes?"
-      - "What are MongoDB replica sets and sharding?"
+      en:
+        - "What stages exist in a pipeline ($match, $group, $sort, $lookup)?"
+        - "How does MongoDB indexing differ from relational indexes?"
+        - "What are MongoDB replica sets and sharding?"
+      ru:
+        - "Какие стадии есть в pipeline ($match, $group, $sort, $lookup)?"
+        - "Чем индексы MongoDB отличаются от реляционных?"
+        - "Что такое replica set и шардирование в MongoDB?"
     expected_points:
       - "Aggregation pipeline processes documents through stages"
       - "Indexes in MongoDB: single field, compound, multikey, text, geospatial"
@@ -44,12 +58,19 @@ questions:
     difficulty: 3
     tags: ["redis", "caching", "data-structures"]
     question:
-      text: "What data structures does Redis support beyond simple key-value? How do you use Redis for caching?"
+      text:
+        en: "What data structures does Redis support beyond simple key-value? How do you use Redis for caching?"
+        ru: "Какие структуры данных поддерживает Redis помимо простого key-value? Как использовать Redis для кэширования?"
       code: null
     follow_ups:
-      - "How do Redis sorted sets work and what problems do they solve?"
-      - "What is Redis pub/sub and when would you use it?"
-      - "How does Redis persistence work (RDB, AOF)?"
+      en:
+        - "How do Redis sorted sets work and what problems do they solve?"
+        - "What is Redis pub/sub and when would you use it?"
+        - "How does Redis persistence work (RDB, AOF)?"
+      ru:
+        - "Как работают sorted sets в Redis и какие задачи они решают?"
+        - "Что такое pub/sub в Redis и когда его использовать?"
+        - "Как устроена персистентность Redis (RDB, AOF)?"
     expected_points:
       - "Data structures: strings, hashes, lists, sets, sorted sets, streams"
       - "Sorted sets: ordered by score — leaderboards, rate limiting"
@@ -61,12 +82,19 @@ questions:
     difficulty: 3
     tags: ["cassandra", "wide-column"]
     question:
-      text: "How does Apache Cassandra model data? Explain partition key, clustering columns, and CQL."
+      text:
+        en: "How does Apache Cassandra model data? Explain partition key, clustering columns, and CQL."
+        ru: "Как Apache Cassandra моделирует данные? Объясните partition key, clustering columns и CQL."
       code: null
     follow_ups:
-      - "What is Cassandra's consistency level (ONE, QUORUM, ALL)?"
-      - "How does Cassandra achieve high write throughput?"
-      - "What is the difference between Cassandra and traditional relational databases?"
+      en:
+        - "What is Cassandra's consistency level (ONE, QUORUM, ALL)?"
+        - "How does Cassandra achieve high write throughput?"
+        - "What is the difference between Cassandra and traditional relational databases?"
+      ru:
+        - "Что такое уровень согласованности Cassandra (ONE, QUORUM, ALL)?"
+        - "Как Cassandra достигает высокой пропускной способности записи?"
+        - "Чем Cassandra отличается от классических реляционных БД?"
     expected_points:
       - "Partition key determines data distribution across nodes"
       - "Clustering columns sort data within a partition"
@@ -78,12 +106,19 @@ questions:
     difficulty: 3
     tags: ["cap-theorem", "base"]
     question:
-      text: "How do NoSQL databases apply the CAP theorem and BASE model?"
+      text:
+        en: "How do NoSQL databases apply the CAP theorem and BASE model?"
+        ru: "Как NoSQL-базы применяют теорему CAP и модель BASE?"
       code: null
     follow_ups:
-      - "What is BASE (Basically Available, Soft state, Eventual consistency)?"
-      - "How does MongoDB balance consistency and availability?"
-      - "Why do some NoSQL databases prefer AP over CP and vice versa?"
+      en:
+        - "What is BASE (Basically Available, Soft state, Eventual consistency)?"
+        - "How does MongoDB balance consistency and availability?"
+        - "Why do some NoSQL databases prefer AP over CP and vice versa?"
+      ru:
+        - "Что такое BASE (Basically Available, Soft state, Eventual consistency)?"
+        - "Как MongoDB балансирует согласованность и доступность?"
+        - "Почему одни NoSQL выбирают AP, а другие CP?"
     expected_points:
       - "BASE: softer alternative to ACID for distributed NoSQL"
       - "MongoDB: CP by default (primary reads), can be AP with secondary reads"

@@ -11,12 +11,18 @@ questions:
     tags: ["types", "mutability"]
 
     question:
-      text: "What is the difference between mutable and immutable types in Python? Give examples of each."
+      text:
+        en: "What is the difference between mutable and immutable types in Python? Give examples of each."
+        ru: "В чём разница между изменяемыми (mutable) и неизменяемыми (immutable) типами в Python? Приведите примеры каждого."
       code: null
 
     follow_ups:
-      - "Why are tuples considered immutable but can contain mutable objects?"
-      - "How does mutability affect performance?"
+      en:
+        - "Why are tuples considered immutable but can contain mutable objects?"
+        - "How does mutability affect performance?"
+      ru:
+        - "Почему кортежи считаются неизменяемыми, но могут содержать изменяемые объекты?"
+        - "Как изменяемость влияет на производительность?"
 
     expected_points:
       - "Mutable types can be changed after creation (list, dict, set)"
@@ -29,7 +35,9 @@ questions:
     tags: ["is-vs-==", "comparison"]
 
     question:
-      text: "Explain the difference between '==' and 'is' in Python."
+      text:
+        en: "Explain the difference between '==' and 'is' in Python."
+        ru: "Объясните разницу между '==' и 'is' в Python."
       code: |
         a = [1, 2, 3]
         b = [1, 2, 3]
@@ -39,8 +47,12 @@ questions:
         print(a is c)  # ???
 
     follow_ups:
-      - "When should you use 'is' instead of '=='?"
-      - "What is the difference between 'is None' and '== None'?"
+      en:
+        - "When should you use 'is' instead of '=='?"
+        - "What is the difference between 'is None' and '== None'?"
+      ru:
+        - "Когда следует использовать 'is' вместо '=='?"
+        - "В чём разница между 'is None' и '== None'?"
 
     expected_points:
       - "'==' compares value equality"
@@ -54,12 +66,18 @@ questions:
     tags: ["none", "truthiness"]
 
     question:
-      text: "What values are considered falsy in Python? How does 'None' differ from other falsy values?"
+      text:
+        en: "What values are considered falsy in Python? How does 'None' differ from other falsy values?"
+        ru: "Какие значения считаются ложными (falsy) в Python? Чем 'None' отличается от других ложных значений?"
       code: null
 
     follow_ups:
-      - "Why does 'if not some_list' work to check for an empty list?"
-      - "How does short-circuit evaluation work with 'and'/'or'?"
+      en:
+        - "Why does 'if not some_list' work to check for an empty list?"
+        - "How does short-circuit evaluation work with 'and'/'or'?"
+      ru:
+        - "Почему 'if not some_list' работает для проверки пустого списка?"
+        - "Как работает короткое замыкание (short-circuit) с 'and'/'or'?"
 
     expected_points:
       - "Falsy values: None, False, 0, 0.0, '' (empty string), [] (empty list), {} (empty dict), set(), range(0)"
@@ -72,7 +90,9 @@ questions:
     tags: ["type-conversion", "type-hints"]
 
     question:
-      text: "What is type hinting in Python 3.10+? Why is it useful? Describe the typing features added in Python 3.10."
+      text:
+        en: "What is type hinting in Python 3.10+? Why is it useful? Describe the typing features added in Python 3.10."
+        ru: "Что такое аннотации типов (type hints) в Python 3.10+? Зачем они нужны? Опишите возможности typing, добавленные в Python 3.10."
       code: |
         # Rewrite this function with proper type hints (3.10+ syntax)
         def process(data, options=None):
@@ -82,9 +102,14 @@ questions:
             return results
 
     follow_ups:
-      - "What is the difference between List[int] and list[int]?"
-      - "What are TypeAlias and Union types in Python 3.10+?"
-      - "How does '|' syntax work for unions?"
+      en:
+        - "What is the difference between List[int] and list[int]?"
+        - "What are TypeAlias and Union types in Python 3.10+?"
+        - "How does '|' syntax work for unions?"
+      ru:
+        - "В чём разница между List[int] и list[int]?"
+        - "Что такое TypeAlias и Union типы в Python 3.10+?"
+        - "Как работает синтаксис '|' для объединений?"
 
     expected_points:
       - "Type hints improve code readability and enable static type checking"
@@ -98,7 +123,9 @@ questions:
     tags: ["copy", "references"]
 
     question:
-      text: "Explain the difference between shallow copy and deep copy in Python."
+      text:
+        en: "Explain the difference between shallow copy and deep copy in Python."
+        ru: "Объясните разницу между поверхностной (shallow) и глубокой (deep) копией в Python."
       code: |
         import copy
         original = [[1, 2], [3, 4]]
@@ -106,8 +133,12 @@ questions:
         deep = copy.deepcopy(original)
 
     follow_ups:
-      - "How does slicing [:] relate to shallow copying?"
-      - "When would modifying a shallow copy affect the original?"
+      en:
+        - "How does slicing [:] relate to shallow copying?"
+        - "When would modifying a shallow copy affect the original?"
+      ru:
+        - "Как срезы [:] связаны с поверхностным копированием?"
+        - "Когда изменение поверхностной копии повлияет на оригинал?"
 
     expected_points:
       - "Shallow copy creates new container but nested objects are shared references"
@@ -121,13 +152,20 @@ questions:
     tags: ["name-mangling", "dunder"]
 
     question:
-      text: "What are dunder methods (magic methods) in Python? Give three examples and explain when they are called."
+      text:
+        en: "What are dunder methods (magic methods) in Python? Give three examples and explain when they are called."
+        ru: "Что такое дандер-методы (магические методы) в Python? Приведите три примера и объясните, когда они вызываются."
       code: null
 
     follow_ups:
-      - "What is __init__ vs __new__?"
-      - "How does __str__ differ from __repr__?"
-      - "What is __call__ used for?"
+      en:
+        - "What is __init__ vs __new__?"
+        - "How does __str__ differ from __repr__?"
+        - "What is __call__ used for?"
+      ru:
+        - "В чём разница между __init__ и __new__?"
+        - "Чем __str__ отличается от __repr__?"
+        - "Для чего используется __call__?"
 
     expected_points:
       - "Dunder methods are special methods with double underscores (e.g., __init__, __str__)"

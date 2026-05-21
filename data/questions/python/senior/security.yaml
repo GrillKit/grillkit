@@ -10,12 +10,19 @@ questions:
     difficulty: 4
     tags: ["authentication", "jwt", "oauth2"]
     question:
-      text: "How do you implement authentication in a Python web application? Compare session-based auth, JWT, and OAuth2."
+      text:
+        en: "How do you implement authentication in a Python web application? Compare session-based auth, JWT, and OAuth2."
+        ru: "Как реализовать аутентификацию в Python веб-приложении? Сравните сессионную аутентификацию, JWT и OAuth2."
       code: null
     follow_ups:
-      - "What are the security considerations for JWT (expiration, signing algorithm, refresh tokens)?"
-      - "How does OAuth2 work for third-party authentication?"
-      - "How do you securely store session tokens (HTTP-only, Secure, SameSite cookies)?"
+      en:
+        - "What are the security considerations for JWT (expiration, signing algorithm, refresh tokens)?"
+        - "How does OAuth2 work for third-party authentication?"
+        - "How do you securely store session tokens (HTTP-only, Secure, SameSite cookies)?"
+      ru:
+        - "Какие аспекты безопасности JWT нужно учитывать (срок действия, алгоритм подписи, refresh-токены)?"
+        - "Как работает OAuth2 для сторонней аутентификации?"
+        - "Как безопасно хранить сессионные токены (HTTP-only, Secure, SameSite куки)?"
     expected_points:
       - "Session auth: server-side storage, cookie with session ID"
       - "JWT: stateless, self-contained token with claims, signed"
@@ -27,12 +34,19 @@ questions:
     difficulty: 4
     tags: ["authorization", "RBAC", "ABAC"]
     question:
-      text: "How do you implement authorization (access control) in Python? Compare RBAC and ABAC."
+      text:
+        en: "How do you implement authorization (access control) in Python? Compare RBAC and ABAC."
+        ru: "Как реализовать авторизацию (контроль доступа) в Python? Сравните RBAC и ABAC."
       code: null
     follow_ups:
-      - "What is RBAC (role-based) vs ABAC (attribute-based)?"
-      - "How do you implement permission checks in FastAPI or Django?"
-      - "What is the principle of least privilege and how do you enforce it?"
+      en:
+        - "What is RBAC (role-based) vs ABAC (attribute-based)?"
+        - "How do you implement permission checks in FastAPI or Django?"
+        - "What is the principle of least privilege and how do you enforce it?"
+      ru:
+        - "Что такое RBAC (ролевой) vs ABAC (атрибутивный)?"
+        - "Как реализовать проверку разрешений в FastAPI или Django?"
+        - "Что такое принцип минимальных привилегий и как его применять?"
     expected_points:
       - "RBAC: roles assigned to users, permissions assigned to roles"
       - "ABAC: policies based on user/resource/environment attributes"
@@ -44,12 +58,19 @@ questions:
     difficulty: 4
     tags: ["sql-injection", "xss", "csrf"]
     question:
-      text: "What are the most common web vulnerabilities and how do you prevent them in Python?"
+      text:
+        en: "What are the most common web vulnerabilities and how do you prevent them in Python?"
+        ru: "Какие наиболее распространённые веб-уязвимости и как их предотвращать в Python?"
       code: null
     follow_ups:
-      - "How do ORMs (SQLAlchemy, Django ORM) prevent SQL injection?"
-      - "What is XSS and how do you sanitize output in templates?"
-      - "How does CSRF protection work in Django vs FastAPI?"
+      en:
+        - "How do ORMs (SQLAlchemy, Django ORM) prevent SQL injection?"
+        - "What is XSS and how do you sanitize output in templates?"
+        - "How does CSRF protection work in Django vs FastAPI?"
+      ru:
+        - "Как ORM (SQLAlchemy, Django ORM) предотвращают SQL-инъекции?"
+        - "Что такое XSS и как экранировать вывод в шаблонах?"
+        - "Как работает защита CSRF в Django vs FastAPI?"
     expected_points:
       - "SQL injection: use parameterized queries / ORM; never raw string formatting"
       - "XSS: escape output in templates (Django auto-escapes, Jinja2 too)"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["encryption", "hashing", "bcrypt"]
     question:
-      text: "How do you handle password storage and encryption in Python?"
+      text:
+        en: "How do you handle password storage and encryption in Python?"
+        ru: "Как обрабатывать хранение паролей и шифрование в Python?"
       code: null
     follow_ups:
-      - "Why should you use bcrypt/argon2 instead of SHA-256 for passwords?"
-      - "What is the difference between hashing, encryption, and encoding?"
-      - "How do you implement data encryption at rest using Fernet or cryptography?"
+      en:
+        - "Why should you use bcrypt/argon2 instead of SHA-256 for passwords?"
+        - "What is the difference between hashing, encryption, and encoding?"
+        - "How do you implement data encryption at rest using Fernet or cryptography?"
+      ru:
+        - "Почему следует использовать bcrypt/argon2 вместо SHA-256 для паролей?"
+        - "В чём разница между хешированием, шифрованием и кодированием?"
+        - "Как реализовать шифрование данных в покое с помощью Fernet или cryptography?"
     expected_points:
       - "Use bcrypt or argon2 for password hashing (slow, salted)"
       - "Never store plain text — use cryptographic hashing algorithms"
@@ -78,12 +106,19 @@ questions:
     difficulty: 4
     tags: ["dependency-security", "safety", "bandit"]
     question:
-      text: "How do you audit Python dependencies for security vulnerabilities? What tools exist?"
+      text:
+        en: "How do you audit Python dependencies for security vulnerabilities? What tools exist?"
+        ru: "Как аудировать Python-зависимости на наличие уязвимостей? Какие инструменты существуют?"
       code: null
     follow_ups:
-      - "What is safety or pip-audit and how do you integrate it into CI/CD?"
-      - "How does Bandit analyze Python code for security issues?"
-      - "What is a software bill of materials (SBOM)?"
+      en:
+        - "What is safety or pip-audit and how do you integrate it into CI/CD?"
+        - "How does Bandit analyze Python code for security issues?"
+        - "What is a software bill of materials (SBOM)?"
+      ru:
+        - "Что такое safety или pip-audit и как интегрировать их в CI/CD?"
+        - "Как Bandit анализирует Python-код на наличие проблем безопасности?"
+        - "Что такое программный ведомость материалов (SBOM)?"
     expected_points:
       - "pip-audit: scans dependencies against known vulnerability databases"
       - "Bandit: SAST tool for Python — finds common security issues"
@@ -95,12 +130,19 @@ questions:
     difficulty: 5
     tags: ["api-security", "rate-limiting", "cors"]
     question:
-      text: "What are the key security considerations for REST APIs and GraphQL in Python?"
+      text:
+        en: "What are the key security considerations for REST APIs and GraphQL in Python?"
+        ru: "Какие ключевые аспекты безопасности для REST API и GraphQL в Python?"
       code: null
     follow_ups:
-      - "How do you prevent mass assignment / GraphQL injection?"
-      - "What headers belong in every API response (HSTS, CSP, X-Frame-Options)?"
-      - "How do you safely handle file uploads (size limits, MIME validation)?"
+      en:
+        - "How do you prevent mass assignment / GraphQL injection?"
+        - "What headers belong in every API response (HSTS, CSP, X-Frame-Options)?"
+        - "How do you safely handle file uploads (size limits, MIME validation)?"
+      ru:
+        - "Как предотвратить mass assignment / GraphQL-инъекции?"
+        - "Какие заголовки должны быть в каждом API-ответе (HSTS, CSP, X-Frame-Options)?"
+        - "Как безопасно обрабатывать загрузку файлов (ограничения размера, проверка MIME)?"
     expected_points:
       - "Rate limiting: prevent abuse via Redis-based throttling"
       - "CORS: restrict origins, methods, and allowed headers"
@@ -112,12 +154,19 @@ questions:
     difficulty: 5
     tags: ["ssrf", "deserialization", "xxe"]
     question:
-      text: "What are SSRF, insecure deserialization, and XXE vulnerabilities? How do they apply to Python?"
+      text:
+        en: "What are SSRF, insecure deserialization, and XXE vulnerabilities? How do they apply to Python?"
+        ru: "Что такое SSRF, небезопасная десериализация и XXE уязвимости? Как они применяются к Python?"
       code: null
     follow_ups:
-      - "How does SSRF work and how do you prevent it (allowlist, URL validation)?"
-      - "What Python libraries are vulnerable to insecure deserialization (pickle, yaml)?"
-      - "How do you safely parse XML (disable external entities)?"
+      en:
+        - "How does SSRF work and how do you prevent it (allowlist, URL validation)?"
+        - "What Python libraries are vulnerable to insecure deserialization (pickle, yaml)?"
+        - "How do you safely parse XML (disable external entities)?"
+      ru:
+        - "Как работает SSRF и как его предотвратить (белый список, валидация URL)?"
+        - "Какие Python-библиотеки уязвимы для небезопасной десериализации (pickle, yaml)?"
+        - "Как безопасно парсить XML (отключение внешних сущностей)?"
     expected_points:
       - "SSRF: server makes requests to internal services — use allowlists"
       - "Pickle deserialization: arbitrary code execution — never unpickle untrusted data"

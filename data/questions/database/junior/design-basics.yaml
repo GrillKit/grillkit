@@ -10,12 +10,19 @@ questions:
     difficulty: 2
     tags: ["normalization", "1NF", "2NF", "3NF"]
     question:
-      text: "What is database normalization? Explain 1NF, 2NF, and 3NF with examples."
+      text:
+        en: "What is database normalization? Explain 1NF, 2NF, and 3NF with examples."
+        ru: "Что такое нормализация базы данных? Объясните 1NF, 2NF и 3NF с примерами."
       code: null
     follow_ups:
-      - "What problems does normalization solve (redundancy, anomalies)?"
-      - "When might you denormalize for performance?"
-      - "What is the difference between 3NF and BCNF?"
+      en:
+        - "What problems does normalization solve (redundancy, anomalies)?"
+        - "When might you denormalize for performance?"
+        - "What is the difference between 3NF and BCNF?"
+      ru:
+        - "Какие проблемы решает нормализация (избыточность, аномалии)?"
+        - "Когда имеет смысл денормализовать ради производительности?"
+        - "В чём разница между 3NF и BCNF?"
     expected_points:
       - "1NF: atomic columns, no repeating groups"
       - "2NF: 1NF + all non-key columns depend on full primary key"
@@ -27,7 +34,9 @@ questions:
     difficulty: 1
     tags: ["primary-key", "foreign-key", "constraints"]
     question:
-      text: "What are primary keys, foreign keys, and constraints in SQL databases?"
+      text:
+        en: "What are primary keys, foreign keys, and constraints in SQL databases?"
+        ru: "Что такое первичные и внешние ключи и ограничения (constraints) в SQL-базах?"
       code: |
         CREATE TABLE orders (
             id SERIAL PRIMARY KEY,
@@ -36,9 +45,14 @@ questions:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     follow_ups:
-      - "What is a composite primary key?"
-      - "What DO the referential actions CASCADE, SET NULL, RESTRICT?"
-      - "What is the difference between UNIQUE constraint and PRIMARY KEY?"
+      en:
+        - "What is a composite primary key?"
+        - "What DO the referential actions CASCADE, SET NULL, RESTRICT?"
+        - "What is the difference between UNIQUE constraint and PRIMARY KEY?"
+      ru:
+        - "Что такое составной первичный ключ?"
+        - "Что делают действия CASCADE, SET NULL, RESTRICT для внешних ключей?"
+        - "В чём разница между ограничением UNIQUE и PRIMARY KEY?"
     expected_points:
       - "PRIMARY KEY: uniquely identifies each row (unique + not null)"
       - "FOREIGN KEY: enforces referential integrity between tables"
@@ -50,12 +64,19 @@ questions:
     difficulty: 2
     tags: ["indexes", "performance"]
     question:
-      text: "How do database indexes work? When should you create an index?"
+      text:
+        en: "How do database indexes work? When should you create an index?"
+        ru: "Как работают индексы в базе данных? Когда стоит создавать индекс?"
       code: null
     follow_ups:
-      - "What is the difference between clustered and non-clustered indexes?"
-      - "How does a B-tree index work internally?"
-      - "What are the trade-offs of adding too many indexes?"
+      en:
+        - "What is the difference between clustered and non-clustered indexes?"
+        - "How does a B-tree index work internally?"
+        - "What are the trade-offs of adding too many indexes?"
+      ru:
+        - "В чём разница между кластерным и некластерным индексом?"
+        - "Как внутри устроен B-tree индекс?"
+        - "Какие компромиссы у слишком большого числа индексов?"
     expected_points:
       - "Indexes speed up SELECT/WHERE/JOIN at cost of write performance"
       - "Clustered index determines physical order of data"
@@ -67,12 +88,19 @@ questions:
     difficulty: 1
     tags: ["ER-diagram", "relationships"]
     question:
-      text: "What is an Entity-Relationship (ER) diagram? Explain one-to-one, one-to-many, and many-to-many relationships."
+      text:
+        en: "What is an Entity-Relationship (ER) diagram? Explain one-to-one, one-to-many, and many-to-many relationships."
+        ru: "Что такое ER-диаграмма (сущность–связь)? Объясните связи один-к-одному, один-ко-многим и многие-ко-многим."
       code: null
     follow_ups:
-      - "How do you represent a many-to-many relationship in SQL?"
-      - "What is a junction (associative) table?"
-      - "What is cardinality and modality in ER modeling?"
+      en:
+        - "How do you represent a many-to-many relationship in SQL?"
+        - "What is a junction (associative) table?"
+        - "What is cardinality and modality in ER modeling?"
+      ru:
+        - "Как представить связь многие-ко-многим в SQL?"
+        - "Что такое связующая (junction) таблица?"
+        - "Что такое мощность (cardinality) и модальность в ER-моделировании?"
     expected_points:
       - "ER diagram visually represents entities and their relationships"
       - "One-to-one: rare, use when splitting optional fields"
@@ -84,12 +112,19 @@ questions:
     difficulty: 2
     tags: ["data-types", "schema-design"]
     question:
-      text: "What SQL data types exist and how do you choose the right type for a column?"
+      text:
+        en: "What SQL data types exist and how do you choose the right type for a column?"
+        ru: "Какие типы данных есть в SQL и как выбрать подходящий тип для столбца?"
       code: null
     follow_ups:
-      - "What is the difference between VARCHAR and TEXT?"
-      - "When would you use DECIMAL vs FLOAT?"
-      - "What is the difference between TIMESTAMP and TIMESTAMPTZ?"
+      en:
+        - "What is the difference between VARCHAR and TEXT?"
+        - "When would you use DECIMAL vs FLOAT?"
+        - "What is the difference between TIMESTAMP and TIMESTAMPTZ?"
+      ru:
+        - "В чём разница между VARCHAR и TEXT?"
+        - "Когда использовать DECIMAL, а когда FLOAT?"
+        - "В чём разница между TIMESTAMP и TIMESTAMPTZ?"
     expected_points:
       - "Numeric: INTEGER, DECIMAL(p,s), FLOAT, SERIAL (auto-increment)"
       - "String: CHAR(n), VARCHAR(n), TEXT"

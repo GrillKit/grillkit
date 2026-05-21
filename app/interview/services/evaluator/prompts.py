@@ -33,10 +33,14 @@ _JSON_SCHEMA_METADATA_KEYS = frozenset(
     }
 )
 
-DICTATION_TRANSCRIPT_NOTE = """Answers may be typed or dictated with speech-to-text. Dictated text can
-contain recognition errors, garbled words, or odd spelling. Judge technical
-understanding and substance only — do not lower scores for grammar, wording,
-or speech-to-text artifacts when the intended meaning is reasonably clear."""
+EVALUATION_SUBSTANCE_NOTE = """Answers may be typed or spoken (speech-to-text). Text often contains typos,
+misheard words, or wrong spellings of technical terms, API names, and identifiers.
+When the underlying idea is clear, treat those as input errors — not lack of knowledge.
+
+Score and comment on technical understanding and substance only. Do not lower scores
+for grammar, informal wording, imprecise terminology, or mistaken names when the
+intended meaning is reasonably clear. Do not criticize typos or naming mistakes in
+feedback, strengths, or weaknesses; focus on whether the candidate grasped the concepts."""
 
 ANSWER_EVALUATION_INSTRUCTIONS = """You are a technical interviewer evaluating a candidate's answer.
 Assess the answer based on:
@@ -89,7 +93,7 @@ Example response (fill with your own content):
 
 
 def build_evaluator_instructions(locale: str, task_instructions: str) -> str:
-    """Combine locale, dictation, and task-specific evaluator instructions.
+    """Combine locale, substance-focused rules, and task-specific instructions.
 
     Args:
         locale: Supported interview locale code.
@@ -100,7 +104,7 @@ def build_evaluator_instructions(locale: str, task_instructions: str) -> str:
     """
     return (
         f"{language_instruction(locale)}\n\n"
-        f"{DICTATION_TRANSCRIPT_NOTE}\n\n"
+        f"{EVALUATION_SUBSTANCE_NOTE}\n\n"
         f"{task_instructions}"
     )
 

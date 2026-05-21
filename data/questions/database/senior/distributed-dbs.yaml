@@ -10,12 +10,19 @@ questions:
     difficulty: 5
     tags: ["sharding", "consistent-hashing"]
     question:
-      text: "How does database sharding work? How does consistent hashing distribute data?"
+      text:
+        en: "How does database sharding work? How does consistent hashing distribute data?"
+        ru: "Как работает шардирование базы данных? Как consistent hashing распределяет данные?"
       code: null
     follow_ups:
-      - "What hash ring and virtual nodes mean in consistent hashing?"
-      - "How do you reshard data when adding new shards?"
-      - "What is the difference between application-level and database-level sharding?"
+      en:
+        - "What hash ring and virtual nodes mean in consistent hashing?"
+        - "How do you reshard data when adding new shards?"
+        - "What is the difference between application-level and database-level sharding?"
+      ru:
+        - "Что такое hash ring и virtual nodes в consistent hashing?"
+        - "Как перешардировать данные при добавлении новых шардов?"
+        - "В чём разница между шардированием на уровне приложения и СУБД?"
     expected_points:
       - "Sharding splits data across multiple database instances"
       - "Consistent hashing minimizes rehashing when nodes change"
@@ -27,12 +34,19 @@ questions:
     difficulty: 5
     tags: ["distributed-sql", "cockroachdb", "spanner"]
     question:
-      text: "How do distributed SQL databases (CockroachDB, Google Spanner, YugabyteDB) work?"
+      text:
+        en: "How do distributed SQL databases (CockroachDB, Google Spanner, YugabyteDB) work?"
+        ru: "Как работают распределённые SQL-базы (CockroachDB, Google Spanner, YugabyteDB)?"
       code: null
     follow_ups:
-      - "How does CockroachDB achieve serializable isolation across nodes?"
-      - "What is TrueTime (Spanner) vs hybrid logical clocks (CockroachDB)?"
-      - "How do distributed SQL databases handle transactions across regions?"
+      en:
+        - "How does CockroachDB achieve serializable isolation across nodes?"
+        - "What is TrueTime (Spanner) vs hybrid logical clocks (CockroachDB)?"
+        - "How do distributed SQL databases handle transactions across regions?"
+      ru:
+        - "Как CockroachDB обеспечивает serializable изоляцию между узлами?"
+        - "Что такое TrueTime (Spanner) и hybrid logical clocks (CockroachDB)?"
+        - "Как распределённые SQL-БД обрабатывают транзакции между регионами?"
     expected_points:
       - "Distributed SQL: full SQL support with horizontal scaling"
       - "CockroachDB: uses Raft for consensus, HLC for ordering"
@@ -44,12 +58,19 @@ questions:
     difficulty: 5
     tags: ["leader-election", "failover"]
     question:
-      text: "How does leader election and automatic failover work in distributed databases?"
+      text:
+        en: "How does leader election and automatic failover work in distributed databases?"
+        ru: "Как работают выбор лидера и автоматический failover в распределённых базах?"
       code: null
     follow_ups:
-      - "How does Raft-based leader election compare to Paxos?"
-      - "What is split-brain and how is it prevented?"
-      - "How does Patroni manage PostgreSQL automatic failover?"
+      en:
+        - "How does Raft-based leader election compare to Paxos?"
+        - "What is split-brain and how is it prevented?"
+        - "How does Patroni manage PostgreSQL automatic failover?"
+      ru:
+        - "Чем выбор лидера на Raft отличается от Paxos?"
+        - "Что такое split-brain и как его предотвращают?"
+        - "Как Patroni управляет автоматическим failover PostgreSQL?"
     expected_points:
       - "Leader election: nodes vote for a leader, majority required"
       - "Raft: simpler than Paxos, uses term numbers and log replication"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["multi-region", "geo-distribution"]
     question:
-      text: "How do you design a multi-region database topology? What are the trade-offs?"
+      text:
+        en: "How do you design a multi-region database topology? What are the trade-offs?"
+        ru: "Как спроектировать мультирегиональную топологию базы данных? Какие компромиссы?"
       code: null
     follow_ups:
-      - "What is active-passive vs active-active multi-region setup?"
-      - "How do bidirectionally replication and conflict resolution work?"
-      - "What GDPR considerations affect multi-region database design?"
+      en:
+        - "What is active-passive vs active-active multi-region setup?"
+        - "How do bidirectionally replication and conflict resolution work?"
+        - "What GDPR considerations affect multi-region database design?"
+      ru:
+        - "В чём разница active-passive и active-active между регионами?"
+        - "Как работают двунаправленная репликация и разрешение конфликтов?"
+        - "Как GDPR влияет на мультирегиональный дизайн БД?"
     expected_points:
       - "Active-passive: one primary region, others read replicas"
       - "Active-active: all regions accept writes — needs conflict resolution"
@@ -78,12 +106,19 @@ questions:
     difficulty: 5
     tags: ["backup", "PITR", "disaster-recovery"]
     question:
-      text: "How do you design backup and disaster recovery strategies for databases?"
+      text:
+        en: "How do you design backup and disaster recovery strategies for databases?"
+        ru: "Как спроектировать стратегии резервного копирования и аварийного восстановления для БД?"
       code: null
     follow_ups:
-      - "What is the difference between full, incremental, and differential backups?"
-      - "What is Point-In-Time Recovery (PITR) and how does WAL archiving work?"
-      - "How do you test backup recovery and what is RPO/RTO?"
+      en:
+        - "What is the difference between full, incremental, and differential backups?"
+        - "What is Point-In-Time Recovery (PITR) and how does WAL archiving work?"
+        - "How do you test backup recovery and what is RPO/RTO?"
+      ru:
+        - "В чём разница полного, инкрементального и дифференциального бэкапа?"
+        - "Что такое Point-In-Time Recovery (PITR) и как работает архивирование WAL?"
+        - "Как тестировать восстановление из бэкапа и что такое RPO/RTO?"
     expected_points:
       - "RPO (Recovery Point Objective): max acceptable data loss"
       - "RTO (Recovery Time Objective): max acceptable downtime"

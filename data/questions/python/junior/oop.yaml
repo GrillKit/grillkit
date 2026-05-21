@@ -10,11 +10,17 @@ questions:
     difficulty: 1
     tags: ["class", "instance", "self"]
     question:
-      text: "What is the difference between a class and an instance in Python? What is 'self'?"
+      text:
+        en: "What is the difference between a class and an instance in Python? What is 'self'?"
+        ru: "В чём разница между классом и экземпляром в Python? Что такое 'self'?"
       code: null
     follow_ups:
-      - "Can you name the methods that are automatically called when creating an instance?"
-      - "What is the difference between method, classmethod, and staticmethod?"
+      en:
+        - "Can you name the methods that are automatically called when creating an instance?"
+        - "What is the difference between method, classmethod, and staticmethod?"
+      ru:
+        - "Какие методы автоматически вызываются при создании экземпляра?"
+        - "В чём разница между method, classmethod и staticmethod?"
     expected_points:
       - "Class is a blueprint; instance is a concrete object created from it"
       - "'self' refers to the instance itself — passed automatically as first arg"
@@ -26,7 +32,9 @@ questions:
     difficulty: 2
     tags: ["inheritance", "MRO"]
     question:
-      text: "How does inheritance work in Python? What is Method Resolution Order (MRO)?"
+      text:
+        en: "How does inheritance work in Python? What is Method Resolution Order (MRO)?"
+        ru: "Как работает наследование в Python? Что такое порядок разрешения методов (MRO)?"
       code: |
         class A:
             def method(self):
@@ -45,8 +53,12 @@ questions:
 
         print(D().method())  # ???
     follow_ups:
-      - "How does super() work in multiple inheritance?"
-      - "How can you view the MRO of a class?"
+      en:
+        - "How does super() work in multiple inheritance?"
+        - "How can you view the MRO of a class?"
+      ru:
+        - "Как работает super() при множественном наследовании?"
+        - "Как можно посмотреть MRO класса?"
     expected_points:
       - "Child class inherits all attributes from parent"
       - "MRO determines method lookup order using C3 linearization"
@@ -58,7 +70,9 @@ questions:
     difficulty: 2
     tags: ["encapsulation", "private", "protected"]
     question:
-      text: "How does Python handle visibility and encapsulation? Explain single underscore, double underscore, and name mangling."
+      text:
+        en: "How does Python handle visibility and encapsulation? Explain single underscore, double underscore, and name mangling."
+        ru: "Как Python обрабатывает видимость и инкапсуляцию? Объясните одинарное подчёркивание, двойное подчёркивание и name mangling."
       code: |
         class MyClass:
             def __init__(self):
@@ -66,8 +80,12 @@ questions:
                 self._protected = 2
                 self.__private = 3
     follow_ups:
-      - "Are private attributes truly private in Python?"
-      - "What happens to __private when a subclass is created?"
+      en:
+        - "Are private attributes truly private in Python?"
+        - "What happens to __private when a subclass is created?"
+      ru:
+        - "Являются ли приватные атрибуты действительно приватными в Python?"
+        - "Что происходит с __private при создании подкласса?"
     expected_points:
       - "Single underscore _: convention for 'protected' (internal use)"
       - "Double underscore __: triggers name mangling to _Classname__attr"
@@ -79,7 +97,9 @@ questions:
     difficulty: 2
     tags: ["property", "getter-setter", "descriptors"]
     question:
-      text: "How do you create getters and setters in Python? Explain the @property decorator."
+      text:
+        en: "How do you create getters and setters in Python? Explain the @property decorator."
+        ru: "Как создавать геттеры и сеттеры в Python? Объясните декоратор @property."
       code: |
         class Temperature:
             def __init__(self, celsius):
@@ -93,8 +113,12 @@ questions:
             def fahrenheit(self, value):
                 self._celsius = (value - 32) * 5/9
     follow_ups:
-      - "When would you use @property instead of a regular attribute?"
-      - "What is the difference between @property and descriptors?"
+      en:
+        - "When would you use @property instead of a regular attribute?"
+        - "What is the difference between @property and descriptors?"
+      ru:
+        - "Когда использовать @property вместо обычного атрибута?"
+        - "В чём разница между @property и дескрипторами?"
     expected_points:
       - "@property turns a method into a read-only attribute"
       - "@<name>.setter and @<name>.deleter provide write and delete"
@@ -106,7 +130,9 @@ questions:
     difficulty: 2
     tags: ["dataclasses", "__slots__"]
     question:
-      text: "What are dataclasses in Python? How do they differ from regular classes and __slots__?"
+      text:
+        en: "What are dataclasses in Python? How do they differ from regular classes and __slots__?"
+        ru: "Что такое dataclasses в Python? Чем они отличаются от обычных классов и __slots__?"
       code: |
         from dataclasses import dataclass
 
@@ -115,9 +141,14 @@ questions:
             x: float
             y: float
     follow_ups:
-      - "What does frozen=True do in a dataclass?"
-      - "How does __slots__ improve memory usage?"
-      - "When would you choose dataclass vs namedtuple vs plain class?"
+      en:
+        - "What does frozen=True do in a dataclass?"
+        - "How does __slots__ improve memory usage?"
+        - "When would you choose dataclass vs namedtuple vs plain class?"
+      ru:
+        - "Что делает frozen=True в dataclass?"
+        - "Как __slots__ улучшает использование памяти?"
+        - "Когда выбрать dataclass vs namedtuple vs обычный класс?"
     expected_points:
       - "dataclasses auto-generate __init__, __repr__, __eq__, etc."
       - "__slots__ defines fixed set of attributes, saving memory"
@@ -129,11 +160,17 @@ questions:
     difficulty: 2
     tags: ["composition", "aggregation"]
     question:
-      text: "Explain the difference between inheritance and composition. When should you prefer composition?"
+      text:
+        en: "Explain the difference between inheritance and composition. When should you prefer composition?"
+        ru: "Объясните разницу между наследованием и композицией. Когда следует предпочесть композицию?"
       code: null
     follow_ups:
-      - "What is 'favor composition over inheritance'?"
-      - "How does the Strategy pattern use composition?"
+      en:
+        - "What is 'favor composition over inheritance'?"
+        - "How does the Strategy pattern use composition?"
+      ru:
+        - "Что означает 'предпочитайте композицию наследованию'?"
+        - "Как паттерн Стратегия использует композицию?"
     expected_points:
       - "Inheritance: 'is-a' relationship, creates tight coupling"
       - "Composition: 'has-a' relationship, more flexible"
@@ -145,7 +182,9 @@ questions:
     difficulty: 2
     tags: ["abstract-class", "abc", "interfaces"]
     question:
-      text: "How do you create abstract classes in Python? What is the ABC module?"
+      text:
+        en: "How do you create abstract classes in Python? What is the ABC module?"
+        ru: "Как создавать абстрактные классы в Python? Что такое модуль ABC?"
       code: |
         from abc import ABC, abstractmethod
 
@@ -161,8 +200,12 @@ questions:
             def area(self):
                 return 3.14 * self.radius ** 2
     follow_ups:
-      - "Can you instantiate an abstract class?"
-      - "What is the difference between abstractmethod and NotImplementedError?"
+      en:
+        - "Can you instantiate an abstract class?"
+        - "What is the difference between abstractmethod and NotImplementedError?"
+      ru:
+        - "Можно ли создать экземпляр абстрактного класса?"
+        - "В чём разница между abstractmethod и NotImplementedError?"
     expected_points:
       - "ABC classes cannot be instantiated directly"
       - "@abstractmethod forces subclasses to implement the method"

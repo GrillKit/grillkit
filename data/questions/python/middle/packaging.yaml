@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["pyproject.toml", "build-system"]
     question:
-      text: "What is pyproject.toml? How does it replace setup.py and setup.cfg?"
+      text:
+        en: "What is pyproject.toml? How does it replace setup.py and setup.cfg?"
+        ru: "Что такое pyproject.toml? Как он заменяет setup.py и setup.cfg?"
       code: null
     follow_ups:
-      - "What is the difference between build-system and project in pyproject.toml?"
-      - "What build backends exist (setuptools, flit, poetry, hatch)?"
-      - "How do you define dependencies in pyproject.toml?"
+      en:
+        - "What is the difference between build-system and project in pyproject.toml?"
+        - "What build backends exist (setuptools, flit, poetry, hatch)?"
+        - "How do you define dependencies in pyproject.toml?"
+      ru:
+        - "В чём разница между build-system и project в pyproject.toml?"
+        - "Какие существуют сборочные бэкенды (setuptools, flit, poetry, hatch)?"
+        - "Как определить зависимости в pyproject.toml?"
     expected_points:
       - "pyproject.toml is the standard Python project metadata file (PEP 517/518)"
       - "build-system specifies the build backend and requirements"
@@ -27,12 +34,19 @@ questions:
     difficulty: 3
     tags: ["uv", "pip", "poetry"]
     question:
-      text: "Compare pip, pipenv, poetry, and uv for dependency management. What are the trade-offs?"
+      text:
+        en: "Compare pip, pipenv, poetry, and uv for dependency management. What are the trade-offs?"
+        ru: "Сравните pip, pipenv, poetry и uv для управления зависимостями. Каковы компромиссы?"
       code: null
     follow_ups:
-      - "What makes uv faster than pip?"
-      - "How does poetry manage virtual environments?"
-      - "What is a lock file and why is it important?"
+      en:
+        - "What makes uv faster than pip?"
+        - "How does poetry manage virtual environments?"
+        - "What is a lock file and why is it important?"
+      ru:
+        - "Что делает uv быстрее pip?"
+        - "Как poetry управляет виртуальными окружениями?"
+        - "Что такое lock-файл и почему он важен?"
     expected_points:
       - "pip: simplest, no lock file by default, requirements.txt"
       - "Poetry: pyproject.toml native, lock file, virtual env management"
@@ -44,12 +58,19 @@ questions:
     difficulty: 3
     tags: ["wheels", "sdist"]
     question:
-      text: "What is the difference between a source distribution (sdist) and a wheel? How are they built?"
+      text:
+        en: "What is the difference between a source distribution (sdist) and a wheel? How are they built?"
+        ru: "В чём разница между исходным дистрибутивом (sdist) и wheel? Как они собираются?"
       code: null
     follow_ups:
-      - "Why are wheels preferred for distribution?"
-      - "What is a pure Python wheel vs a platform-specific wheel?"
-      - "How do you build wheels with C extensions?"
+      en:
+        - "Why are wheels preferred for distribution?"
+        - "What is a pure Python wheel vs a platform-specific wheel?"
+        - "How do you build wheels with C extensions?"
+      ru:
+        - "Почему wheel предпочтительнее для распространения?"
+        - "Чем отличается чистый Python wheel от платформо-зависимого?"
+        - "Как собирать wheel с C-расширениями?"
     expected_points:
       - "sdist: source code + setup script, requires build step on install"
       - "wheel: pre-built archive, faster install (no compilation)"
@@ -61,12 +82,19 @@ questions:
     difficulty: 3
     tags: ["publishing", "pypi"]
     question:
-      text: "How do you publish a Python package to PyPI? What are the steps?"
+      text:
+        en: "How do you publish a Python package to PyPI? What are the steps?"
+        ru: "Как опубликовать Python-пакет в PyPI? Какие шаги нужно выполнить?"
       code: null
     follow_ups:
-      - "What is the difference between PyPI and TestPyPI?"
-      - "How do API tokens for PyPI publishing work?"
-      - "What should you include in a README and CHANGELOG for a package?"
+      en:
+        - "What is the difference between PyPI and TestPyPI?"
+        - "How do API tokens for PyPI publishing work?"
+        - "What should you include in a README and CHANGELOG for a package?"
+      ru:
+        - "В чём разница между PyPI и TestPyPI?"
+        - "Как работают API-токены для публикации в PyPI?"
+        - "Что должно быть в README и CHANGELOG пакета?"
     expected_points:
       - "Build: python -m build creates sdist and wheel"
       - "Publish: twine upload dist/*"
@@ -78,12 +106,19 @@ questions:
     difficulty: 3
     tags: ["entry-points", "console-scripts"]
     question:
-      text: "How do you create CLI entry points for a Python package? What are console_scripts?"
+      text:
+        en: "How do you create CLI entry points for a Python package? What are console_scripts?"
+        ru: "Как создать CLI-точки входа для Python-пакета? Что такое console_scripts?"
       code: null
     follow_ups:
-      - "How do entry points work with the plugin system (entry point groups)?"
-      - "How does pip use entry points internally?"
-      - "What is the difference between console_scripts and gui_scripts?"
+      en:
+        - "How do entry points work with the plugin system (entry point groups)?"
+        - "How does pip use entry points internally?"
+        - "What is the difference between console_scripts and gui_scripts?"
+      ru:
+        - "Как точки входа работают с системой плагинов (entry point groups)?"
+        - "Как pip использует точки входа внутри?"
+        - "В чём разница между console_scripts и gui_scripts?"
     expected_points:
       - "console_scripts in pyproject.toml creates CLI commands"
       - "Entry point groups allow third-party plugins"
@@ -95,11 +130,17 @@ questions:
     difficulty: 3
     tags: ["namespace-packages", "implicit-namespace"]
     question:
-      text: "What are namespace packages in Python? How do implicit namespace packages work?"
+      text:
+        en: "What are namespace packages in Python? How do implicit namespace packages work?"
+        ru: "Что такое namespace packages в Python? Как работают неявные namespace packages?"
       code: null
     follow_ups:
-      - "What is the difference between pkgutil-style and pkg_resources-style?"
-      - "When would you need namespace packages (e.g., google.cloud.*)?"
+      en:
+        - "What is the difference between pkgutil-style and pkg_resources-style?"
+        - "When would you need namespace packages (e.g., google.cloud.*)?"
+      ru:
+        - "В чём разница между pkgutil-style и pkg_resources-style?"
+        - "Когда нужны namespace packages (например, google.cloud.*)?"
     expected_points:
       - "Namespace packages allow splitting packages across directories"
       - "Implicit namespace packages (PEP 420): directory without __init__.py"

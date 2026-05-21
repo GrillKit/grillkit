@@ -8,6 +8,7 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Added
 
+- Design doc for multilingual question banks and optional question voice (MOSS-TTS sidecar): [`docs/design/question-voice-and-i18n.md`](docs/design/question-voice-and-i18n.md)
 - Offline **Whisper** speech recognition via faster-whisper with configurable model size (`small`, `medium`, `large`) and trade-off hints on `/config`
 - Server-side model download (`/speech/model/status`, `/speech/model/download`, `/speech/model/options`) with in-process hot-reload after install
 - Interview dictation WebSocket (`/interview/{id}/dictation`): buffer PCM on the server, transcribe on stop with `language` from interview locale
@@ -23,7 +24,7 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 - Declare `huggingface-hub` as a direct dependency for Whisper model downloads
 - Move interview language (`locale`) to provider configuration: set on `/config`, read-only on setup, snapshot when creating a session
 - Show the user's answer in chat as soon as they submit; AI evaluation continues in the background
-- AI evaluator prompts: score technical substance, not grammar or speech-to-text artifacts in dictated answers
+- AI evaluator prompts: score answer substance only; treat typos and misheard technical names (typed or voice input) as input errors, not gaps in knowledge, and omit them from feedback
 
 ### Removed
 

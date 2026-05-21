@@ -10,11 +10,17 @@ questions:
     difficulty: 1
     tags: ["if-elif-else", "conditionals"]
     question:
-      text: "Explain how Python evaluates 'if', 'elif', and 'else' blocks. What happens if multiple conditions are True?"
+      text:
+        en: "Explain how Python evaluates 'if', 'elif', and 'else' blocks. What happens if multiple conditions are True?"
+        ru: "Объясните, как Python вычисляет блоки 'if', 'elif' и 'else'. Что произойдёт, если несколько условий истинны?"
       code: null
     follow_ups:
-      - "What is the difference between 'elif' and a separate 'if'?"
-      - "Can you write a ternary conditional in Python?"
+      en:
+        - "What is the difference between 'elif' and a separate 'if'?"
+        - "Can you write a ternary conditional in Python?"
+      ru:
+        - "В чём разница между 'elif' и отдельным 'if'?"
+        - "Можно ли записать тернарный оператор в Python?"
     expected_points:
       - "Conditions are evaluated from top to bottom"
       - "Only the first True condition's block executes"
@@ -26,11 +32,17 @@ questions:
     difficulty: 1
     tags: ["for-loop", "while-loop"]
     question:
-      text: "What are the different ways to create loops in Python? Compare 'for' and 'while' loops."
+      text:
+        en: "What are the different ways to create loops in Python? Compare 'for' and 'while' loops."
+        ru: "Какие существуют способы создания циклов в Python? Сравните циклы 'for' и 'while'."
       code: null
     follow_ups:
-      - "When would you choose a 'while' loop over 'for'?"
-      - "What is the 'else' clause on loops used for?"
+      en:
+        - "When would you choose a 'while' loop over 'for'?"
+        - "What is the 'else' clause on loops used for?"
+      ru:
+        - "В каких случаях выбрать 'while' вместо 'for'?"
+        - "Для чего используется блок 'else' у циклов?"
     expected_points:
       - "'for' loop iterates over iterable objects"
       - "'while' loop continues while a condition is True"
@@ -42,16 +54,23 @@ questions:
     difficulty: 2
     tags: ["range", "enumerate", "iteration"]
     question:
-      text: "How does 'range()' work in Python? What is 'enumerate()' and why is it useful?"
+      text:
+        en: "How does 'range()' work in Python? What is 'enumerate()' and why is it useful?"
+        ru: "Как работает 'range()' в Python? Что такое 'enumerate()' и почему он полезен?"
       code: |
         items = ['a', 'b', 'c']
         for i in range(len(items)):
             print(i, items[i])
         # Refactor using enumerate()
     follow_ups:
-      - "What does range(5) vs range(2, 8) vs range(1, 10, 2) produce?"
-      - "How memory-efficient is range() in Python 3?"
-      - "What does enumerate(items, start=1) do?"
+      en:
+        - "What does range(5) vs range(2, 8) vs range(1, 10, 2) produce?"
+        - "How memory-efficient is range() in Python 3?"
+        - "What does enumerate(items, start=1) do?"
+      ru:
+        - "Что возвращают range(5), range(2, 8) и range(1, 10, 2)?"
+        - "Насколько эффективен range() по памяти в Python 3?"
+        - "Что делает enumerate(items, start=1)?"
     expected_points:
       - "range(start, stop, step) is a lazy sequence, not a list"
       - "enumerate(iterable, start=0) yields (index, value) tuples"
@@ -62,15 +81,21 @@ questions:
     difficulty: 2
     tags: ["comprehensions", "list-dict-set"]
     question:
-      text: "What are comprehensions in Python? Explain list, dict, and set comprehensions."
+      text:
+        en: "What are comprehensions in Python? Explain list, dict, and set comprehensions."
+        ru: "Что такое включения (comprehensions) в Python? Объясните включения списков, словарей и множеств."
       code: |
         squares = []
         for x in range(10):
             squares.append(x ** 2)
         # Convert this into a list comprehension
     follow_ups:
-      - "What is a generator expression and how does it differ from a list comprehension?"
-      - "Can you use nested comprehensions? Give an example."
+      en:
+        - "What is a generator expression and how does it differ from a list comprehension?"
+        - "Can you use nested comprehensions? Give an example."
+      ru:
+        - "Что такое генераторное выражение и чем оно отличается от включения списка?"
+        - "Можно ли использовать вложенные включения? Приведите пример."
     expected_points:
       - "List: [expr for x in iterable if condition]"
       - "Dict: {key: value for x in iterable if condition}"
@@ -82,14 +107,21 @@ questions:
     difficulty: 2
     tags: ["context-manager", "with"]
     question:
-      text: "How does the 'with' statement work in Python? What protocol does it use?"
+      text:
+        en: "How does the 'with' statement work in Python? What protocol does it use?"
+        ru: "Как работает оператор 'with' в Python? Какой протокол он использует?"
       code: |
         with open('file.txt', 'r') as f:
             data = f.read()
     follow_ups:
-      - "What are __enter__ and __exit__ methods?"
-      - "How would you create a custom context manager using contextlib.contextmanager?"
-      - "Can you nest multiple context managers in one 'with'?"
+      en:
+        - "What are __enter__ and __exit__ methods?"
+        - "How would you create a custom context manager using contextlib.contextmanager?"
+        - "Can you nest multiple context managers in one 'with'?"
+      ru:
+        - "Что такое методы __enter__ и __exit__?"
+        - "Как создать собственный контекстный менеджер с помощью contextlib.contextmanager?"
+        - "Можно ли вложить несколько контекстных менеджеров в один 'with'?"
     expected_points:
       - "'with' manages resources via context manager protocol"
       - "__enter__ is called on entry, __exit__ on exit — even on exceptions"
@@ -101,12 +133,19 @@ questions:
     difficulty: 1
     tags: ["match-case", "structural-pattern-matching"]
     question:
-      text: "What is structural pattern matching (match-case) in Python 3.10? Give a basic usage example."
+      text:
+        en: "What is structural pattern matching (match-case) in Python 3.10? Give a basic usage example."
+        ru: "Что такое структурное сопоставление с образцом (match-case) в Python 3.10? Приведите пример использования."
       code: null
     follow_ups:
-      - "How does it differ from a chain of if-elif?"
-      - "What are guard conditions in match-case?"
-      - "Can you match sequences, mappings, and class instances?"
+      en:
+        - "How does it differ from a chain of if-elif?"
+        - "What are guard conditions in match-case?"
+        - "Can you match sequences, mappings, and class instances?"
+      ru:
+        - "Чем это отличается от цепочки if-elif?"
+        - "Что такое условия-стражи (guard) в match-case?"
+        - "Можно ли сопоставлять последовательности, отображения и экземпляры классов?"
     expected_points:
       - "Introduced in Python 3.10 — more powerful than switch/case"
       - "Supports matching literals, sequences, mappings, and class instances"
@@ -118,15 +157,22 @@ questions:
     difficulty: 2
     tags: ["zip", "iteration"]
     question:
-      text: "How does 'zip()' work in Python? What happens when iterables have different lengths?"
+      text:
+        en: "How does 'zip()' work in Python? What happens when iterables have different lengths?"
+        ru: "Как работает 'zip()' в Python? Что происходит, когда итерабельные объекты имеют разную длину?"
       code: |
         names = ['Alice', 'Bob', 'Charlie']
         scores = [85, 92, 78]
         # Use zip to iterate over both lists simultaneously
     follow_ups:
-      - "What does zip(*pairs) do?"
-      - "What is itertools.zip_longest?"
-      - "What is the 'strict' parameter in zip in Python 3.10+?"
+      en:
+        - "What does zip(*pairs) do?"
+        - "What is itertools.zip_longest?"
+        - "What is the 'strict' parameter in zip in Python 3.10+?"
+      ru:
+        - "Что делает zip(*pairs)?"
+        - "Что такое itertools.zip_longest?"
+        - "Что такое параметр 'strict' в zip в Python 3.10+?"
     expected_points:
       - "zip(*iterables) returns iterator of tuples pairing elements by position"
       - "Stops at the shortest iterable by default"

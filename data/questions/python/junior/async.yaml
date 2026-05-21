@@ -10,7 +10,9 @@ questions:
     difficulty: 2
     tags: ["async-await", "coroutines"]
     question:
-      text: "What are coroutines in Python? How do async and await work?"
+      text:
+        en: "What are coroutines in Python? How do async and await work?"
+        ru: "Что такое корутины в Python? Как работают async и await?"
       code: |
         import asyncio
 
@@ -24,8 +26,12 @@ questions:
 
         asyncio.run(main())
     follow_ups:
-      - "What is the difference between a coroutine function and a coroutine object?"
-      - "What happens if you call an async function without await?"
+      en:
+        - "What is the difference between a coroutine function and a coroutine object?"
+        - "What happens if you call an async function without await?"
+      ru:
+        - "В чём разница между функцией-корутиной и объектом-корутиной?"
+        - "Что произойдёт, если вызвать async-функцию без await?"
     expected_points:
       - "async def defines a coroutine function; calling it returns a coroutine object"
       - "await suspends execution until the awaited coroutine completes"
@@ -37,12 +43,19 @@ questions:
     difficulty: 2
     tags: ["event-loop", "asyncio.run"]
     question:
-      text: "What is the asyncio event loop? How do you run async code in Python?"
+      text:
+        en: "What is the asyncio event loop? How do you run async code in Python?"
+        ru: "Что такое цикл событий (event loop) asyncio? Как запускать асинхронный код в Python?"
       code: null
     follow_ups:
-      - "What does asyncio.run() do internally?"
-      - "Can you have multiple event loops?"
-      - "How do you access the running loop?"
+      en:
+        - "What does asyncio.run() do internally?"
+        - "Can you have multiple event loops?"
+        - "How do you access the running loop?"
+      ru:
+        - "Что делает asyncio.run() внутри?"
+        - "Можно ли иметь несколько циклов событий?"
+        - "Как получить доступ к текущему циклу событий?"
     expected_points:
       - "Event loop manages and schedules coroutines"
       - "asyncio.run() creates a new loop, runs the coroutine, and cleans up"
@@ -54,11 +67,13 @@ questions:
     difficulty: 3
     tags: ["concurrent-tasks", "asyncio.gather"]
     question:
-      text: "How do you run multiple coroutines concurrently? Compare asyncio.gather, asyncio.create_task, and asyncio.TaskGroup."
+      text:
+        en: "How do you run multiple coroutines concurrently? Compare asyncio.gather, asyncio.create_task, and asyncio.TaskGroup."
+        ru: "Как запускать несколько корутин одновременно? Сравните asyncio.gather, asyncio.create_task и asyncio.TaskGroup."
       code: |
         async def fetch(url: str) -> str:
             await asyncio.sleep(1)
-            return f"Response from {url}Response from {url}"
+            return f"Response from {url}"
 
         async def main():
             urls = ["url1", "url2", "url3"]
@@ -66,8 +81,12 @@ questions:
             results = await asyncio.gather(*tasks)
             print(results)
     follow_ups:
-      - "What happens if one task in gather raises an exception?"
-      - "What is asyncio.TaskGroup (Python 3.11+) and how is it different?"
+      en:
+        - "What happens if one task in gather raises an exception?"
+        - "What is asyncio.TaskGroup (Python 3.11+) and how is it different?"
+      ru:
+        - "Что произойдёт, если одна задача в gather вызовет исключение?"
+        - "Что такое asyncio.TaskGroup (Python 3.11+) и чем он отличается?"
     expected_points:
       - "asyncio.gather runs coroutines concurrently, returns list of results"
       - "asyncio.create_task schedules a coroutine as a Task"
@@ -79,7 +98,9 @@ questions:
     difficulty: 2
     tags: ["async-with", "async-generator"]
     question:
-      text: "What are asynchronous context managers and asynchronous generators? Give examples."
+      text:
+        en: "What are asynchronous context managers and asynchronous generators? Give examples."
+        ru: "Что такое асинхронные контекстные менеджеры и асинхронные генераторы? Приведите примеры."
       code: |
         class AsyncResource:
             async def __aenter__(self):
@@ -93,8 +114,12 @@ questions:
         async with AsyncResource() as res:
             await res.do_work()
     follow_ups:
-      - "What is the difference between __aenter__/__aexit__ and __enter__/__exit__?"
-      - "How do async generators work with 'async for'?"
+      en:
+        - "What is the difference between __aenter__/__aexit__ and __enter__/__exit__?"
+        - "How do async generators work with 'async for'?"
+      ru:
+        - "В чём разница между __aenter__/__aexit__ и __enter__/__exit__?"
+        - "Как работают асинхронные генераторы с 'async for'?"
     expected_points:
       - "Async context managers use __aenter__ and __aexit__"
       - "Usage: async with resource as r:"
@@ -106,7 +131,9 @@ questions:
     difficulty: 3
     tags: ["GIL", "parallelism", "blocking-code"]
     question:
-      text: "How do you handle blocking I/O code in asyncio? What is run_in_executor?"
+      text:
+        en: "How do you handle blocking I/O code in asyncio? What is run_in_executor?"
+        ru: "Как обрабатывать блокирующий код ввода-вывода в asyncio? Что такое run_in_executor?"
       code: |
         import asyncio
         import time
@@ -119,8 +146,12 @@ questions:
             )
             print("Done")
     follow_ups:
-      - "Why does blocking the event loop matter?"
-      - "What is the difference between asyncio.sleep and time.sleep inside async code?"
+      en:
+        - "Why does blocking the event loop matter?"
+        - "What is the difference between asyncio.sleep and time.sleep inside async code?"
+      ru:
+        - "Почему блокировка цикла событий важна?"
+        - "В чём разница между asyncio.sleep и time.sleep в асинхронном коде?"
     expected_points:
       - "Blocking calls (time.sleep, requests.get) block the event loop"
       - "run_in_executor offloads blocking code to a thread or process pool"
@@ -132,11 +163,17 @@ questions:
     difficulty: 2
     tags: ["async-queue", "producer-consumer"]
     question:
-      text: "How does asyncio.Queue work? When would you use it?"
+      text:
+        en: "How does asyncio.Queue work? When would you use it?"
+        ru: "Как работает asyncio.Queue? Когда его использовать?"
       code: null
     follow_ups:
-      - "What is the difference between Queue.get() and Queue.get_nowait()?"
-      - "How do TaskGroup and Queue work together for worker patterns?"
+      en:
+        - "What is the difference between Queue.get() and Queue.get_nowait()?"
+        - "How do TaskGroup and Queue work together for worker patterns?"
+      ru:
+        - "В чём разница между Queue.get() и Queue.get_nowait()?"
+        - "Как TaskGroup и Queue работают вместе для паттерна рабочих процессов?"
     expected_points:
       - "asyncio.Queue is an async FIFO queue for coordinating coroutines"
       - "await queue.put(item) and await queue.get() are coroutines"

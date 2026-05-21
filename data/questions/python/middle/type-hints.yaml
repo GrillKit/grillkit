@@ -10,7 +10,9 @@ questions:
     difficulty: 3
     tags: ["generics", "TypeVar"]
     question:
-      text: "How do generics work in Python? Explain TypeVar, Generic, and bounded type variables."
+      text:
+        en: "How do generics work in Python? Explain TypeVar, Generic, and bounded type variables."
+        ru: "Как работают дженерики в Python? Объясните TypeVar, Generic и ограниченные типовые переменные."
       code: |
         from typing import TypeVar, Generic
 
@@ -23,9 +25,14 @@ questions:
         Number = TypeVar('Number', int, float)
         def add(a: Number, b: Number) -> Number: ...
     follow_ups:
-      - "What is the difference between TypeVar with and without constraints?"
-      - "How do you define covariant, contravariant, and invariant TypeVars?"
-      - "What is TypeVarTuple (Python 3.11+) for variadic generics?"
+      en:
+        - "What is the difference between TypeVar with and without constraints?"
+        - "How do you define covariant, contravariant, and invariant TypeVars?"
+        - "What is TypeVarTuple (Python 3.11+) for variadic generics?"
+      ru:
+        - "В чём разница между TypeVar с ограничениями и без?"
+        - "Как определить ковариантные, контравариантные и инвариантные TypeVar?"
+        - "Что такое TypeVarTuple (Python 3.11+) для вариативных дженериков?"
     expected_points:
       - "TypeVar defines a generic type parameter"
       - "Generic[T] marks a class as generic over T"
@@ -37,7 +44,9 @@ questions:
     difficulty: 3
     tags: ["protocols", "structural-typing"]
     question:
-      text: "What are Protocols in Python? How do they enable structural subtyping?"
+      text:
+        en: "What are Protocols in Python? How do they enable structural subtyping?"
+        ru: "Что такое протоколы (Protocols) в Python? Как они реализуют структурную типизацию?"
       code: |
         from typing import Protocol
 
@@ -53,9 +62,14 @@ questions:
 
         render(Circle())  # OK — structurally matches Drawable
     follow_ups:
-      - "How does Protocol differ from ABC?"
-      - "What is @runtime_checkable decorator?"
-      - "When would you prefer Protocol over ABC?"
+      en:
+        - "How does Protocol differ from ABC?"
+        - "What is @runtime_checkable decorator?"
+        - "When would you prefer Protocol over ABC?"
+      ru:
+        - "Чем Protocol отличается от ABC?"
+        - "Что такое декоратор @runtime_checkable?"
+        - "Когда предпочесть Protocol вместо ABC?"
     expected_points:
       - "Protocol: structural typing — check by shape, not inheritance"
       - "ABC: nominal typing — explicit inheritance required"
@@ -67,7 +81,9 @@ questions:
     difficulty: 4
     tags: ["overload"]
     question:
-      text: "How does @typing.overload work? How does it differ from overloading in other languages?"
+      text:
+        en: "How does @typing.overload work? How does it differ from overloading in other languages?"
+        ru: "Как работает @typing.overload? Чем он отличается от перегрузки в других языках?"
       code: |
         from typing import overload
 
@@ -82,9 +98,14 @@ questions:
                 return [str(x) for x in value]
             return str(value)
     follow_ups:
-      - "Why doesn't Python have true method overloading?"
-      - "When would you use @overload in practice?"
-      - "How do type checkers use overload signatures?"
+      en:
+        - "Why doesn't Python have true method overloading?"
+        - "When would you use @overload in practice?"
+        - "How do type checkers use overload signatures?"
+      ru:
+        - "Почему в Python нет настоящей перегрузки методов?"
+        - "Когда использовать @overload на практике?"
+        - "Как проверщики типов используют сигнатуры overload?"
     expected_points:
       - "@overload provides multiple type signatures for a single implementation"
       - "Only the last function (without @overload) is the actual implementation"
@@ -96,12 +117,19 @@ questions:
     difficulty: 3
     tags: ["mypy", "static-analysis"]
     question:
-      text: "How does mypy work? What are the benefits of static type checking in a Python project?"
+      text:
+        en: "How does mypy work? What are the benefits of static type checking in a Python project?"
+        ru: "Как работает mypy? В чём преимущества статической проверки типов в Python-проекте?"
       code: null
     follow_ups:
-      - "How do you configure mypy (--strict, pyproject.toml)?"
-      - "What is the difference between gradual typing and full typing?"
-      - "How do you integrate mypy into CI/CD pipelines?"
+      en:
+        - "How do you configure mypy (--strict, pyproject.toml)?"
+        - "What is the difference between gradual typing and full typing?"
+        - "How do you integrate mypy into CI/CD pipelines?"
+      ru:
+        - "Как настроить mypy (--strict, pyproject.toml)?"
+        - "В чём разница между постепенной типизацией и полной?"
+        - "Как интегрировать mypy в пайплайны CI/CD?"
     expected_points:
       - "mypy analyzes type hints without executing code"
       - "Catches type errors early — reduces runtime surprises"
@@ -113,7 +141,9 @@ questions:
     difficulty: 3
     tags: ["Literal", "TypedDict", "Final"]
     question:
-      text: "What are Literal, TypedDict, and Final types in Python? How do they improve type safety?"
+      text:
+        en: "What are Literal, TypedDict, and Final types in Python? How do they improve type safety?"
+        ru: "Что такое типы Literal, TypedDict и Final в Python? Как они улучшают типобезопасность?"
       code: |
         from typing import Literal, TypedDict, Final
 
@@ -125,9 +155,14 @@ questions:
 
         MAX_RETRIES: Final = 3
     follow_ups:
-      - "How does TypedDict differ from dataclasses or NamedTuple?"
-      - "Can TypedDict have optional keys (total=False)?"
-      - "What is the difference between Final and just using a constant?"
+      en:
+        - "How does TypedDict differ from dataclasses or NamedTuple?"
+        - "Can TypedDict have optional keys (total=False)?"
+        - "What is the difference between Final and just using a constant?"
+      ru:
+        - "Чем TypedDict отличается от dataclasses или NamedTuple?"
+        - "Может ли TypedDict иметь опциональные ключи (total=False)?"
+        - "В чём разница между Final и простым использованием константы?"
     expected_points:
       - "Literal constrains values to specific literals"
       - "TypedDict defines exact dict shape with per-key types"
@@ -139,12 +174,19 @@ questions:
     difficulty: 3
     tags: ["cast", "TypeGuard", "reveal_type"]
     question:
-      text: "What tools does typing provide for type narrowing and debugging type hints?"
+      text:
+        en: "What tools does typing provide for type narrowing and debugging type hints?"
+        ru: "Какие инструменты предоставляет typing для сужения типов и отладки аннотаций?"
       code: null
     follow_ups:
-      - "How does isinstance() affect type narrowing?"
-      - "What is the difference between cast() and TypeGuard?"
-      - "How does reveal_type help debug mypy issues?"
+      en:
+        - "How does isinstance() affect type narrowing?"
+        - "What is the difference between cast() and TypeGuard?"
+        - "How does reveal_type help debug mypy issues?"
+      ru:
+        - "Как isinstance() влияет на сужение типов?"
+        - "В чём разница между cast() и TypeGuard?"
+        - "Как reveal_type помогает отлаживать проблемы mypy?"
     expected_points:
       - "isinstance() narrows union types in conditional branches"
       - "cast(T, x) tells the type checker to treat x as type T"
