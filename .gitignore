@@ -49,6 +49,8 @@ env/
 *.sqlite
 *.sqlite3
 data/config.json
+data/whisper-models/*
+!data/whisper-models/.gitkeep
 
 # Test artifacts
 .pytest_cache/

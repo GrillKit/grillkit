@@ -7,9 +7,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
-from app.api.deps import ConfigServiceDep
+from app.api.deps import ConfigServiceDep, WhisperModelServiceDep
 from app.domain.locales import DEFAULT_LOCALE, SUPPORTED_LOCALES, normalize_locale
+from app.domain.speech_models import (
+    DEFAULT_SPEECH_MODEL_SIZE,
+    SPEECH_MODEL_BY_SIZE,
+    normalize_speech_model_size,
+)
 from app.services.config import ProviderConfig
+from app.services.whisper_runtime import WhisperRuntime
 from app.templating import templates
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -23,6 +29,7 @@ async def _config_from_form(
     api_key: str = Form(""),
     timeout: float = Form(60.0),
     locale: str = Form(DEFAULT_LOCALE),
+    speech_model_size: str = Form(DEFAULT_SPEECH_MODEL_SIZE),
 ) -> tuple[ProviderConfig, bool, str]:
     """Parse the config form, build ProviderConfig, and test the connection."""
     config = ProviderConfig(
@@ -32,6 +39,7 @@ async def _config_from_form(
         api_key=api_key or None,
         timeout=timeout,
         locale=normalize_locale(locale),
+        speech_model_size=normalize_speech_model_size(speech_model_size),
     )
     success, message = await config_service.test_connection(config)
     return config, success, message
@@ -42,19 +50,28 @@ ConfigFromForm = Annotated[tuple[ProviderConfig, bool, str], Depends(_config_fro
 
 @router.get("", response_class=HTMLResponse)
 async def config_page(
-    request: Request, config_service: ConfigServiceDep
+    request: Request,
+    config_service: ConfigServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
 ) -> HTMLResponse:
     """Configuration page.
 
     Args:
         request: FastAPI request object.
         config_service: Provider configuration service.
+        whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with configuration form.
     """
     config = config_service.get_config()
     providers = config_service.get_provider_types()
+    speech_model_status = None
+    if config is not None:
+        speech_model_status = whisper_model_service.get_status(
+            config.speech_model_size,
+            config.locale,
+        )
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -62,6 +79,9 @@ async def config_page(
             "config": config.to_dict(mask_secret=True) if config else None,
             "providers": providers,
             "locales": SUPPORTED_LOCALES,
+            "speech_model_specs": SPEECH_MODEL_BY_SIZE,
+            "speech_model_status": speech_model_status,
+            "status": speech_model_status,
         },
     )
 
@@ -71,6 +91,7 @@ async def save_config(
     request: Request,
     form: ConfigFromForm,
     config_service: ConfigServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
 ) -> HTMLResponse:
     """Save configuration.
 
@@ -78,6 +99,7 @@ async def save_config(
         request: FastAPI request object.
         form: Parsed form fields and connection test result.
         config_service: Provider configuration service.
+        whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with success message or error.
@@ -92,10 +114,15 @@ async def save_config(
                 "config": config.to_dict(mask_secret=False),
                 "providers": config_service.get_provider_types(),
                 "locales": SUPPORTED_LOCALES,
+                "speech_model_specs": SPEECH_MODEL_BY_SIZE,
             },
         )
 
     config_service.save_config(config)
+    if whisper_model_service.is_installed(config.speech_model_size):
+        await WhisperRuntime.load_size(config.speech_model_size)
+    else:
+        WhisperRuntime.unload()
     return templates.TemplateResponse(
         request,
         "config_success.html",
@@ -105,7 +132,8 @@ async def save_config(
 
 @router.delete("", response_class=HTMLResponse)
 async def delete_config(
-    request: Request, config_service: ConfigServiceDep
+    request: Request,
+    config_service: ConfigServiceDep,
 ) -> HTMLResponse:
     """Delete configuration.
 
@@ -117,6 +145,7 @@ async def delete_config(
         HTML response with empty form.
     """
     config_service.delete_config()
+    WhisperRuntime.unload()
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -124,6 +153,7 @@ async def delete_config(
             "config": None,
             "providers": config_service.get_provider_types(),
             "locales": SUPPORTED_LOCALES,
+            "speech_model_specs": SPEECH_MODEL_BY_SIZE,
             "message": "Configuration removed",
         },
     )

@@ -4,4 +4,13 @@
 
 {% block content %}
 {% include "config_form.html" %}
+{% if config and speech_model_status %}
+{% include "speech_model_panel.html" %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if config and speech_model_status %}
+<script src="/static/js/speech_model.js?v={{ static_version('js/speech_model.js') }}"></script>
+{% endif %}
 {% endblock %}

@@ -47,6 +47,7 @@ class TestProviderConfig:
             "api_key": "test_key",
             "timeout": 30.0,
             "locale": "en",
+            "speech_model_size": "small",
         }
         assert config.to_dict(mask_secret=True) == {
             "provider_type": "openai-compatible",
@@ -55,6 +56,7 @@ class TestProviderConfig:
             "api_key": "***",
             "timeout": 30.0,
             "locale": "en",
+            "speech_model_size": "small",
         }
 
     def test_from_dict(self):
@@ -73,6 +75,7 @@ class TestProviderConfig:
         assert config.api_key == "test_key"
         assert config.timeout == 30.0
         assert config.locale == "en"
+        assert config.speech_model_size == "small"
 
     def test_from_dict_defaults(self):
         """Test from_dict uses default values when keys are missing."""
@@ -85,6 +88,7 @@ class TestProviderConfig:
         assert config.api_key is None
         assert config.timeout == 60.0
         assert config.locale == "en"
+        assert config.speech_model_size == "small"
 
     def test_from_dict_normalizes_locale(self):
         """Test from_dict normalizes locale codes."""

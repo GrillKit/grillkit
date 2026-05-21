@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from app.domain.locales import language_instruction
+
 _JSON_SCHEMA_TYPE_NAMES = frozenset(
     {"object", "string", "array", "integer", "number", "boolean", "null"}
 )
@@ -30,6 +32,11 @@ _JSON_SCHEMA_METADATA_KEYS = frozenset(
         "type",
     }
 )
+
+DICTATION_TRANSCRIPT_NOTE = """Answers may be typed or dictated with speech-to-text. Dictated text can
+contain recognition errors, garbled words, or odd spelling. Judge technical
+understanding and substance only — do not lower scores for grammar, wording,
+or speech-to-text artifacts when the intended meaning is reasonably clear."""
 
 ANSWER_EVALUATION_INSTRUCTIONS = """You are a technical interviewer evaluating a candidate's answer.
 Assess the answer based on:
@@ -79,6 +86,23 @@ Example response (fill with your own content):
     "q2": {"score": 5, "max": 10}
   }
 }"""
+
+
+def build_evaluator_instructions(locale: str, task_instructions: str) -> str:
+    """Combine locale, dictation, and task-specific evaluator instructions.
+
+    Args:
+        locale: Supported interview locale code.
+        task_instructions: Answer, follow-up, or session evaluation template.
+
+    Returns:
+        Full instruction block for the evaluator system prompt (before schema).
+    """
+    return (
+        f"{language_instruction(locale)}\n\n"
+        f"{DICTATION_TRANSCRIPT_NOTE}\n\n"
+        f"{task_instructions}"
+    )
 
 
 def looks_like_json_schema_fragment(data: Any) -> bool:

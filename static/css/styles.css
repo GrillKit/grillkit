@@ -440,6 +440,56 @@ textarea.form-control {
     border-color: var(--accent-primary);
 }
 
+.progress-bar {
+    width: 100%;
+    height: 0.5rem;
+    background-color: var(--border-color);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 0.75rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--accent-primary);
+    transition: width 0.2s ease;
+}
+
+.speech-model-size-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.speech-model-size-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.speech-model-size-option:has(input:checked) {
+    border-color: var(--primary-color, #2563eb);
+    background: var(--primary-bg-subtle, #eff6ff);
+}
+
+.speech-model-size-option-title {
+    font-weight: 600;
+}
+
+.speech-model-size-option-meta {
+    font-size: 0.875rem;
+    color: var(--text-muted, #64748b);
+}
+
+#speech-model-panel {
+    margin-top: 1.5rem;
+}
+
 /* Test Results */
 .test-result {
     padding: 1.25rem;
@@ -714,10 +764,29 @@ textarea.form-control {
 
 .composer-footer {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
     justify-content: flex-end;
 }
 
-.composer-footer .btn {
+.composer-footer .btn-dictation {
+    margin-right: auto;
+    min-width: auto;
+}
+
+.composer-footer .btn-dictation.is-recording {
+    background-color: var(--error-bg);
+    border-color: var(--error-border);
+    color: var(--error-text);
+}
+
+.dictation-hint {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.composer-footer .btn-primary {
     min-width: 9rem;
 }
 

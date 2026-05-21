@@ -9,6 +9,10 @@
 </div>
 {% endif %}
 
+{% if speech_model_banner and speech_model_status %}
+{% include "speech_model_banner.html" %}
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <h1 class="card-title">Interview Setup</h1>

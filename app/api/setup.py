@@ -9,7 +9,11 @@ and creating new interview sessions.
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.api.deps import ConfigServiceDep, InterviewCreationServiceDep
+from app.api.deps import (
+    ConfigServiceDep,
+    InterviewCreationServiceDep,
+    WhisperModelServiceDep,
+)
 from app.api.setup_form import setup_form_context
 from app.questions import list_categories, list_languages, list_levels
 from app.templating import templates
@@ -27,12 +31,17 @@ def _redirect_if_no_config(config_service: ConfigServiceDep) -> RedirectResponse
 
 
 @router.get("", response_class=HTMLResponse)
-async def setup_page(request: Request, config_service: ConfigServiceDep) -> Response:
+async def setup_page(
+    request: Request,
+    config_service: ConfigServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
+) -> Response:
     """Setup page for interview configuration.
 
     Args:
         request: FastAPI request object.
         config_service: Provider configuration service.
+        whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with setup form, or redirect to config when unset.
@@ -42,10 +51,18 @@ async def setup_page(request: Request, config_service: ConfigServiceDep) -> Resp
     config = config_service.get_config()
     if config is None:
         return _CONFIG_REDIRECT
+    speech_status = whisper_model_service.get_status(
+        config.speech_model_size,
+        config.locale,
+    )
     return templates.TemplateResponse(
         request,
         "setup.html",
-        setup_form_context(locale=config.locale),
+        {
+            **setup_form_context(locale=config.locale),
+            "speech_model_banner": speech_status.state == "missing",
+            "speech_model_status": speech_status,
+        },
     )
 
 
@@ -85,6 +102,7 @@ async def create_interview(
     request: Request,
     config_service: ConfigServiceDep,
     interview_creation: InterviewCreationServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
     language: str = Form(...),
     topic: str = Form(...),
     level: str = Form(...),
@@ -96,6 +114,7 @@ async def create_interview(
         request: FastAPI request object.
         config_service: Provider configuration service.
         interview_creation: Interview creation service.
+        whisper_model_service: Whisper model download service.
         language: Programming language question bank slug.
         topic: Question category (YAML topic slug).
         level: Difficulty level (junior, middle, senior).
@@ -122,13 +141,21 @@ async def create_interview(
             status_code=303,
         )
     except ValueError as e:
+        speech_status = whisper_model_service.get_status(
+            config.speech_model_size,
+            config.locale,
+        )
         return templates.TemplateResponse(
             request,
             "setup.html",
-            setup_form_context(
-                locale=config.locale,
-                language=language,
-                level=level,
-                error=str(e),
-            ),
+            {
+                **setup_form_context(
+                    locale=config.locale,
+                    language=language,
+                    level=level,
+                    error=str(e),
+                ),
+                "speech_model_banner": speech_status.state == "missing",
+                "speech_model_status": speech_status,
+            },
         )

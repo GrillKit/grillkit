@@ -8,17 +8,20 @@ delegated to the service layer.
 """
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.api.deps import (
     AnswerProcessingServiceDep,
+    ConfigServiceDep,
     InterviewCompletionServiceDep,
     InterviewQueryDep,
+    WhisperModelServiceDep,
 )
 from app.api.interview_errors import ws_error_payload
-from app.api.ws_protocol import events_to_messages
+from app.api.ws_protocol import event_to_message, events_to_messages
 from app.domain.exceptions import InterviewDomainError
 from app.domain.locales import SUPPORTED_LOCALES
 from app.templating import templates
@@ -28,11 +31,30 @@ router = APIRouter(prefix="/interview", tags=["interview"])
 logger = logging.getLogger(__name__)
 
 
+async def _safe_send_json(websocket: WebSocket, message: dict[str, Any]) -> bool:
+    """Send a JSON message, returning False if the client already disconnected.
+
+    Args:
+        websocket: Active interview WebSocket.
+        message: Payload to send.
+
+    Returns:
+        True if the message was sent, False if the socket is closed.
+    """
+    try:
+        await websocket.send_json(message)
+        return True
+    except (WebSocketDisconnect, RuntimeError):
+        return False
+
+
 @router.get("/{interview_id}", response_class=HTMLResponse)
 async def interview_page(
     request: Request,
     interview_id: str,
     interview_query: InterviewQueryDep,
+    config_service: ConfigServiceDep,
+    whisper_model_service: WhisperModelServiceDep,
 ) -> Response:
     """View an interview session.
 
@@ -43,6 +65,8 @@ async def interview_page(
         request: FastAPI request object.
         interview_id: The session UUID.
         interview_query: Interview read service.
+        config_service: Provider configuration service.
+        whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with interview view, or redirect if not found.
@@ -54,6 +78,15 @@ async def interview_page(
     current_question = interview_query.get_current_unanswered(interview)
     overall_feedback_data = interview_query.parse_overall_feedback(interview)
     max_score = interview_query.compute_max_score(interview)
+    speech_model_status = None
+    speech_model_banner = False
+    config = config_service.get_config()
+    if config is not None:
+        speech_model_status = whisper_model_service.get_status(
+            config.speech_model_size,
+            config.locale,
+        )
+        speech_model_banner = speech_model_status.state == "missing"
 
     return templates.TemplateResponse(
         request,
@@ -65,6 +98,8 @@ async def interview_page(
             "overall_feedback": overall_feedback_data,
             "max_score": max_score,
             "locale_label": SUPPORTED_LOCALES.get(interview.locale, interview.locale),
+            "speech_model_status": speech_model_status,
+            "speech_model_banner": speech_model_banner,
         },
     )
 
@@ -111,45 +146,51 @@ async def interview_ws(
                 answer_text = raw.get("answer_text", "")
 
                 if not question_id or not answer_text:
-                    await websocket.send_json(
+                    await _safe_send_json(
+                        websocket,
                         {
                             "type": "error",
                             "message": (
                                 "Both question_id and answer_text are required"
                             ),
-                        }
+                        },
                     )
                     continue
                 try:
-                    events = await answer_processing.process_answer_submission(
+                    async for event in answer_processing.stream_answer_submission(
                         interview_id=interview_id,
                         question_id=question_id,
                         answer_text=answer_text,
-                    )
-                    for message in events_to_messages(events):
-                        await websocket.send_json(message)
+                    ):
+                        if not await _safe_send_json(
+                            websocket, event_to_message(event)
+                        ):
+                            break
                 except InterviewDomainError as e:
-                    await websocket.send_json(ws_error_payload(e))
+                    await _safe_send_json(websocket, ws_error_payload(e))
                 except Exception as e:
                     logger.exception(
                         "WebSocket AI evaluation failed for session %s",
                         interview_id,
                     )
-                    await websocket.send_json(
+                    await _safe_send_json(
+                        websocket,
                         {
                             "type": "error",
                             "message": f"AI evaluation failed: {e}",
-                        }
+                        },
                     )
 
             elif msg_type == "ping":
                 try:
                     interview = interview_query.get_interview(interview_id)
                     status = interview.status if interview else "not_found"
-                    await websocket.send_json({"type": "pong", "status": status})
+                    await _safe_send_json(websocket, {"type": "pong", "status": status})
                 except Exception as e:
                     logger.warning("Ping failed for session %s: %s", interview_id, e)
-                    await websocket.send_json({"type": "pong", "status": "error"})
+                    await _safe_send_json(
+                        websocket, {"type": "pong", "status": "error"}
+                    )
 
             elif msg_type == "complete":
                 try:
@@ -157,26 +198,29 @@ async def interview_ws(
                         interview_id=interview_id,
                     )
                     for message in events_to_messages(events):
-                        await websocket.send_json(message)
+                        if not await _safe_send_json(websocket, message):
+                            break
                 except InterviewDomainError as e:
-                    await websocket.send_json(ws_error_payload(e))
+                    await _safe_send_json(websocket, ws_error_payload(e))
                 except Exception as e:
                     logger.exception(
                         "WebSocket session completion failed for session %s",
                         interview_id,
                     )
-                    await websocket.send_json(
+                    await _safe_send_json(
+                        websocket,
                         {
                             "type": "error",
                             "message": f"Session evaluation failed: {e}",
-                        }
+                        },
                     )
             else:
-                await websocket.send_json(
+                await _safe_send_json(
+                    websocket,
                     {
                         "type": "error",
                         "message": f"Unknown message type: {msg_type}",
-                    }
+                    },
                 )
     except WebSocketDisconnect:
         logger.debug("WebSocket disconnected for session %s", interview_id)

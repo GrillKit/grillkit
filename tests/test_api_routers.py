@@ -13,6 +13,16 @@ from app.main import create_app
 from app.services.config import ProviderConfig
 
 
+async def _raising_answer_stream(
+    exc: Exception,
+    interview_id: str,
+    question_id: str,
+    answer_text: str,
+) -> None:
+    raise exc
+    yield  # type: ignore[misc, unreachable]
+
+
 @pytest.fixture
 def client():
     """Create a test client with mocked database."""
@@ -257,13 +267,23 @@ class TestInterviewWebSocket:
             assert "Unknown message type" in response["message"]
 
     def test_websocket_answer_success(self, client):
-        """Test WebSocket answer submission flow."""
+        """Test WebSocket answer submission invokes stream_answer_submission."""
+        stream_calls: list[tuple[str, str, str]] = []
+
+        async def mock_stream(
+            interview_id: str,
+            question_id: str,
+            answer_text: str,
+        ) -> None:
+            stream_calls.append((interview_id, question_id, answer_text))
+            return
+            yield  # type: ignore[misc, unreachable]
+
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.process_answer_submission",
-                new_callable=AsyncMock,
-                return_value=[],
-            ) as mock_process,
+                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                side_effect=mock_stream,
+            ),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):
             ws.send_json(
@@ -273,11 +293,11 @@ class TestInterviewWebSocket:
                     "answer_text": "My answer",
                 }
             )
-            mock_process.assert_awaited_once_with(
-                interview_id="test-id",
-                question_id="ds-001",
-                answer_text="My answer",
-            )
+            for _ in range(100):
+                if stream_calls:
+                    break
+                time.sleep(0.01)
+            assert stream_calls == [("test-id", "ds-001", "My answer")]
 
     def test_websocket_answer_missing_fields(self, client):
         """Test WebSocket returns error when question_id or answer_text is missing."""
@@ -294,9 +314,10 @@ class TestInterviewWebSocket:
         """Test WebSocket rejects answer on completed session."""
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.process_answer_submission",
-                new_callable=AsyncMock,
-                side_effect=InterviewNotActiveError("test-id"),
+                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                side_effect=lambda *args, **kwargs: _raising_answer_stream(
+                    InterviewNotActiveError("test-id"), *args, **kwargs
+                ),
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):
@@ -315,9 +336,10 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error when session is not found."""
         with (
             patch(
-                "app.services.answer_processing.AnswerProcessingService.process_answer_submission",
-                new_callable=AsyncMock,
-                side_effect=InterviewNotFoundError("test-id"),
+                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                side_effect=lambda *args, **kwargs: _raising_answer_stream(
+                    InterviewNotFoundError("test-id"), *args, **kwargs
+                ),
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):
@@ -383,17 +405,12 @@ class TestInterviewWebSocket:
 
     def test_websocket_answer_service_error(self, client):
         """Test WebSocket handles ValueError from service layer."""
-        mock_session = MockInterview(status="active")
-
         with (
             patch(
-                "app.services.interview_query.InterviewQuery.get_interview",
-                return_value=mock_session,
-            ),
-            patch(
-                "app.services.answer_processing.AnswerProcessingService.process_answer_submission",
-                new_callable=AsyncMock,
-                side_effect=ValueError("Invalid question"),
+                "app.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                side_effect=lambda *args, **kwargs: _raising_answer_stream(
+                    ValueError("Invalid question"), *args, **kwargs
+                ),
             ),
             client.websocket_connect("/interview/test-id/ws") as ws,
         ):

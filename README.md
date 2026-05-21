@@ -108,12 +108,17 @@ Any **OpenAI-compatible** HTTP API works (single adapter in code):
 
 Provider settings and interview language (`locale`) are stored in `data/config.json` (gitignored). Do not commit API keys.
 
+After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the interview language from `locale` (e.g. `ru` → Russian transcription). The app loads the model into memory when the download finishes or on the next startup.
+
+Optional environment variables: `WHISPER_DEVICE` (`cpu` or `cuda`, default `cpu`), `WHISPER_COMPUTE_TYPE` (`int8` or `float16`, default `int8` on CPU).
+
 ## Data layout
 
 ```
 data/
 ├── config.json       # AI provider (gitignored)
 ├── db/grillkit.db    # SQLite (gitignored, created on startup)
+├── whisper-models/   # Offline Whisper models per size (gitignored content)
 └── questions/        # YAML banks: {language}/{level}/{category}.yaml
 ```
 

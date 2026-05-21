@@ -17,7 +17,8 @@ grillkit/
 │   │   ├── exceptions.py       # InterviewNotFoundError, InterviewNotActiveError, ...
 │   │   ├── interview_progress.py   # find_first_unanswered(), find_unanswered_for_question(), ...
 │   │   ├── interview_lifecycle.py  # MAX_SCORE_PER_ROUND, compute_interview_score(), ...
-│   │   └── locales.py          # SUPPORTED_LOCALES, normalize_locale()
+│   │   ├── locales.py          # SUPPORTED_LOCALES, normalize_locale()
+│   │   └── speech_models.py    # Whisper size → Hugging Face model metadata
 │   ├── ai/
 │   │   ├── base.py             # AIProvider protocol
 │   │   ├── factory.py          # ProviderFactory.from_config()
@@ -28,6 +29,9 @@ grillkit/
 │   │   ├── setup.py            # GET/POST /setup, GET /setup/options
 │   │   ├── setup_form.py       # setup.html template context
 │   │   ├── config.py           # GET/POST /config (provider settings)
+│   │   ├── speech.py           # GET/POST /speech/model/* (Whisper download)
+│   │   ├── dictation.py        # WS /interview/{id}/dictation (PCM → transcript)
+│   │   ├── dictation_protocol.py  # Dictation WebSocket message types
 │   │   ├── interview.py        # GET /interview/{id}, WS /interview/{id}/ws
 │   │   ├── ws_protocol.py      # InterviewEvent → JSON messages
 │   │   └── interview_errors.py # domain errors → HTTP / WebSocket payloads
@@ -37,6 +41,10 @@ grillkit/
 │   │   └── answer.py           # AnswerRepository
 │   └── services/
 │       ├── config.py           # ProviderConfig, ConfigService (data/config.json)
+│       ├── whisper_storage.py  # Whisper model paths and on-disk validation
+│       ├── whisper_model.py    # Whisper model download and install
+│       ├── whisper_runtime.py  # In-process faster-whisper load and hot-reload
+│       ├── speech_recognition.py  # Buffered PCM dictation session
 │       ├── interview_creation.py
 │       ├── interview_query.py
 │       ├── interview_completion.py
@@ -50,6 +58,7 @@ grillkit/
 ├── static/css/                 # styles.css
 ├── data/
 │   ├── config.json             # AI provider + interview locale (gitignored)
+│   ├── whisper-models/<size>/  # faster-whisper snapshots (gitignored content)
 │   ├── db/grillkit.db          # SQLite database (gitignored, created at runtime)
 │   └── questions/              # YAML banks: {language}/{level}/{category}.yaml
 ├── docker-compose.yml          # Primary deployment (port 8000, ./data volume)
@@ -70,8 +79,13 @@ grillkit/
 | POST | `/config` | `config.py` | Test connection (via form dependency), then save |
 | POST | `/config/test` | `config.py` | Test connection without saving |
 | DELETE | `/config` | `config.py` | Remove saved provider configuration |
+| GET | `/speech/model/status` | `speech.py` | Whisper model install status (HTML or JSON) |
+| POST | `/speech/model/download` | `speech.py` | Start Whisper download for `config.speech_model_size` |
+| GET | `/speech/model/options` | `speech.py` | JSON size trade-off metadata |
+| WS | `/interview/{interview_id}/dictation` | `dictation.py` | PCM dictation → final transcript on stop |
 | GET | `/interview/{interview_id}` | `interview.py` | Interview page (active or completed) |
 | WS | `/interview/{interview_id}/ws` | `interview.py` | Real-time answers and completion |
+| WS | `/interview/{interview_id}/dictation` | `dictation.py` | PCM dictation → partial/final transcript |
 | — | `/static/*` | `main.py` | CSS and assets |
 
 ## Layer Responsibilities
@@ -248,8 +262,8 @@ Client → WS {"type":"answer","question_id":"...","answer_text":"..."}
        → UoW #1: validate active, save answer_text, load context
        → ai_provider_from_config() → InterviewEvaluatorService (no DB transaction)
        → UoW #2: save score/feedback; optional follow-up Answer row or advance
-       → returns [AnswerSavedEvent, EvaluatingEvent, AnswerFeedbackEvent, ...]
-  → events_to_messages() → client
+       → stream_answer_submission() yields saved/evaluating, then feedback after AI
+  → event_to_message() per event → client (not batched after evaluation)
 
 Client → WS {"type":"ping"}
   → InterviewQuery.get_interview() → {"type":"pong","status":"active"|"completed"|...}

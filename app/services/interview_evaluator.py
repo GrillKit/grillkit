@@ -5,7 +5,7 @@
 from typing import Any
 
 from app.ai.base import AIProvider, Message
-from app.domain.locales import DEFAULT_LOCALE, language_instruction
+from app.domain.locales import DEFAULT_LOCALE
 from app.services.interview_evaluator_models import (
     AnswerEvaluation,
     FollowUpEvaluation,
@@ -15,6 +15,7 @@ from app.services.interview_evaluator_prompts import (
     ANSWER_EVALUATION_INSTRUCTIONS,
     FOLLOW_UP_EVALUATION_INSTRUCTIONS,
     SESSION_EVALUATION_INSTRUCTIONS,
+    build_evaluator_instructions,
     build_prompt_with_schema,
     looks_like_json_schema_fragment,
     parse_json_response,
@@ -65,8 +66,8 @@ class InterviewEvaluatorService:
         if question_code:
             question += f"\n\nCode:\n{question_code}"
 
-        instructions = (
-            f"{language_instruction(locale)}\n\n{ANSWER_EVALUATION_INSTRUCTIONS}"
+        instructions = build_evaluator_instructions(
+            locale, ANSWER_EVALUATION_INSTRUCTIONS
         )
         system_prompt = build_prompt_with_schema(instructions, AnswerEvaluation)
 
@@ -115,8 +116,8 @@ class InterviewEvaluatorService:
         if question_code:
             question += f"\n\nCode:\n{question_code}"
 
-        instructions = (
-            f"{language_instruction(locale)}\n\n{FOLLOW_UP_EVALUATION_INSTRUCTIONS}"
+        instructions = build_evaluator_instructions(
+            locale, FOLLOW_UP_EVALUATION_INSTRUCTIONS
         )
         system_prompt = build_prompt_with_schema(instructions, FollowUpEvaluation)
 
@@ -179,8 +180,8 @@ class InterviewEvaluatorService:
 
         summary_text = "\n\n".join(qa_summary)
 
-        instructions = (
-            f"{language_instruction(locale)}\n\n{SESSION_EVALUATION_INSTRUCTIONS}"
+        instructions = build_evaluator_instructions(
+            locale, SESSION_EVALUATION_INSTRUCTIONS
         )
         system_prompt = build_prompt_with_schema(instructions, InterviewEvaluation)
 
