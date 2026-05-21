@@ -22,6 +22,7 @@ grillkit/
 │   │   └── speech_models.py    # Whisper size → Hugging Face model metadata
 │   ├── ai/
 │   │   ├── base.py             # AIProvider protocol
+│   │   ├── speech_transcriber.py  # SpeechTranscriber protocol (offline dictation)
 │   │   ├── factory.py          # ProviderFactory.from_config()
 │   │   └── openai_compatible.py
 │   ├── api/
@@ -45,7 +46,8 @@ grillkit/
 │       ├── config.py           # ProviderConfig, ConfigService (data/config.json)
 │       ├── whisper_storage.py  # Whisper model paths and on-disk validation
 │       ├── whisper_model.py    # Whisper model download and install
-│       ├── whisper_runtime.py  # In-process faster-whisper load and hot-reload
+│       ├── whisper_runtime.py  # In-process transcriber load and hot-reload
+│       ├── faster_whisper_transcriber.py  # SpeechTranscriber via faster-whisper
 │       ├── speech_recognition.py  # Buffered PCM dictation session
 │       ├── interview_creation.py
 │       ├── interview_query.py
@@ -117,7 +119,7 @@ Dependencies flow **downward** (caller → callee). Plain-text diagram for edito
 main.py ──► lifespan: init_db(), WhisperRuntime.bind_app(), load configured Whisper size
   └── api/  (dashboard, setup, config, speech, interview, dictation)
         ├── interview.py ──► ws_protocol.py, interview_errors.py, WhisperModelService (page status)
-        ├── dictation.py ──► dictation_protocol.py, DictationSession, app.state.whisper_model
+        ├── dictation.py ──► dictation_protocol.py, DictationSession, app.state.speech_transcriber
         ├── speech.py    ──► WhisperModelService (status/download)
         └── deps.py ──► services/
 
@@ -129,7 +131,8 @@ services/
   ├── interview_evaluator.py  ──► ai/ (via provider), interview_evaluator_models.py, prompts
   ├── config.py               ──► ai/factory.py, domain/speech_models.py, data/config.json
   ├── whisper_model.py        ──► whisper_storage.py, whisper_runtime.py, Hugging Face hub
-  ├── whisper_runtime.py      ──► whisper_storage.py, faster-whisper (app.state mirror)
+  ├── whisper_runtime.py      ──► faster_whisper_transcriber.py, whisper_storage.py
+  ├── faster_whisper_transcriber.py ──► ai/speech_transcriber.py, faster-whisper
   ├── whisper_storage.py      ──► domain/speech_models.py, data/whisper-models/
   ├── speech_recognition.py   ──► domain/locales.py (DictationSession PCM → text)
   └── ai_context.py           ──► config.py, ai/
@@ -166,7 +169,9 @@ flowchart TB
   interview --> interview_errors
   dictation --> dictation_protocol
   dictation --> speech_recognition
+  speech_recognition --> speech_transcriber_proto[speech_transcriber]
   speech_router --> whisper_model
+  whisper_runtime --> faster_whisper_transcriber
   api_layer --> deps
   deps --> svc_layer
   subgraph svc_layer [services]
@@ -178,8 +183,10 @@ flowchart TB
     config_service[config]
     whisper_model
     speech_recognition
+    faster_whisper_transcriber
     ai_context
   end
+  faster_whisper_transcriber --> speech_transcriber_proto
   whisper_model --> whisper_runtime
   whisper_model --> whisper_storage
   whisper_runtime --> whisper_storage
@@ -295,7 +302,7 @@ Client → WS {"type":"ping"}
 
 ## Data Flow: Dictation WebSocket
 
-Separate from answer/evaluation WS. Requires active interview and loaded Whisper model (`app.state.whisper_model`).
+Separate from answer/evaluation WS. Requires active interview and loaded transcriber (`app.state.speech_transcriber`).
 
 ```
 Client → WS connect /interview/{id}/dictation
@@ -309,7 +316,7 @@ Client → binary PCM (16-bit LE mono, 16 kHz)
   → DictationSession.append_pcm()
 
 Client → {"type":"stop"}
-  → DictationSession.finalize(whisper_model, interview.locale)
+  → DictationSession.finalize(speech_transcriber, interview.locale)
   → {"type":"final","text":"..."} → connection closes
 ```
 
@@ -322,7 +329,7 @@ User → GET /config (speech_model_size, locale)
 User → POST /speech/model/download
   → WhisperModelService.start_download(size from config)
        → Hugging Face snapshot → data/whisper-models/<size>/
-       → WhisperRuntime.load_size(size) → app.state.whisper_model
+       → WhisperRuntime.load_size(size) → app.state.speech_transcriber
 User → GET /speech/model/status (HTMX poll while downloading)
 ```
 

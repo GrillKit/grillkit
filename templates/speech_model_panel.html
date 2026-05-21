@@ -1,0 +1,7 @@
+<div class="card" id="speech-model-panel">
+    <div class="card-header">
+        <h2 class="card-title">Speech recognition model</h2>
+        <p class="card-subtitle">Offline Whisper ({{ status.model_display_name }}) — dictation in {{ status.locale_label }}</p>
+    </div>
+    {% include "speech_model_status.html" %}
+</div>

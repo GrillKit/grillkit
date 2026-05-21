@@ -76,3 +76,4 @@ dmypy.json
 
 
 /.kilocode/
+/data/whisper-models/

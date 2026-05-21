@@ -20,7 +20,6 @@ from app.domain.speech_models import (
 from app.paths import CONFIG_PATH, DATA_DIR
 
 
-# TODO это же по сути DTO? оно тут дожно храниться или нет? или может тут лучше Pydantic модель использовать?
 @dataclass
 class ProviderConfig:
     """AI provider configuration.
