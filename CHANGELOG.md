@@ -15,6 +15,7 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Changed
 
+- Declare `huggingface-hub` as a direct dependency for Whisper model downloads
 - Move interview language (`locale`) to provider configuration: set on `/config`, read-only on setup, snapshot when creating a session
 - Show the user's answer in chat as soon as they submit; AI evaluation continues in the background
 - AI evaluator prompts: score technical substance, not grammar or speech-to-text artifacts in dictated answers
