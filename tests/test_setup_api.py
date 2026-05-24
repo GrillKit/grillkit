@@ -2,22 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for setup API cascaded options."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from fastapi.testclient import TestClient
-import pytest
-
-from app.main import create_app
 from app.platform.services.config import ProviderConfig
-
-
-@pytest.fixture
-def client():
-    """Create a test client with mocked database init."""
-    with patch("app.main.init_db"):
-        app = create_app()
-        with TestClient(app) as test_client:
-            yield test_client
 
 
 class TestSetupOptions:
@@ -87,20 +74,25 @@ class TestSetupConfigRedirect:
 
     def test_setup_get_redirects_without_config(self, client):
         """GET /setup redirects to /config when provider is not configured."""
-        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
+        with patch(
+            "app.platform.services.config.ConfigService.get_config", return_value=None
+        ):
             response = client.get("/setup", follow_redirects=False)
         assert response.status_code == 303
         assert response.headers["location"] == "/config"
 
     def test_setup_post_redirects_without_config(self, client):
         """POST /setup redirects to /config when provider is not configured."""
-        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
+        with patch(
+            "app.platform.services.config.ConfigService.get_config", return_value=None
+        ):
             response = client.post(
                 "/setup",
                 data={
-                    "language": "python",
-                    "topic": "basics",
-                    "level": "junior",
+                    "selection_json": (
+                        '{"version":1,"sources":[{"language":"python",'
+                        '"level":"junior","categories":["basics"]}]}'
+                    ),
                     "question_count": "5",
                 },
                 follow_redirects=False,
@@ -118,13 +110,109 @@ class TestSetupConfigRedirect:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
             ),
-            patch("app.interview.api.setup.list_languages", return_value=["python"]),
-            patch("app.interview.api.setup.list_levels", return_value=["junior"]),
-            patch("app.interview.api.setup.list_categories", return_value=["basics"]),
+            patch(
+                "app.interview.api.setup.list_languages",
+                return_value=["python"],
+            ),
+            patch(
+                "app.interview.api.setup.list_levels",
+                return_value=["junior"],
+            ),
+            patch(
+                "app.interview.api.setup.list_categories",
+                return_value=["basics"],
+            ),
         ):
             response = client.get("/setup")
         assert response.status_code == 200
         assert "Russian" in response.text
         assert 'name="locale"' not in response.text
+
+    def test_setup_post_passes_timer_limit_when_enabled(self, client):
+        """POST /setup forwards per-round timer seconds when the checkbox is set."""
+        mock_config = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4",
+            locale="en",
+        )
+        captured: dict[str, object] = {}
+
+        def fake_create(**kwargs: object) -> MagicMock:
+            captured.update(kwargs)
+            interview = MagicMock()
+            interview.id = "timer-setup-id"
+            return interview
+
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "app.interview.services.creation.InterviewCreationService.create_interview",
+                side_effect=fake_create,
+            ),
+        ):
+            response = client.post(
+                "/setup",
+                data={
+                    "selection_json": (
+                        '{"version":1,"sources":[{"language":"python",'
+                        '"level":"junior","categories":["basics"]}]}'
+                    ),
+                    "question_count": "5",
+                    "enable_question_timer": "on",
+                    "question_time_minutes": "4",
+                },
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/interview/timer-setup-id"
+        assert captured.get("question_time_limit_seconds") == 240
+        assert "selection" in captured
+
+    def test_setup_post_rejects_question_count_below_topics(self, client):
+        """POST /setup rejects when question count is below selected topic count."""
+        mock_config = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4",
+            locale="en",
+        )
+        selection = (
+            '{"version":1,"sources":[{"language":"python","level":"junior",'
+            '"categories":["basics","oop"]}]}'
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "app.interview.api.setup.list_languages",
+                return_value=["python"],
+            ),
+            patch(
+                "app.interview.api.setup.list_levels",
+                return_value=["junior"],
+            ),
+            patch(
+                "app.interview.api.setup.list_categories",
+                return_value=["basics", "oop"],
+            ),
+        ):
+            response = client.post(
+                "/setup",
+                data={
+                    "selection_json": selection,
+                    "question_count": "1",
+                },
+            )
+
+        assert response.status_code == 200
+        assert "at least 2" in response.text

@@ -11,4 +11,5 @@ services:
       PYTHONUNBUFFERED: "1"
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
+      HF_TOKEN: ${HF_TOKEN:-}
     restart: unless-stopped

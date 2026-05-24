@@ -4,32 +4,18 @@
 
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
 import pytest
 
-from app.main import create_app
 from app.platform.services.config import ProviderConfig
 from app.speech.services.whisper_model import WhisperModelService
 from app.speech.services.whisper_runtime import WhisperRuntime
-
-
-@pytest.fixture
-def client():
-    """Create a test client with mocked database init."""
-    with patch("app.main.init_db"):
-        app = create_app()
-        with TestClient(app) as test_client:
-            yield test_client
 
 
 @pytest.fixture(autouse=True)
 def reset_download_state():
     """Reset in-memory download state between tests."""
     WhisperRuntime.unload()
-    WhisperModelService._active_size = None
-    WhisperModelService._percent = 0
-    WhisperModelService._error_size = None
-    WhisperModelService._error_message = None
+    WhisperModelService.reset_download_state()
     yield
 
 
@@ -38,7 +24,9 @@ class TestSpeechModelApi:
 
     def test_status_requires_config(self, client):
         """Status endpoint returns 400 without saved provider config."""
-        with patch("app.platform.services.config.ConfigService.get_config", return_value=None):
+        with patch(
+            "app.platform.services.config.ConfigService.get_config", return_value=None
+        ):
             response = client.get(
                 "/speech/model/status",
                 headers={"Accept": "application/json"},
@@ -56,7 +44,8 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
             ),
             patch("app.speech.services.whisper_model.is_installed", return_value=False),
         ):
@@ -80,7 +69,8 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
             ),
             patch("app.speech.services.whisper_model.is_installed", return_value=False),
             patch.object(

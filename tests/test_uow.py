@@ -6,9 +6,11 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.infrastructure.uow import UnitOfWork
+from tests.helpers.selection import minimal_selection_spec
 
 
 @pytest.fixture
@@ -24,29 +26,28 @@ def engine():
 def patch_session_local(engine, monkeypatch):
     """Monkeypatch SessionLocal to use the in-memory engine.
 
-    Patches both ``app.shared.infrastructure.database.SessionLocal`` (the canonical source)
-    and ``app.shared.infrastructure.uow.SessionLocal`` (the import-time copy) so that
-    ``UnitOfWork`` uses the test engine.
+    Patches ``app.shared.infrastructure.database.SessionLocal`` so feature UoW
+    classes use the test engine.
     """
     from app.shared.infrastructure import database as db_module
-    from app.shared.infrastructure import uow as uow_module
 
     maker = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     monkeypatch.setattr(db_module, "SessionLocal", maker)
-    monkeypatch.setattr(uow_module, "SessionLocal", maker)
 
 
 class TestUnitOfWork:
-    """Tests for UnitOfWork context manager."""
+    """Tests for base and interview UnitOfWork context managers."""
 
     def test_commit_on_success(self, patch_session_local):
         """Test auto_commit=True commits on successful exit."""
-        with UnitOfWork(auto_commit=True) as uow:
-            session = Interview(id="uow-test-1", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            session = Interview(
+                id="uow-test-1", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
 
         # Verify the session was committed by reading it back
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-1")
             assert loaded is not None
             assert loaded.id == "uow-test-1"
@@ -55,54 +56,61 @@ class TestUnitOfWork:
         """Test auto_commit=True rolls back on exception."""
         with (
             pytest.raises(ValueError, match="test error"),
-            UnitOfWork(auto_commit=True) as uow,
+            InterviewUnitOfWork(auto_commit=True) as uow,
         ):
-            session = Interview(id="uow-test-2", level="junior", category="python")
+            session = Interview(
+                id="uow-test-2", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
             raise ValueError("test error")
 
         # Verify the session was NOT committed
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-2")
             assert loaded is None
 
     def test_no_auto_commit(self, patch_session_local):
         """Test auto_commit=False does not commit automatically."""
-        with UnitOfWork(auto_commit=False) as uow:
-            session = Interview(id="uow-test-3", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=False) as uow:
+            session = Interview(
+                id="uow-test-3", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
-            # No commit called
 
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-3")
             assert loaded is None
 
     def test_manual_commit(self, patch_session_local):
         """Test manual commit() works."""
-        with UnitOfWork(auto_commit=False) as uow:
-            session = Interview(id="uow-test-4", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=False) as uow:
+            session = Interview(
+                id="uow-test-4", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
             uow.commit()
 
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-4")
             assert loaded is not None
 
     def test_manual_rollback(self, patch_session_local):
         """Test manual rollback() works."""
-        with UnitOfWork(auto_commit=False) as uow:
-            session = Interview(id="uow-test-5", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=False) as uow:
+            session = Interview(
+                id="uow-test-5", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
-            uow.flush()  # ensure it's in the session
+            uow.flush()
             uow.rollback()
 
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-5")
             assert loaded is None
 
     def test_repository_accessors(self, patch_session_local):
         """Test that .sessions and .answers return the correct repository types."""
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             from app.interview.repositories.answer import AnswerRepository
             from app.interview.repositories.interview import InterviewRepository
 
@@ -111,8 +119,10 @@ class TestUnitOfWork:
 
     def test_repositories_share_same_session(self, patch_session_local):
         """Test that .sessions and .answers use the same underlying DB session."""
-        with UnitOfWork(auto_commit=True) as uow:
-            session = Interview(id="uow-test-6", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            session = Interview(
+                id="uow-test-6", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
 
             answer = Answer(
@@ -124,8 +134,7 @@ class TestUnitOfWork:
             )
             uow.answers.add(answer)
 
-        # Both should be visible in a single read
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded_session = uow.interviews.get("uow-test-6")
             assert loaded_session is not None
             loaded_answer = uow.answers.get_by_interview_question_round(
@@ -135,17 +144,17 @@ class TestUnitOfWork:
 
     def test_flush(self, patch_session_local):
         """Test flush() sends changes to DB without committing."""
-        with UnitOfWork(auto_commit=False) as uow:
-            session = Interview(id="uow-test-7", level="junior", category="python")
+        with InterviewUnitOfWork(auto_commit=False) as uow:
+            session = Interview(
+                id="uow-test-7", selection_spec=minimal_selection_spec()
+            )
             uow.interviews.add(session)
             uow.flush()
 
-            # After flush, the session should be visible in the same UoW
             loaded = uow.interviews.get("uow-test-7")
             assert loaded is not None
 
-        # But not committed
-        with UnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.interviews.get("uow-test-7")
             assert loaded is None
 
@@ -166,9 +175,9 @@ class TestUnitOfWork:
 
     def test_lazy_repository_initialization(self, patch_session_local):
         """Test that repositories are created lazily."""
-        uow = UnitOfWork()
+        uow = InterviewUnitOfWork()
         assert uow._interviews_repo is None
         assert uow._answers_repo is None
-        _ = uow.interviews  # trigger creation
+        _ = uow.interviews
         assert uow._interviews_repo is not None
-        assert uow._answers_repo is None  # still lazy
+        assert uow._answers_repo is None

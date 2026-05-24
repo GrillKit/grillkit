@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["mvcc", "vacuum", "autovacuum"]
     question:
-      text: "How does PostgreSQL implement MVCC (Multi-Version Concurrency Control)? What is VACUUM?"
+      text:
+        en: "How does PostgreSQL implement MVCC (Multi-Version Concurrency Control)? What is VACUUM?"
+        ru: "Как PostgreSQL реализует MVCC (многоверсионное управление параллелизмом)? Что такое VACUUM?"
       code: null
     follow_ups:
-      - "How does MVCC avoid read locks?"
-      - "What is transaction ID wraparound and how is it prevented?"
-      - "How does autovacuum work and how do you tune it?"
+      en:
+        - "How does MVCC avoid read locks?"
+        - "What is transaction ID wraparound and how is it prevented?"
+        - "How does autovacuum work and how do you tune it?"
+      ru:
+        - "Как MVCC избегает блокировок на чтение?"
+        - "Что такое переполнение transaction ID и как его предотвращают?"
+        - "Как работает autovacuum и как его настраивать?"
     expected_points:
       - "MVCC: each transaction sees a snapshot of data at commit"
       - "Old row versions remain until VACUUM removes them"
@@ -27,7 +34,9 @@ questions:
     difficulty: 3
     tags: ["advanced-types", "jsonb", "arrays", "hstore"]
     question:
-      text: "What advanced data types does PostgreSQL support? How do you use JSONB for semi-structured data?"
+      text:
+        en: "What advanced data types does PostgreSQL support? How do you use JSONB for semi-structured data?"
+        ru: "Какие продвинутые типы данных поддерживает PostgreSQL? Как использовать JSONB для полуструктурированных данных?"
       code: |
         CREATE TABLE events (
             id SERIAL PRIMARY KEY,
@@ -35,9 +44,14 @@ questions:
         );
         SELECT payload->>'user_id' as uid FROM events WHERE payload @> '{"type": "click"}';
     follow_ups:
-      - "How do you index JSONB data (GIN indexes)?"
-      - "What is the difference between JSON and JSONB?"
-      - "How do array types and hstore compare to JSONB?"
+      en:
+        - "How do you index JSONB data (GIN indexes)?"
+        - "What is the difference between JSON and JSONB?"
+        - "How do array types and hstore compare to JSONB?"
+      ru:
+        - "Как индексировать JSONB (GIN-индексы)?"
+        - "В чём разница между JSON и JSONB?"
+        - "Чем массивы и hstore отличаются от JSONB?"
     expected_points:
       - "JSONB store as binary, supports indexing (GIN), no preserve key order"
       - "JSON stores text, slower for queries, preserves whitespace"
@@ -49,12 +63,19 @@ questions:
     difficulty: 3
     tags: ["extensions", "postgis", "pgvector"]
     question:
-      text: "What PostgreSQL extensions exist and how do they extend functionality?"
+      text:
+        en: "What PostgreSQL extensions exist and how do they extend functionality?"
+        ru: "Какие расширения PostgreSQL существуют и как они расширяют функциональность?"
       code: null
     follow_ups:
-      - "How does PostGIS enable spatial queries?"
-      - "What is pgvector and how is it used for AI applications?"
-      - "What are extensions like pg_stat_statements used for?"
+      en:
+        - "How does PostGIS enable spatial queries?"
+        - "What is pgvector and how is it used for AI applications?"
+        - "What are extensions like pg_stat_statements used for?"
+      ru:
+        - "Как PostGIS обеспечивает пространственные запросы?"
+        - "Что такое pgvector и как его используют в AI-приложениях?"
+        - "Для чего нужны расширения вроде pg_stat_statements?"
     expected_points:
       - "PostGIS: geospatial queries (points, polygons, distance calculations)"
       - "pgvector: vector similarity search for LLM/ML applications"
@@ -66,12 +87,19 @@ questions:
     difficulty: 3
     tags: ["postgres-config", "pg_hba", "postgresql.conf"]
     question:
-      text: "How do you configure PostgreSQL for performance and security?"
+      text:
+        en: "How do you configure PostgreSQL for performance and security?"
+        ru: "Как настроить PostgreSQL для производительности и безопасности?"
       code: null
     follow_ups:
-      - "What parameters affect memory usage (shared_buffers, work_mem, maintenance_work_mem)?"
-      - "How does pg_hba.conf control authentication?"
-      - "What is effective_cache_size and how does it affect the query planner?"
+      en:
+        - "What parameters affect memory usage (shared_buffers, work_mem, maintenance_work_mem)?"
+        - "How does pg_hba.conf control authentication?"
+        - "What is effective_cache_size and how does it affect the query planner?"
+      ru:
+        - "Какие параметры влияют на использование памяти (shared_buffers, work_mem, maintenance_work_mem)?"
+        - "Как pg_hba.conf управляет аутентификацией?"
+        - "Что такое effective_cache_size и как это влияет на планировщик?"
     expected_points:
       - "shared_buffers: 25% of RAM for PostgreSQL buffer cache"
       - "work_mem: memory for sorts and hash tables (per operation)"
@@ -83,12 +111,19 @@ questions:
     difficulty: 3
     tags: ["postgres-replication", "streaming"]
     question:
-      text: "How does PostgreSQL replication work? Explain streaming replication and logical replication."
+      text:
+        en: "How does PostgreSQL replication work? Explain streaming replication and logical replication."
+        ru: "Как работает репликация в PostgreSQL? Объясните потоковую и логическую репликацию."
       code: null
     follow_ups:
-      - "What is synchronous vs asynchronous replication?"
-      - "How does logical replication differ from physical?"
-      - "How do you promote a standby server?"
+      en:
+        - "What is synchronous vs asynchronous replication?"
+        - "How does logical replication differ from physical?"
+        - "How do you promote a standby server?"
+      ru:
+        - "В чём разница между синхронной и асинхронной репликацией?"
+        - "Чем логическая репликация отличается от физической?"
+        - "Как повысить standby до primary?"
     expected_points:
       - "Streaming replication: physical block-level copy of WAL"
       - "Logical replication: row-level changes via publication/subscription"

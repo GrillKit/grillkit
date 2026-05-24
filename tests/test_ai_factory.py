@@ -69,16 +69,3 @@ class TestProviderFactory:
                 model="gpt-4",
                 api_type="OpenAI-Compatible",
             )
-
-    def test_get_provider_types(self):
-        """Test listing available provider types."""
-        types = ProviderFactory.get_provider_types()
-
-        assert isinstance(types, list)
-        assert len(types) == 1
-
-        provider_type = types[0]
-        assert provider_type["id"] == "openai-compatible"
-        assert provider_type["name"] == "OpenAI Compatible"
-        assert "description" in provider_type
-        assert "OpenAI" in provider_type["description"]

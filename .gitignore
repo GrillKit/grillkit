@@ -49,9 +49,12 @@ env/
 *.sqlite
 *.sqlite3
 data/config.json
-data/vosk-models/
+data/llm_models.json
 data/whisper-models/*
 !data/whisper-models/.gitkeep
+data/piper-voices/*
+!data/piper-voices/.gitkeep
+data/tts-cache/
 nohup.out
 
 # Test artifacts

@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["SOLID", "OOP-principles"]
     question:
-      text: "Explain the SOLID principles. How do they apply to Python development?"
+      text:
+        en: "Explain the SOLID principles. How do they apply to Python development?"
+        ru: "Объясните принципы SOLID. Как они применяются в разработке на Python?"
       code: null
     follow_ups:
-      - "Which SOLID principle is most frequently violated in Python projects?"
-      - "How does Dependency Inversion relate to dependency injection?"
-      - "How can you apply Open/Closed principle without inheritance?"
+      en:
+        - "Which SOLID principle is most frequently violated in Python projects?"
+        - "How does Dependency Inversion relate to dependency injection?"
+        - "How can you apply Open/Closed principle without inheritance?"
+      ru:
+        - "Какой принцип SOLID чаще всего нарушается в Python-проектах?"
+        - "Как Dependency Inversion связан с внедрением зависимостей?"
+        - "Как применить принцип открытости/закрытости без наследования?"
     expected_points:
       - "Single Responsibility: each class has one reason to change"
       - "Open/Closed: open for extension, closed for modification"
@@ -28,12 +35,19 @@ questions:
     difficulty: 4
     tags: ["clean-architecture", "DDD", "domain-driven-design"]
     question:
-      text: "What is Clean Architecture? How does it relate to Domain-Driven Design (DDD)?"
+      text:
+        en: "What is Clean Architecture? How does it relate to Domain-Driven Design (DDD)?"
+        ru: "Что такое чистая архитектура (Clean Architecture)? Как она связана с предметно-ориентированным проектированием (DDD)?"
       code: null
     follow_ups:
-      - "What is the difference between entities, value objects, and aggregates in DDD?"
-      - "How do use cases/interactors fit into clean architecture?"
-      - "How does the dependency rule work (outer circles depend on inner)?"
+      en:
+        - "What is the difference between entities, value objects, and aggregates in DDD?"
+        - "How do use cases/interactors fit into clean architecture?"
+        - "How does the dependency rule work (outer circles depend on inner)?"
+      ru:
+        - "В чём разница между сущностями, объектами-значениями и агрегатами в DDD?"
+        - "Как Use Cases/Interactors вписываются в чистую архитектуру?"
+        - "Как работает правило зависимостей (внешние круги зависят от внутренних)?"
     expected_points:
       - "Clean Architecture: concentric layers with core domain innermost"
       - "DDD: domain model drives design with ubiquitous language"
@@ -45,7 +59,9 @@ questions:
     difficulty: 3
     tags: ["DI", "dependency-injection"]
     question:
-      text: "What is dependency injection? How do you implement it in Python without a framework?"
+      text:
+        en: "What is dependency injection? How do you implement it in Python without a framework?"
+        ru: "Что такое внедрение зависимостей (dependency injection)? Как реализовать его в Python без фреймворка?"
       code: |
         # Tight coupling
         class UserService:
@@ -57,9 +73,12 @@ questions:
             def __init__(self, repo: UserRepository):
                 self.repo = repo
     follow_ups:
-      - "What are the benefits and drawbacks of DI frameworks?"
-      - "What are the benefits and drawbacks of DI frameworks?"
-      - "How does DI differ from the service locator pattern?"
+      en:
+        - "What are the benefits and drawbacks of DI frameworks?"
+        - "How does DI differ from the service locator pattern?"
+      ru:
+        - "Каковы преимущества и недостатки DI-фреймворков?"
+        - "Чем DI отличается от паттерна Service Locator?"
     expected_points:
       - "DI: dependencies are passed in, not created internally"
       - "Improves testability, flexibility, and decoupling"
@@ -71,12 +90,19 @@ questions:
     difficulty: 4
     tags: ["CQRS", "event-sourcing"]
     question:
-      text: "What is CQRS (Command Query Responsibility Segregation) and when should you use it?"
+      text:
+        en: "What is CQRS (Command Query Responsibility Segregation) and when should you use it?"
+        ru: "Что такое CQRS (Command Query Responsibility Segregation) и когда его использовать?"
       code: null
     follow_ups:
-      - "How does CQRS relate to event sourcing?"
-      - "What are the trade-offs of CQRS for a typical CRUD application?"
-      - "How do you handle eventual consistency in CQRS?"
+      en:
+        - "How does CQRS relate to event sourcing?"
+        - "What are the trade-offs of CQRS for a typical CRUD application?"
+        - "How do you handle eventual consistency in CQRS?"
+      ru:
+        - "Как CQRS связан с event sourcing?"
+        - "Каковы компромиссы CQRS для типичного CRUD-приложения?"
+        - "Как обрабатывать согласованность в конечном счёте (eventual consistency) в CQRS?"
     expected_points:
       - "CQRS separates read (queries) from write (commands) models"
       - "Commands change state; queries return data without side effects"
@@ -88,12 +114,19 @@ questions:
     difficulty: 3
     tags: ["repository", "unit-of-work"]
     question:
-      text: "What are the Repository and Unit of Work patterns? How do they work together?"
+      text:
+        en: "What are the Repository and Unit of Work patterns? How do they work together?"
+        ru: "Что такое паттерны Репозиторий (Repository) и Единица работы (Unit of Work)? Как они работают вместе?"
       code: null
     follow_ups:
-      - "How does the Repository pattern abstract data access?"
-      - "When would you commit transactions at the UoW level vs the repository level?"
-      - "How do you handle lazy loading vs eager loading in repositories?"
+      en:
+        - "How does the Repository pattern abstract data access?"
+        - "When would you commit transactions at the UoW level vs the repository level?"
+        - "How do you handle lazy loading vs eager loading in repositories?"
+      ru:
+        - "Как паттерн Репозиторий абстрагирует доступ к данным?"
+        - "Когда фиксировать транзакции на уровне UoW, а когда на уровне репозитория?"
+        - "Как работать с ленивой и жадной загрузкой в репозиториях?"
     expected_points:
       - "Repository abstracts data storage behind a collection-like interface"
       - "Unit of Work tracks changes and coordinates transactional writes"
@@ -105,12 +138,19 @@ questions:
     difficulty: 3
     tags: ["hexagonal", "ports-adapters"]
     question:
-      text: "What is hexagonal architecture (ports and adapters)? How does it differ from layered architecture?"
+      text:
+        en: "What is hexagonal architecture (ports and adapters)? How does it differ from layered architecture?"
+        ru: "Что такое гексагональная архитектура (порты и адаптеры)? Чем она отличается от слоистой архитектуры?"
       code: null
     follow_ups:
-      - "What are 'ports'ports' (interfaces) and 'adapters' (implementations)?"
-      - "How does hexagonal architecture improve testability?"
-      - "Can you combine hexagonal architecture with DDD?"
+      en:
+        - "What are 'ports' (interfaces) and 'adapters' (implementations)?"
+        - "How does hexagonal architecture improve testability?"
+        - "Can you combine hexagonal architecture with DDD?"
+      ru:
+        - "Что такое 'порты' (интерфейсы) и 'адаптеры' (реализации)?"
+        - "Как гексагональная архитектура улучшает тестируемость?"
+        - "Можно ли комбинировать гексагональную архитектуру с DDD?"
     expected_points:
       - "Core domain communicates through ports (interfaces)"
       - "Adapters implement ports — one port may have multiple adapters"
@@ -122,12 +162,19 @@ questions:
     difficulty: 3
     tags: ["layered-architecture", "n-tier"]
     question:
-      text: "What is layered (n-tier) architecture? What are its strengths and weaknesses compared to hexagonal or clean architecture?"
+      text:
+        en: "What is layered (n-tier) architecture? What are its strengths and weaknesses compared to hexagonal or clean architecture?"
+        ru: "Что такое слоистая (n-tier) архитектура? Каковы её сильные и слабые стороны по сравнению с гексагональной или чистой архитектурой?"
       code: null
     follow_ups:
-      - "How does layering work in traditional Django or Flask monoliths?"
-      - "What problems arise from strict layering?"
-      - "How do you migrate from layered to hexagonal architecture?"
+      en:
+        - "How does layering work in traditional Django or Flask monoliths?"
+        - "What problems arise from strict layering?"
+        - "How do you migrate from layered to hexagonal architecture?"
+      ru:
+        - "Как работает слоистость в традиционных монолитах на Django или Flask?"
+        - "Какие проблемы возникают из-за строгой слоистости?"
+        - "Как мигрировать со слоистой на гексагональную архитектуру?"
     expected_points:
       - "Layered: presentation → business logic → data access"
       - "Each layer depends only on the layer below"

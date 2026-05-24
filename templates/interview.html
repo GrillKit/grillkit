@@ -10,6 +10,9 @@
 <div class="interview-page">
     <aside class="interview-sidebar">
         <div id="interview-alerts">
+            {% if tts_voice_banner and tts_voice_status %}
+            {% include "question_voice_banner.html" %}
+            {% endif %}
             {% if speech_model_banner and speech_model_status %}
             {% include "speech_model_banner.html" %}
             {% elif interview.status == "active" and speech_model_status and speech_model_status.state == "ready" and not speech_model_status.loaded_in_memory %}
@@ -26,12 +29,16 @@
         </div>
 
         <div class="interview-meta">
-            <h1 class="interview-title">{{ interview.language | title }} Interview</h1>
+            <h1 class="interview-title">{{ interview_title }}</h1>
             <dl class="meta-list">
-                <dt>Topics</dt>
-                <dd>{{ interview.category | replace('-', ' ') | replace('_', ' ') | title }}</dd>
-                <dt>Level</dt>
-                <dd>{{ interview.level | capitalize }}</dd>
+                <dt>Sources</dt>
+                <dd>
+                    <ul class="selection-sources-list">
+                        {% for line in selection_lines %}
+                        <li>{{ line }}</li>
+                        {% endfor %}
+                    </ul>
+                </dd>
                 <dt>AI language</dt>
                 <dd>{{ locale_label }}</dd>
                 <dt>Progress</dt>
@@ -44,8 +51,10 @@
                 </dd>
                 <dt>Status</dt>
                 <dd><span id="interview-status">{{ interview.status | capitalize }}</span></dd>
-                <dt>Timer</dt>
-                <dd class="text-muted meta-placeholder">—</dd>
+                <dt id="interview-timer-label"{% if not question_timer_enabled %} hidden{% endif %}>Timer</dt>
+                <dd id="interview-timer-row"{% if not question_timer_enabled %} hidden{% endif %}>
+                    <span id="interview-timer" class="interview-timer-display">—</span>
+                </dd>
             </dl>
         </div>
 
@@ -119,7 +128,7 @@
     <section class="interview-chat-panel">
         <div class="interview-chat" id="chat-container">
             {% for answer in answers %}
-            {% if answer.answer_text is not none or answer == current_question %}
+            {% if answer.answer_text is not none or (current_question and answer.id == current_question.id) %}
             <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
                 <div class="chat-bubble question-bubble">
                     <strong>Q{{ answer.order }}:</strong>
@@ -146,7 +155,11 @@
         {% if interview.status == "active" and current_question %}
         <div class="interview-composer" id="answer-section"
              data-interview-id="{{ interview.id }}"
-             {% if dictation_enabled %}data-dictation-enabled="true"{% endif %}>
+             {% if question_voice_enabled %}data-question-voice-enabled="true"{% endif %}
+             {% if current_answer_id %}data-current-answer-id="{{ current_answer_id }}"{% endif %}
+             {% if dictation_enabled %}data-dictation-enabled="true"{% endif %}
+             {% if question_timer_enabled %}data-question-timer-enabled="true"{% endif %}
+             data-current-round="{{ current_round }}">
             <textarea name="answer_text" id="answer_text"
                       class="form-control composer-input" rows="4" required
                       placeholder="Type your answer here..."></textarea>
@@ -171,6 +184,9 @@
 {% endblock %}
 
 {% block scripts %}
+{% if question_timer_enabled and interview.status == "active" and current_question %}
+<script src="/static/js/interview_timer.js?v={{ static_version('js/interview_timer.js') }}"></script>
+{% endif %}
 <script>
     const initialInterviewStatus = '{{ interview.status }}';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -179,8 +195,50 @@
     let reconnectTimer = null;
     let currentQuestionId = {{ (current_question.question_id if current_question else "") | tojson }};
     const questionCount = {{ interview.question_count }};
+    const questionTimerEnabled = {{ question_timer_enabled | tojson }};
+    const interviewLocale = {{ interview.locale | tojson }};
+    const timeoutChatLabel = {{ timeout_chat_label | tojson }};
+    const questionTimeLimitSeconds = {{ interview.question_time_limit_seconds | tojson }};
+    const llmRequestTimeoutSeconds = {{ llm_request_timeout_seconds | tojson }};
+    let currentRound = {{ current_round }};
     let isSubmitting = false;
     window.isSubmitting = false;
+    let evaluationWatchdogTimer = null;
+
+    window.grillkitOnTimerExpired = function () {
+        if (isSubmitting) return;
+        isSubmitting = true;
+        window.isSubmitting = true;
+        enableForm(false);
+        if (window.grillkitQuestionTimer) {
+            window.grillkitQuestionTimer.stop();
+        }
+    };
+
+    function restartQuestionTimer(remainingSeconds) {
+        if (!questionTimerEnabled || !window.grillkitQuestionTimer) return;
+        const seconds = remainingSeconds != null
+            ? remainingSeconds
+            : questionTimeLimitSeconds;
+        window.grillkitQuestionTimer.start({
+            enabled: true,
+            remainingSeconds: seconds,
+            questionId: currentQuestionId,
+            round: currentRound,
+            getWs: function () { return ws; },
+        });
+    }
+
+    function showTimeoutBubble(feedbackText) {
+        const chatContainer = document.getElementById('chat-container');
+        if (!chatContainer) return;
+        const label = feedbackText || timeoutChatLabel;
+        const div = document.createElement('div');
+        div.className = 'chat-message system';
+        div.innerHTML = '<div class="chat-bubble system-bubble"><em>' + escapeHtml(label) + '</em></div>';
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
 
     function updateProgressDisplay(order) {
         const progressEl = document.getElementById('interview-progress');
@@ -197,14 +255,15 @@
 
         ws.onopen = function() {
             console.log('WebSocket connected');
+            clearEvaluationWatchdog();
+            showEvaluating(false);
             isSubmitting = false;
             window.isSubmitting = false;
             if (reconnectTimer) {
                 clearTimeout(reconnectTimer);
                 reconnectTimer = null;
             }
-            document.getElementById('submit-btn') && (document.getElementById('submit-btn').disabled = false);
-            document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = false);
+            enableForm(true);
             ws.send(JSON.stringify({ type: 'ping' }));
         };
 
@@ -217,6 +276,7 @@
             const indicator = document.getElementById('evaluating-indicator');
             const wasEvaluating = indicator && indicator.style.display !== 'none';
             if (wasEvaluating || isSubmitting) {
+                clearEvaluationWatchdog();
                 showEvaluating(false);
                 isSubmitting = false;
                 window.isSubmitting = false;
@@ -243,14 +303,23 @@
 
             case 'evaluating':
                 showEvaluating(true);
+                startEvaluationWatchdog();
                 break;
 
             case 'feedback':
+                clearEvaluationWatchdog();
                 showEvaluating(false);
+                if (data.timed_out) {
+                    showTimeoutBubble(data.feedback);
+                }
+                if (window.grillkitQuestionTimer) {
+                    window.grillkitQuestionTimer.stop();
+                }
                 showNextAfterFeedback(data);
                 break;
 
             case 'interview_completed':
+                clearEvaluationWatchdog();
                 showEvaluating(false);
                 handleSessionCompleted(data);
                 break;
@@ -266,6 +335,7 @@
                 break;
 
             case 'error':
+                clearEvaluationWatchdog();
                 showEvaluating(false);
                 isSubmitting = false;
                 window.isSubmitting = false;
@@ -273,6 +343,30 @@
                 showError(data.message);
                 break;
         }
+    }
+
+    function clearEvaluationWatchdog() {
+        if (evaluationWatchdogTimer) {
+            clearTimeout(evaluationWatchdogTimer);
+            evaluationWatchdogTimer = null;
+        }
+    }
+
+    function startEvaluationWatchdog() {
+        clearEvaluationWatchdog();
+        const graceMs = 15000;
+        const timeoutMs = (llmRequestTimeoutSeconds * 1000) + graceMs;
+        evaluationWatchdogTimer = setTimeout(function() {
+            evaluationWatchdogTimer = null;
+            if (!isSubmitting) return;
+            showEvaluating(false);
+            isSubmitting = false;
+            window.isSubmitting = false;
+            enableForm(true);
+            showError(
+                'AI evaluation is taking too long. Check /config (model running and timeout), then try again.'
+            );
+        }, timeoutMs);
     }
 
     function submitAnswer() {
@@ -295,6 +389,10 @@
         enableForm(false);
         showAnswerBubble();
 
+        if (window.grillkitQuestionTimer) {
+            window.grillkitQuestionTimer.stop();
+        }
+
         ws.send(JSON.stringify({
             type: 'answer',
             question_id: currentQuestionId,
@@ -311,6 +409,7 @@
 
         document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = true);
         showEvaluating(true);
+        startEvaluationWatchdog();
 
         ws.send(JSON.stringify({ type: 'complete' }));
     }
@@ -350,16 +449,21 @@
             chatContainer.appendChild(followUpDiv);
 
             currentQuestionId = data.question_id;
+            currentRound = data.round + 1;
             isSubmitting = false;
             window.isSubmitting = false;
             enableForm(true);
+            restartQuestionTimer(data.timer_remaining_seconds);
+            if (window.grillkitPlayQuestionAudio) {
+                window.grillkitPlayQuestionAudio();
+            }
         }
         else if (data.next_question) {
             const nq = data.next_question;
             const nextQDiv = document.createElement('div');
             nextQDiv.className = 'chat-message question';
             nextQDiv.setAttribute('data-question-id', nq.question_id);
-            nextQDiv.setAttribute('data-round', '0');
+            nextQDiv.setAttribute('data-round', String(nq.round != null ? nq.round : 0));
             let qHtml = '<div class="chat-bubble question-bubble">';
             qHtml += '<strong>Q' + nq.order + ':</strong> ' + escapeHtml(nq.question_text);
             if (nq.question_code) {
@@ -370,12 +474,20 @@
             chatContainer.appendChild(nextQDiv);
 
             currentQuestionId = nq.question_id;
+            currentRound = nq.round != null ? nq.round : 0;
             updateProgressDisplay(nq.order);
             isSubmitting = false;
             window.isSubmitting = false;
             enableForm(true);
+            restartQuestionTimer(data.timer_remaining_seconds);
+            if (window.grillkitPlayQuestionAudio) {
+                window.grillkitPlayQuestionAudio();
+            }
         } else {
             updateProgressDisplay(null);
+            if (window.grillkitQuestionTimer) {
+                window.grillkitQuestionTimer.stop();
+            }
             isSubmitting = false;
             window.isSubmitting = false;
             const answerSection = document.getElementById('answer-section');
@@ -514,8 +626,12 @@
         }
         if (initialInterviewStatus === 'active') {
             connectWebSocket();
+            restartQuestionTimer({{ timer_remaining_seconds | tojson }});
         }
     });
 </script>
 <script src="/static/js/dictation.js?v={{ static_version('js/dictation.js') }}"></script>
+{% if question_voice_enabled and interview.status == "active" and current_question %}
+<script src="/static/js/interview_voice.js?v={{ static_version('js/interview_voice.js') }}"></script>
+{% endif %}
 {% endblock %}

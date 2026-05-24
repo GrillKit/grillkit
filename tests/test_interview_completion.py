@@ -7,11 +7,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.completion import InterviewCompletionService
 from app.interview.services.evaluator.service import InterviewEvaluation
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
-from app.shared.infrastructure.uow import UnitOfWork
+from tests.fakes import FakeProvider
+from tests.helpers.selection import minimal_selection_spec
 
 
 @pytest.mark.asyncio
@@ -19,12 +21,11 @@ async def test_complete_interview_persists_completed_status(isolated_db):
     """After completion, interview is stored as completed with score and time."""
     interview_id = "completion-persist-1"
 
-    with UnitOfWork(auto_commit=True) as uow:
+    with InterviewUnitOfWork(auto_commit=True) as uow:
         interview = Interview(
             id=interview_id,
-            level="junior",
-            language="python",
-            category="basics",
+            locale="en",
+            selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=1,
             question_ids=json.dumps(["q1"]),
             status="active",
@@ -53,7 +54,10 @@ async def test_complete_interview_persists_completed_status(isolated_db):
         new_callable=AsyncMock,
         return_value=mock_eval,
     ):
-        events = await InterviewCompletionService.complete_interview(interview_id)
+        events = await InterviewCompletionService.complete_interview(
+            interview_id,
+            provider=FakeProvider([]),
+        )
 
     assert len(events) == 2
 

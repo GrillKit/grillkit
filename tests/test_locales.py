@@ -7,7 +7,10 @@ import pytest
 from app.shared.domain.locales import (
     DEFAULT_LOCALE,
     SUPPORTED_LOCALES,
+    TIMEOUT_CHAT_LABELS,
+    TIMEOUT_FEEDBACK_MESSAGES,
     language_instruction,
+    localized_string,
     normalize_locale,
 )
 
@@ -35,6 +38,21 @@ def test_language_instruction_mentions_language_name():
     text = language_instruction("ru")
     assert "Russian" in text
     assert DEFAULT_LOCALE == "en"
+
+
+def test_timeout_messages_cover_all_supported_locales():
+    """Timeout UI strings exist for every supported locale code."""
+    for code in SUPPORTED_LOCALES:
+        assert code in TIMEOUT_FEEDBACK_MESSAGES
+        assert code in TIMEOUT_CHAT_LABELS
+        assert TIMEOUT_FEEDBACK_MESSAGES[code]
+        assert TIMEOUT_CHAT_LABELS[code]
+
+
+def test_localized_string_falls_back_to_default():
+    """Unknown locale codes use the default locale message."""
+    text = localized_string("xx", TIMEOUT_FEEDBACK_MESSAGES)
+    assert text == TIMEOUT_FEEDBACK_MESSAGES[DEFAULT_LOCALE]
 
 
 def test_language_instruction_warns_against_schema_metadata():

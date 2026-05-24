@@ -27,7 +27,7 @@ def event_to_message(event: InterviewEvent) -> dict[str, Any]:
     if isinstance(event, EvaluatingEvent):
         return {"type": "evaluating"}
     if isinstance(event, AnswerFeedbackEvent):
-        return {
+        message: dict[str, Any] = {
             "type": "feedback",
             "question_id": event.question_id,
             "order": event.order,
@@ -36,7 +36,13 @@ def event_to_message(event: InterviewEvent) -> dict[str, Any]:
             if event.follow_up_needed
             else None,
             "next_question": event.next_question,
+            "timed_out": event.timed_out,
         }
+        if event.feedback is not None:
+            message["feedback"] = event.feedback
+        if event.timer_remaining_seconds is not None:
+            message["timer_remaining_seconds"] = event.timer_remaining_seconds
+        return message
     if isinstance(event, InterviewCompletedEvent):
         return {
             "type": "interview_completed",

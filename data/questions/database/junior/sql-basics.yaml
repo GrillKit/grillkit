@@ -10,15 +10,22 @@ questions:
     difficulty: 1
     tags: ["SELECT", "WHERE", "filters"]
     question:
-      text: "Explain the basic structure of a SELECT query. How does WHERE clause filter data?"
+      text:
+        en: "Explain the basic structure of a SELECT query. How does WHERE clause filter data?"
+        ru: "Объясните базовую структуру запроса SELECT. Как предложение WHERE фильтрует данные?"
       code: |
         SELECT column1, column2
         FROM table_name
         WHERE condition;
     follow_ups:
-      - "What is the order of execution of SQL clauses?"
-      - "How do NULL values behave in WHERE conditions?"
-      - "What is the difference between WHERE and HAVING?"
+      en:
+        - "What is the order of execution of SQL clauses?"
+        - "How do NULL values behave in WHERE conditions?"
+        - "What is the difference between WHERE and HAVING?"
+      ru:
+        - "В каком порядке выполняются предложения SQL?"
+        - "Как ведут себя значения NULL в условиях WHERE?"
+        - "В чём разница между WHERE и HAVING?"
     expected_points:
       - "SELECT specifies columns, FROM specifies source, WHERE filters rows"
       - "Execution order: FROM → WHERE → SELECT → ORDER BY"
@@ -30,15 +37,22 @@ questions:
     difficulty: 1
     tags: ["INSERT", "UPDATE", "DELETE"]
     question:
-      text: "How do INSERT, UPDATE, and DELETE statements work? What are the risks of each?"
+      text:
+        en: "How do INSERT, UPDATE, and DELETE statements work? What are the risks of each?"
+        ru: "Как работают операторы INSERT, UPDATE и DELETE? Какие риски у каждого?"
       code: |
         INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
         UPDATE users SET email = 'new@example.com' WHERE id = 1;
         DELETE FROM users WHERE id = 1;
     follow_ups:
-      - "What happens if you omit the WHERE clause on UPDATE or DELETE?"
-      - "How do transactions protect DML operations?"
-      - "What is INSERT ... ON DUPLICATE KEY UPDATE / UPSERT?"
+      en:
+        - "What happens if you omit the WHERE clause on UPDATE or DELETE?"
+        - "How do transactions protect DML operations?"
+        - "What is INSERT ... ON DUPLICATE KEY UPDATE / UPSERT?"
+      ru:
+        - "Что произойдёт, если опустить WHERE в UPDATE или DELETE?"
+        - "Как транзакции защищают DML-операции?"
+        - "Что такое INSERT ... ON DUPLICATE KEY UPDATE / UPSERT?"
     expected_points:
       - "INSERT adds new rows, UPDATE modifies existing, DELETE removes"
       - "Omitting WHERE on UPDATE/DELETE affects ALL rows"
@@ -50,15 +64,22 @@ questions:
     difficulty: 2
     tags: ["JOIN", "INNER-JOIN", "LEFT-JOIN"]
     question:
-      text: "What are the different types of JOINs in SQL? Explain INNER, LEFT, RIGHT, and FULL OUTER JOIN."
+      text:
+        en: "What are the different types of JOINs in SQL? Explain INNER, LEFT, RIGHT, and FULL OUTER JOIN."
+        ru: "Какие типы JOIN существуют в SQL? Объясните INNER, LEFT, RIGHT и FULL OUTER JOIN."
       code: |
         SELECT u.name, o.amount
         FROM users u
         INNER JOIN orders o ON u.id = o.user_id;
     follow_ups:
-      - "What rows does each JOIN type return?"
-      - "How do you handle NULLs from LEFT JOIN?"
-      - "What is a CROSS JOIN and when would you use it?"
+      en:
+        - "What rows does each JOIN type return?"
+        - "How do you handle NULLs from LEFT JOIN?"
+        - "What is a CROSS JOIN and when would you use it?"
+      ru:
+        - "Какие строки возвращает каждый тип JOIN?"
+        - "Как обрабатывать NULL из LEFT JOIN?"
+        - "Что такое CROSS JOIN и когда его использовать?"
     expected_points:
       - "INNER JOIN: only matching rows from both tables"
       - "LEFT JOIN: all rows from left, NULLs where right missing"
@@ -70,7 +91,9 @@ questions:
     difficulty: 2
     tags: ["aggregation", "GROUP BY", "HAVING"]
     question:
-      text: "How does GROUP BY work with aggregate functions? What is the difference between WHERE and HAVING?"
+      text:
+        en: "How does GROUP BY work with aggregate functions? What is the difference between WHERE and HAVING?"
+        ru: "Как GROUP BY работает с агрегатными функциями? В чём разница между WHERE и HAVING?"
       code: |
         SELECT department, COUNT(*) as emp_count, AVG(salary) as avg_salary
         FROM employees
@@ -78,9 +101,14 @@ questions:
         GROUP BY department
         HAVING COUNT(*) > 5;
     follow_ups:
-      - "What aggregate functions does SQL provide (COUNT, SUM, AVG, MIN, MAX)?"
-      - "Why can't you use WHERE after GROUP BY?"
-      - "How does COUNT(*) differ from COUNT(column)?"
+      en:
+        - "What aggregate functions does SQL provide (COUNT, SUM, AVG, MIN, MAX)?"
+        - "Why can't you use WHERE after GROUP BY?"
+        - "How does COUNT(*) differ from COUNT(column)?"
+      ru:
+        - "Какие агрегатные функции есть в SQL (COUNT, SUM, AVG, MIN, MAX)?"
+        - "Почему нельзя использовать WHERE после GROUP BY?"
+        - "Чем COUNT(*) отличается от COUNT(column)?"
     expected_points:
       - "GROUP BY groups rows by column values"
       - "WHERE filters before grouping, HAVING filters after"
@@ -92,16 +120,23 @@ questions:
     difficulty: 1
     tags: ["ORDER BY", "LIMIT", "DISTINCT"]
     question:
-      text: "How do ORDER BY, LIMIT, and DISTINCT work in SQL queries?"
+      text:
+        en: "How do ORDER BY, LIMIT, and DISTINCT work in SQL queries?"
+        ru: "Как работают ORDER BY, LIMIT и DISTINCT в SQL-запросах?"
       code: |
         SELECT DISTINCT department
         FROM employees
         ORDER BY department DESC
         LIMIT 10;
     follow_ups:
-      - "What is the default sort order in ORDER BY?"
-      - "How does LIMIT work in different databases (MySQL vs PostgreSQL)?"
-      - "What is the difference between DISTINCT and GROUP BY?"
+      en:
+        - "What is the default sort order in ORDER BY?"
+        - "How does LIMIT work in different databases (MySQL vs PostgreSQL)?"
+        - "What is the difference between DISTINCT and GROUP BY?"
+      ru:
+        - "Какой порядок сортировки по умолчанию в ORDER BY?"
+        - "Как LIMIT работает в разных СУБД (MySQL vs PostgreSQL)?"
+        - "В чём разница между DISTINCT и GROUP BY?"
     expected_points:
       - "ORDER BY sorts results (ASC default, DESC descending)"
       - "LIMIT restricts number of rows returned"

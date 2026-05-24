@@ -6,9 +6,32 @@ import json
 
 import pytest
 
+from app.interview.domain.selection import (
+    InterviewSelection,
+    LanguageSelection,
+    get_interview_selection,
+)
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.creation import InterviewCreationService
 from app.interview.services.query import InterviewQuery
-from app.shared.infrastructure.uow import UnitOfWork
+
+
+def _single_selection(
+    *,
+    language: str = "python",
+    level: str = "junior",
+    categories: list[str] | None = None,
+) -> InterviewSelection:
+    """Build a single-language selection for tests."""
+    return InterviewSelection(
+        sources=[
+            LanguageSelection(
+                language=language,
+                level=level,
+                categories=categories or ["data-structures"],
+            )
+        ]
+    )
 
 
 def test_create_interview_persists_questions(
@@ -19,9 +42,7 @@ def test_create_interview_persists_questions(
     monkeypatch.setattr("random.shuffle", lambda items: None)
 
     interview = InterviewCreationService.create_interview(
-        level="junior",
-        category="data-structures",
-        language="python",
+        selection=_single_selection(),
         locale="en",
         question_count=1,
     )
@@ -30,6 +51,7 @@ def test_create_interview_persists_questions(
     assert interview.status == "active"
     assert interview.question_count == 1
     assert interview.locale == "en"
+    assert interview.selection_spec
 
     question_ids = json.loads(interview.question_ids)
     assert len(question_ids) == 1
@@ -44,16 +66,38 @@ def test_create_interview_persists_questions(
     assert answer.order == 1
     assert answer.answer_text is None
     assert "list" in answer.question_text.lower()
+    assert interview.question_time_limit_seconds is None
+    assert answer.started_at is None
+
+
+def test_create_interview_with_timer_starts_first_round(
+    isolated_db, temp_questions_dir, monkeypatch
+):
+    """Timer-enabled sessions store the limit and start the first round clock."""
+    del temp_questions_dir
+    monkeypatch.setattr("random.shuffle", lambda items: None)
+
+    interview = InterviewCreationService.create_interview(
+        selection=_single_selection(),
+        locale="en",
+        question_count=1,
+        question_time_limit_seconds=180,
+    )
+
+    assert interview.question_time_limit_seconds == 180
+
+    reloaded = InterviewQuery.get_interview(interview.id)
+    assert reloaded is not None
+    assert len(reloaded.answers) == 1
+    assert reloaded.answers[0].started_at is not None
 
 
 def test_create_interview_unknown_category_raises(isolated_db, temp_questions_dir):
     """Missing category in the bank raises ValueError."""
     del temp_questions_dir
-    with pytest.raises(ValueError, match="No questions found"):
+    with pytest.raises(ValueError, match="Unknown topic"):
         InterviewCreationService.create_interview(
-            level="junior",
-            category="nonexistent",
-            language="python",
+            selection=_single_selection(categories=["nonexistent"]),
             question_count=1,
         )
 
@@ -62,16 +106,44 @@ def test_create_interview_expunged_instance_is_usable(isolated_db, temp_question
     """Returned interview is detached but id and fields remain readable."""
     del temp_questions_dir
     interview = InterviewCreationService.create_interview(
-        level="junior",
-        category="algorithms",
-        language="python",
+        selection=_single_selection(categories=["algorithms"]),
         question_count=1,
     )
 
     assert interview.id
-    assert interview.category == "algorithms"
+    assert "algorithms" in interview.selection_spec
 
-    with UnitOfWork() as uow:
+    with InterviewUnitOfWork() as uow:
         stored = uow.interviews.get(interview.id)
     assert stored is not None
     assert stored.id == interview.id
+
+
+def test_create_multi_topic_interview(isolated_db, temp_questions_dir, monkeypatch):
+    """Multi-topic selection is stored only in selection_spec."""
+    del temp_questions_dir
+    monkeypatch.setattr("random.shuffle", lambda items: None)
+
+    selection = InterviewSelection(
+        sources=[
+            LanguageSelection(
+                language="python",
+                level="junior",
+                categories=["data-structures", "algorithms"],
+            )
+        ]
+    )
+    interview = InterviewCreationService.create_interview(
+        selection=selection,
+        question_count=2,
+    )
+
+    assert interview.question_count == 2
+    assert interview.selection_spec
+    assert "data-structures" in interview.selection_spec
+    assert "algorithms" in interview.selection_spec
+
+    reloaded = InterviewQuery.get_interview(interview.id)
+    assert reloaded is not None
+    parsed = get_interview_selection(reloaded)
+    assert len(parsed.sources[0].categories) == 2

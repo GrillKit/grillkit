@@ -8,7 +8,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.interview.api.deps import InterviewQueryDep
+from app.interview.api.access import get_interview_for_dictation
 from app.interview.domain.progress import require_active
 from app.platform.api.deps import ConfigServiceDep
 from app.shared.domain.exceptions import InterviewNotActiveError
@@ -47,7 +47,6 @@ async def _reject_dictation(websocket: WebSocket, message: str) -> None:
 async def interview_dictation_ws(
     websocket: WebSocket,
     interview_id: str,
-    interview_query: InterviewQueryDep,
     config_service: ConfigServiceDep,
 ) -> None:
     """Stream PCM audio and return a final transcript for the answer field.
@@ -68,10 +67,9 @@ async def interview_dictation_ws(
     Args:
         websocket: Dictation WebSocket connection.
         interview_id: Interview session UUID.
-        interview_query: Interview read service.
         config_service: Provider configuration service.
     """
-    interview = interview_query.get_interview(interview_id)
+    interview = get_interview_for_dictation(interview_id)
     if interview is None:
         await _reject_dictation(websocket, "Interview not found")
         return
@@ -90,9 +88,7 @@ async def interview_dictation_ws(
             transcriber = getattr(websocket.app.state, "speech_transcriber", None)
     if transcriber is None:
         load_error = WhisperRuntime.load_error()
-        detail = (
-            f" Speech model load error: {load_error}" if load_error else ""
-        )
+        detail = f" Speech model load error: {load_error}" if load_error else ""
         await _reject_dictation(
             websocket,
             "Speech model is not loaded. Download it in Configuration." + detail,

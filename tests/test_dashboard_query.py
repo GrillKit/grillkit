@@ -9,9 +9,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.interview.repositories.interview import InterviewRepository
-from app.interview.services.query import DashboardInterviewRow, InterviewQuery
+from app.interview.services.dashboard import DashboardBuilder, DashboardInterviewRow
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
+from tests.helpers.selection import minimal_selection_spec
 
 
 @pytest.fixture
@@ -35,20 +36,18 @@ def db_session(engine):
 def test_format_local_datetime_utc():
     """UTC datetimes are converted to local formatted strings."""
     dt = datetime(2026, 5, 18, 12, 30, tzinfo=UTC)
-    result = InterviewQuery.format_local_datetime(dt)
+    result = DashboardBuilder.format_local_datetime(dt)
     assert "2026" in result
     assert ":" in result
 
 
 def test_interview_display_title():
-    """Title is built from language field."""
+    """Title is built from selection_spec."""
     interview = Interview(
         id="x",
-        level="junior",
-        language="python",
-        category="data-structures",
+        selection_spec=minimal_selection_spec(categories=["data-structures"]),
     )
-    assert InterviewQuery.interview_display_title(interview) == "Python Interview"
+    assert DashboardBuilder.interview_display_title(interview) == "Python Interview"
 
 
 def test_list_recent_ordering(db_session):
@@ -56,18 +55,14 @@ def test_list_recent_ordering(db_session):
     now = datetime.now(UTC)
     active = Interview(
         id="active-1",
-        level="junior",
-        language="python",
-        category="basics",
+        selection_spec=minimal_selection_spec(categories=["basics"]),
         question_count=5,
         status="active",
         started_at=now - timedelta(hours=2),
     )
     completed = Interview(
         id="done-1",
-        level="junior",
-        language="python",
-        category="algorithms",
+        selection_spec=minimal_selection_spec(categories=["algorithms"]),
         question_count=3,
         status="completed",
         score=10,
@@ -88,9 +83,7 @@ def test_list_dashboard_rows(monkeypatch):
     now = datetime.now(UTC)
     completed = Interview(
         id="done-1",
-        level="junior",
-        language="python",
-        category="algorithms",
+        selection_spec=minimal_selection_spec(categories=["algorithms"]),
         question_count=3,
         status="completed",
         score=8,
@@ -99,9 +92,7 @@ def test_list_dashboard_rows(monkeypatch):
     completed.answers = []
     active = Interview(
         id="active-1",
-        level="junior",
-        language="python",
-        category="basics",
+        selection_spec=minimal_selection_spec(categories=["basics"]),
         question_count=5,
         status="active",
         started_at=now,
@@ -124,11 +115,11 @@ def test_list_dashboard_rows(monkeypatch):
             return False
 
     monkeypatch.setattr(
-        "app.interview.services.query.UnitOfWork",
+        "app.interview.services.dashboard.InterviewUnitOfWork",
         FakeUow,
     )
 
-    rows = InterviewQuery.list_dashboard_rows(limit=20)
+    rows = DashboardBuilder.list_rows(limit=20)
     assert len(rows) == 2
     assert rows[0].title == "Python Interview"
     assert rows[0].score_display == "8 / 0"

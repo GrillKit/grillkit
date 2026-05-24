@@ -10,7 +10,9 @@ questions:
     difficulty: 1
     tags: ["try-except", "error-handling"]
     question:
-      text: "Explain the try/except/else/finally blocks in Python. What is the purpose of each?"
+      text:
+        en: "Explain the try/except/else/finally blocks in Python. What is the purpose of each?"
+        ru: "Объясните блоки try/except/else/finally в Python. Каково назначение каждого из них?"
       code: |
         try:
             result = risky_operation()
@@ -23,9 +25,14 @@ questions:
         finally:
             cleanup()
     follow_ups:
-      - "When does the 'else' block execute?"
-      - "Does 'finally' always execute? Even on return or exception?"
-      - "What is the order of execution?"
+      en:
+        - "When does the 'else' block execute?"
+        - "Does 'finally' always execute? Even on return or exception?"
+        - "What is the order of execution?"
+      ru:
+        - "Когда выполняется блок 'else'?"
+        - "Всегда ли выполняется 'finally'? Даже при return или исключении?"
+        - "Каков порядок выполнения?"
     expected_points:
       - "'try': block where exceptions might occur"
       - "'except': catches and handles exceptions"
@@ -37,12 +44,19 @@ questions:
     difficulty: 2
     tags: ["exception-hierarchy", "base-exceptions"]
     question:
-      text: "What is the Python exception hierarchy? What is the difference between BaseException, Exception, and KeyboardInterrupt?"
+      text:
+        en: "What is the Python exception hierarchy? What is the difference between BaseException, Exception, and KeyboardInterrupt?"
+        ru: "Какова иерархия исключений в Python? В чём разница между BaseException, Exception и KeyboardInterrupt?"
       code: null
     follow_ups:
-      - "Why should you avoid catching BaseException?"
-      - "What is the difference between SystemExit and KeyboardInterrupt?"
-      - "Where do StopIteration and GeneratorExit fit?"
+      en:
+        - "Why should you avoid catching BaseException?"
+        - "What is the difference between SystemExit and KeyboardInterrupt?"
+        - "Where do StopIteration and GeneratorExit fit?"
+      ru:
+        - "Почему не стоит перехватывать BaseException?"
+        - "В чём разница между SystemExit и KeyboardInterrupt?"
+        - "Где находятся StopIteration и GeneratorExit?"
     expected_points:
       - "BaseException is the root — don't catch this directly"
       - "Exception is the base for all normal exceptions"
@@ -54,7 +68,9 @@ questions:
     difficulty: 2
     tags: ["raise", "custom-exceptions"]
     question:
-      text: "How do you raise and create custom exceptions in Python?"
+      text:
+        en: "How do you raise and create custom exceptions in Python?"
+        ru: "Как создавать и выбрасывать пользовательские исключения в Python?"
       code: |
         class ValidationError(Exception):
             """Raised when validation fails."""
@@ -64,8 +80,12 @@ questions:
             if age < 0:
                 raise ValidationError("Age cannot be negative")
     follow_ups:
-      - "How do you chain exceptions with 'raise from'?"
-      - "When should you create a custom exception vs using built-in?"
+      en:
+        - "How do you chain exceptions with 'raise from'?"
+        - "When should you create a custom exception vs using built-in?"
+      ru:
+        - "Как объединять исключения с помощью 'raise from'?"
+        - "Когда создавать собственное исключение, а когда использовать встроенное?"
     expected_points:
       - "Custom exceptions inherit from Exception"
       - "'raise' triggers an exception"
@@ -77,11 +97,17 @@ questions:
     difficulty: 2
     tags: ["context-managers", "exception-in-with"]
     question:
-      text: "How do exceptions interact with context managers? What happens if __exit__ returns True?"
+      text:
+        en: "How do exceptions interact with context managers? What happens if __exit__ returns True?"
+        ru: "Как исключения взаимодействуют с контекстными менеджерами? Что произойдёт, если __exit__ вернёт True?"
       code: null
     follow_ups:
-      - "How does @contextmanager handle exceptions?"
-      - "When would __exit__ suppress an exception?"
+      en:
+        - "How does @contextmanager handle exceptions?"
+        - "When would __exit__ suppress an exception?"
+      ru:
+        - "Как @contextmanager обрабатывает исключения?"
+        - "Когда __exit__ может подавить исключение?"
     expected_points:
       - "__exit__ receives exception type, value, and traceback"
       - "If __exit__ returns True, exception is suppressed"
@@ -93,14 +119,20 @@ questions:
     difficulty: 1
     tags: ["assert", "debugging"]
     question:
-      text: "What does the 'assert' statement do in Python? When should you use it vs raising exceptions?"
+      text:
+        en: "What does the 'assert' statement do in Python? When should you use it vs raising exceptions?"
+        ru: "Что делает оператор 'assert' в Python? Когда его использовать вместо выбрасывания исключений?"
       code: |
         def divide(a, b):
             assert b != 0, "Division by zero!"
             return a / b
     follow_ups:
-      - "How can assertions be disabled?"
-      - "Why shouldn't assertions be used for input validation in production?"
+      en:
+        - "How can assertions be disabled?"
+        - "Why shouldn't assertions be used for input validation in production?"
+      ru:
+        - "Как можно отключить утверждения (assertions)?"
+        - "Почему не стоит использовать assert для проверки входных данных в продакшене?"
     expected_points:
       - "'assert condition, message' raises AssertionError if condition is False"
       - "Assertions can be disabled with -O flag"

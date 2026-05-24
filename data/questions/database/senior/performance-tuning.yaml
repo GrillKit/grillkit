@@ -10,12 +10,19 @@ questions:
     difficulty: 4
     tags: ["query-optimization", "N+1", "slow-queries"]
     question:
-      text: "How do you identify and fix slow database queries? How do you deal with the N+1 query problem?"
+      text:
+        en: "How do you identify and fix slow database queries? How do you deal with the N+1 query problem?"
+        ru: "Как находить и исправлять медленные запросы к БД? Как бороться с проблемой N+1?"
       code: null
     follow_ups:
-      - "How do you use pg_stat_statements or slow query log to find bottlenecks?"
-      - "How does eager loading (JOIN) vs lazy loading affect performance?"
-      - "What is the difference between optimizer and statistic-based tuning?"
+      en:
+        - "How do you use pg_stat_statements or slow query log to find bottlenecks?"
+        - "How does eager loading (JOIN) vs lazy loading affect performance?"
+        - "What is the difference between optimizer and statistic-based tuning?"
+      ru:
+        - "Как использовать pg_stat_statements или slow query log для поиска узких мест?"
+        - "Как eager loading (JOIN) и lazy loading влияют на производительность?"
+        - "В чём разница настройки через оптимизатор и через статистику?"
     expected_points:
       - "Enable slow query logging or use pg_stat_statements"
       - "N+1: loading related data in a loop — fix with eager loading (JOIN)"
@@ -27,12 +34,19 @@ questions:
     difficulty: 5
     tags: ["index-tuning", "bloat", "maintenance"]
     question:
-      text: "How do you maintain indexes and manage index bloat in high-write databases?"
+      text:
+        en: "How do you maintain indexes and manage index bloat in high-write databases?"
+        ru: "Как обслуживать индексы и управлять раздуванием (bloat) индексов при высокой записи?"
       code: null
     follow_ups:
-      - "What causes index bloat in PostgreSQL and MySQL?"
-      - "How does REINDEX vs pg_repack handle index rebuild?"
-      - "How do you find unused or duplicate indexes?"
+      en:
+        - "What causes index bloat in PostgreSQL and MySQL?"
+        - "How does REINDEX vs pg_repack handle index rebuild?"
+        - "How do you find unused or duplicate indexes?"
+      ru:
+        - "Что вызывает bloat индексов в PostgreSQL и MySQL?"
+        - "Чем REINDEX отличается от pg_repack при пересборке индекса?"
+        - "Как найти неиспользуемые или дублирующие индексы?"
     expected_points:
       - "B-tree index bloat from page splits during updates"
       - "pg_repack rebuilds indexes without locks"
@@ -44,12 +58,19 @@ questions:
     difficulty: 5
     tags: ["connection-pooling", "pgbouncer"]
     question:
-      text: "How do connection poolers work? Compare PgBouncer modes and connection management strategies."
+      text:
+        en: "How do connection poolers work? Compare PgBouncer modes and connection management strategies."
+        ru: "Как работают пулы соединений? Сравните режимы PgBouncer и стратегии управления подключениями."
       code: null
     follow_ups:
-      - "What is the difference between session, transaction, and statement pooling?"
-      - "How does pgbouncer affect prepared statements?"
-      - "How many connections is too many for PostgreSQL?"
+      en:
+        - "What is the difference between session, transaction, and statement pooling?"
+        - "How does pgbouncer affect prepared statements?"
+        - "How many connections is too many for PostgreSQL?"
+      ru:
+        - "В чём разница session, transaction и statement pooling?"
+        - "Как pgbouncer влияет на prepared statements?"
+        - "Сколько подключений слишком много для PostgreSQL?"
     expected_points:
       - "PgBouncer: session, transaction, statement pooling modes"
       - "Transaction pooling is most common — reuses connections per transaction"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["vacuum-tuning", "autovacuum"]
     question:
-      text: "How do you tune autovacuum in PostgreSQL for high-volume tables?"
+      text:
+        en: "How do you tune autovacuum in PostgreSQL for high-volume tables?"
+        ru: "Как настроить autovacuum в PostgreSQL для таблиц с большим объёмом данных?"
       code: null
     follow_ups:
-      - "What are autovacuum_vacuum_scale_factor and autovacuum_vacuum_threshold?"
-      - "How do you set per-table autovacuum parameters?"
-      - "What happens when autovacuum cannot keep up with dead tuples?"
+      en:
+        - "What are autovacuum_vacuum_scale_factor and autovacuum_vacuum_threshold?"
+        - "How do you set per-table autovacuum parameters?"
+        - "What happens when autovacuum cannot keep up with dead tuples?"
+      ru:
+        - "Что такое autovacuum_vacuum_scale_factor и autovacuum_vacuum_threshold?"
+        - "Как задать параметры autovacuum для отдельной таблицы?"
+        - "Что происходит, если autovacuum не успевает за мёртвыми tuple?"
     expected_points:
       - "Per-table autovacuum settings override global defaults"
       - "For large tables: set low scale_factor (0.01) and high cost_limit"
@@ -78,12 +106,19 @@ questions:
     difficulty: 4
     tags: ["benchmarking", "pgbench"]
     question:
-      text: "How do you benchmark database performance? What metrics matter?"
+      text:
+        en: "How do you benchmark database performance? What metrics matter?"
+        ru: "Как бенчмаркить производительность базы данных? Какие метрики важны?"
       code: null
     follow_ups:
-      - "How does pgbench work and what scenarios does it simulate?"
-      - "What is the difference between latency, throughput, and TPS?"
-      - "How do you measure P99 latency for database queries?"
+      en:
+        - "How does pgbench work and what scenarios does it simulate?"
+        - "What is the difference between latency, throughput, and TPS?"
+        - "How do you measure P99 latency for database queries?"
+      ru:
+        - "Как работает pgbench и какие сценарии он симулирует?"
+        - "В чём разница между latency, throughput и TPS?"
+        - "Как измерить P99 latency для запросов к БД?"
     expected_points:
       - "pgbench: runs custom SQL or TPC-B-like workloads"
       - "Key metrics: TPS (transactions per second), latency distribution"
@@ -95,12 +130,19 @@ questions:
     difficulty: 5
     tags: ["read-replicas", "load-distribution"]
     question:
-      text: "How do you distribute read load across replicas? What are the trade-offs?"
+      text:
+        en: "How do you distribute read load across replicas? What are the trade-offs?"
+        ru: "Как распределять нагрузку чтения по репликам? Какие компромиссы?"
       code: null
     follow_ups:
-      - "How does read replica lag affect consistency?"
-      - "How do connection routers (pgpool, HAProxy) distribute reads?"
-      - "How do you handle stale reads from replicas?"
+      en:
+        - "How does read replica lag affect consistency?"
+        - "How do connection routers (pgpool, HAProxy) distribute reads?"
+        - "How do you handle stale reads from replicas?"
+      ru:
+        - "Как лаг read-реплики влияет на согласованность?"
+        - "Как маршрутизаторы (pgpool, HAProxy) распределяют чтение?"
+        - "Как обрабатывать устаревшие данные с реплик?"
     expected_points:
       - "Read replicas offload SELECT queries from primary"
       - "Use connection proxy (pgpool, HAProxy) for read/write splitting"

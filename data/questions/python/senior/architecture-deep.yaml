@@ -10,12 +10,19 @@ questions:
     difficulty: 5
     tags: ["event-driven", "event-bus"]
     question:
-      text: "How do you design an event-driven architecture? What patterns and technologies are involved?"
+      text:
+        en: "How do you design an event-driven architecture? What patterns and technologies are involved?"
+        ru: "Как спроектировать событийно-ориентированную архитектуру? Какие паттерны и технологии используются?"
       code: null
     follow_ups:
-      - "What is the difference between event-driven and message-driven architecture?"
-      - "How do you guarantee event ordering and exactly-once processing?"
-      - "How do you handle schema evolution in event-driven systems (Schema Registry)?"
+      en:
+        - "What is the difference between event-driven and message-driven architecture?"
+        - "How do you guarantee event ordering and exactly-once processing?"
+        - "How do you handle schema evolution in event-driven systems (Schema Registry)?"
+      ru:
+        - "В чём разница между событийно-ориентированной и сообщением-ориентированной архитектурой?"
+        - "Как гарантировать порядок событий и обработку ровно один раз (exactly-once)?"
+        - "Как обрабатывать эволюцию схем в событийных системах (Schema Registry)?"
     expected_points:
       - "Event-driven: services communicate via events, not direct calls"
       - "Events are immutable facts stored in an event log"
@@ -27,12 +34,19 @@ questions:
     difficulty: 5
     tags: ["event-sourcing", "projections", "rebuilding"]
     question:
-      text: "What is event sourcing? How do you rebuild read models (projections) and handle versioning?"
+      text:
+        en: "What is event sourcing? How do you rebuild read models (projections) and handle versioning?"
+        ru: "Что такое event sourcing? Как перестраивать модели чтения (projections) и работать с версионированием?"
       code: null
     follow_ups:
-      - "How do you handle event schema changes (upcasting, versioning)?"
-      - "What is CQRS with event sourcing and how do they complement each other?"
-      - "How do you snapshot event streams for performance?"
+      en:
+        - "How do you handle event schema changes (upcasting, versioning)?"
+        - "What is CQRS with event sourcing and how do they complement each other?"
+        - "How do you snapshot event streams for performance?"
+      ru:
+        - "Как обрабатывать изменения схем событий (upcasting, versioning)?"
+        - "Что такое CQRS с event sourcing и как они дополняют друг друга?"
+        - "Как создавать снимки (snapshots) потоков событий для производительности?"
     expected_points:
       - "Event sourcing stores state changes as immutable events"
       - "Projections: read models built from event streams"
@@ -44,12 +58,19 @@ questions:
     difficulty: 5
     tags: ["stream-processing", "flink", "ksqldb"]
     question:
-      text: "How do you approach real-time stream processing? Compare Apache Kafka Streams, Flink, and ksqlDB."
+      text:
+        en: "How do you approach real-time stream processing? Compare Apache Kafka Streams, Flink, and ksqlDB."
+        ru: "Как подходить к потоковой обработке в реальном времени? Сравните Apache Kafka Streams, Flink и ksqlDB."
       code: null
     follow_ups:
-      - "What is the difference between stream processing and batch processing?"
-      - "How do you handle late-arriving data and watermarks?"
-      - "What Python libraries exist for stream processing (faust, quix, bytewax)?"
+      en:
+        - "What is the difference between stream processing and batch processing?"
+        - "How do you handle late-arriving data and watermarks?"
+        - "What Python libraries exist for stream processing (faust, quix, bytewax)?"
+      ru:
+        - "В чём разница между потоковой и пакетной обработкой?"
+        - "Как обрабатывать данные, поступающие с опозданием, и водяные знаки (watermarks)?"
+        - "Какие Python-библиотеки существуют для потоковой обработки (faust, quix, bytewax)?"
     expected_points:
       - "Kafka Streams: lightweight, embeddable, exactly-once semantics"
       - "Flink: full-featured, exactly-once, event time processing"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["data-pipelines", "etl", "data-warehouse"]
     question:
-      text: "How do you design and orchestrate data pipelines in a Python ecosystem?"
+      text:
+        en: "How do you design and orchestrate data pipelines in a Python ecosystem?"
+        ru: "Как проектировать и оркестрировать пайплайны данных в экосистеме Python?"
       code: null
     follow_ups:
-      - "How does Airflow compare to Prefect and Dagster?"
-      - "What is the difference between ETL and ELT?"
-      - "How do you handle data quality checks and lineage tracking?"
+      en:
+        - "How does Airflow compare to Prefect and Dagster?"
+        - "What is the difference between ETL and ELT?"
+        - "How do you handle data quality checks and lineage tracking?"
+      ru:
+        - "Как Airflow сравнивается с Prefect и Dagster?"
+        - "В чём разница между ETL и ELT?"
+        - "Как проводить проверки качества данных и отслеживать происхождение (lineage)?"
     expected_points:
       - "Airflow: DAG-based scheduler with operators and sensors"
       - "Prefect: modern workflow engine with retries, caching, notifications"
@@ -78,12 +106,19 @@ questions:
     difficulty: 5
     tags: ["architectural-decisions", "ADR"]
     question:
-      text: "What is an Architectural Decision Record (ADR)? How do you use them in a Python project?"
+      text:
+        en: "What is an Architectural Decision Record (ADR)? How do you use them in a Python project?"
+        ru: "Что такое Architectural Decision Record (ADR)? Как использовать их в Python-проекте?"
       code: null
     follow_ups:
-      - "What is the structure of an ADR (Title, Context, Decision, Consequences)?"
-      - "When should you write an ADR vs just documenting in code?"
-      - "How do you keep ADRs discoverable and up to date?"
+      en:
+        - "What is the structure of an ADR (Title, Context, Decision, Consequences)?"
+        - "When should you write an ADR vs just documenting in code?"
+        - "How do you keep ADRs discoverable and up to date?"
+      ru:
+        - "Какова структура ADR (Заголовок, Контекст, Решение, Последствия)?"
+        - "Когда следует писать ADR, а не просто документировать в коде?"
+        - "Как поддерживать ADR в актуальном состоянии и делать их обнаруживаемыми?"
     expected_points:
       - "ADR captures significant architectural decisions with rationale"
       - "Context: problem, constraints, options considered"
@@ -95,12 +130,19 @@ questions:
     difficulty: 5
     tags: ["chaos-engineering", "resilience-testing"]
     question:
-      text: "What is chaos engineering? How do you apply it to Python microservices?"
+      text:
+        en: "What is chaos engineering? How do you apply it to Python microservices?"
+        ru: "Что такое chaos engineering? Как применять его к Python-микросервисам?"
       code: null
     follow_ups:
-      - "What tools exist for chaos engineering in Python (chaostoolkit, Gremlin)?"
-      - "What experiments would you run first (network latency, pod failure, resource exhaustion)?"
-      - "How do you measure resilience and set steady-state hypotheses?"
+      en:
+        - "What tools exist for chaos engineering in Python (chaostoolkit, Gremlin)?"
+        - "What experiments would you run first (network latency, pod failure, resource exhaustion)?"
+        - "How do you measure resilience and set steady-state hypotheses?"
+      ru:
+        - "Какие инструменты существуют для chaos engineering в Python (chaostoolkit, Gremlin)?"
+        - "Какие эксперименты проводить в первую очередь (сетевая задержка, отказ подов, истощение ресурсов)?"
+        - "Как измерять отказоустойчивость и устанавливать гипотезы steady-state?"
     expected_points:
       - "Chaos engineering: proactively inject failures to test system resilience"
       - "Start with blast-radius-controlled experiments in staging"
@@ -112,12 +154,19 @@ questions:
     difficulty: 5
     tags: ["migration-strategies", "strangler-fig"]
     question:
-      text: "How do you migrate from a monolith to microservices? Explain the strangler fig pattern and incremental migration."
+      text:
+        en: "How do you migrate from a monolith to microservices? Explain the strangler fig pattern and incremental migration."
+        ru: "Как мигрировать с монолита на микросервисы? Объясните паттерн strangler fig и инкрементальную миграцию."
       code: null
     follow_ups:
-      - "How do you handle shared database during migration?"
-      - "What is the dark launch/canary release pattern?"
-      - "How do you manage API versioning during migration (parallel run)?"
+      en:
+        - "How do you handle shared database during migration?"
+        - "What is the dark launch/canary release pattern?"
+        - "How do you manage API versioning during migration (parallel run)?"
+      ru:
+        - "Как работать с общей базой данных во время миграции?"
+        - "Что такое паттерн dark launch/canary release?"
+        - "Как управлять версионированием API во время миграции (parallel run)?"
     expected_points:
       - "Strangler fig: gradually replace monolith components with services"
       - "Route traffic to new service incrementally (feature flags, proxies)"

@@ -51,6 +51,37 @@ class UnansweredAnswerNotFoundError(InterviewDomainError):
         )
 
 
+class QuestionTimerNotEnabledError(InterviewDomainError):
+    """Raised when a timer operation is requested but the session has no limit."""
+
+    def __init__(self, interview_id: str) -> None:
+        """Initialize with the interview ID.
+
+        Args:
+            interview_id: Interview UUID.
+        """
+        self.interview_id = interview_id
+        super().__init__(f"Question timer is not enabled for interview: {interview_id}")
+
+
+class QuestionTimerNotExpiredError(InterviewDomainError):
+    """Raised when a timeout is submitted before the round deadline."""
+
+    def __init__(self, interview_id: str, question_id: str) -> None:
+        """Initialize with interview and question identifiers.
+
+        Args:
+            interview_id: Parent interview UUID.
+            question_id: YAML question ID.
+        """
+        self.interview_id = interview_id
+        self.question_id = question_id
+        super().__init__(
+            f"Question timer has not expired: interview={interview_id}, "
+            f"question={question_id}"
+        )
+
+
 class AnswerNotFoundError(InterviewDomainError):
     """Raised when a specific answer row is missing."""
 

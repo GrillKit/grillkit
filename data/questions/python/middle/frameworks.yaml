@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["fastapi", "asgi"]
     question:
-      text: "How does FastAPI work under the hood? What makes it high-performance?"
+      text:
+        en: "How does FastAPI work under the hood? What makes it high-performance?"
+        ru: "Как FastAPI работает внутри? Что обеспечивает его высокую производительность?"
       code: null
     follow_ups:
-      - "What is the role of Starlette in FastAPI?"
-      - "How does Pydantic integrate with FastAPI for request validation?"
-      - "What is the ASGI protocol and how does FastAPI use it?"
+      en:
+        - "What is the role of Starlette in FastAPI?"
+        - "How does Pydantic integrate with FastAPI for request validation?"
+        - "What is the ASGI protocol and how does FastAPI use it?"
+      ru:
+        - "Какова роль Starlette в FastAPI?"
+        - "Как Pydantic интегрируется с FastAPI для валидации запросов?"
+        - "Что такое протокол ASGI и как FastAPI его использует?"
     expected_points:
       - "FastAPI is built on Starlette (ASGI) and Pydantic (validation)"
       - "ASGI enables async request handling for high concurrency"
@@ -27,12 +34,19 @@ questions:
     difficulty: 3
     tags: ["django", "monolith", "batteries-included"]
     question:
-      text: "What is Django's architecture? Explain the ORM, views, templates, and middleware layers."
+      text:
+        en: "What is Django's architecture? Explain the ORM, views, templates, and middleware layers."
+        ru: "Какова архитектура Django? Объясните слои ORM, представлений, шаблонов и middleware."
       code: null
     follow_ups:
-      - "How does Django's ORM differ from SQLAlchemy?"
-      - "What is the difference between function-based views and class-based views?"
-      - "How does Django's middleware compare to FastAPI's middleware?"
+      en:
+        - "How does Django's ORM differ from SQLAlchemy?"
+        - "What is the difference between function-based views and class-based views?"
+        - "How does Django's middleware compare to FastAPI's middleware?"
+      ru:
+        - "Чем ORM Django отличается от SQLAlchemy?"
+        - "В чём разница между функциями-представлениями и классами-представлениями?"
+        - "Как сравнивается middleware Django с middleware FastAPI?"
     expected_points:
       - "Django follows MVT (Model-View-Template) pattern"
       - "ORM is active-record pattern; migrations are built-in"
@@ -44,12 +58,19 @@ questions:
     difficulty: 3
     tags: ["flask", "wsgi", "microframework"]
     question:
-      text: "How does Flask differ from FastAPI and Django? When would you choose Flask?"
+      text:
+        en: "How does Flask differ from FastAPI and Django? When would you choose Flask?"
+        ru: "Чем Flask отличается от FastAPI и Django? Когда выбрать Flask?"
       code: null
     follow_ups:
-      - "What is Flask's WSGI heritage and its limitations for async?"
-      - "How does Flask's extension ecosystem compare to Django's batteries-included?"
-      - "What is the Flask application context and request context?"
+      en:
+        - "What is Flask's WSGI heritage and its limitations for async?"
+        - "How does Flask's extension ecosystem compare to Django's batteries-included?"
+        - "What is the Flask application context and request context?"
+      ru:
+        - "В чём наследие WSGI у Flask и его ограничения для async?"
+        - "Как экосистема расширений Flask сравнивается с подходом Django 'всё включено'?"
+        - "Что такое контекст приложения и контекст запроса во Flask?"
     expected_points:
       - "Flask: minimalist WSGI microframework with extensive extension ecosystem"
       - "WSGI is synchronous — Flask async support is limited compared to ASGI"
@@ -61,12 +82,19 @@ questions:
     difficulty: 3
     tags: ["orm", "sqlalchemy"]
     question:
-      text: "Compare Django ORM and SQLAlchemy. What are the key differences in philosophy and usage?"
+      text:
+        en: "Compare Django ORM and SQLAlchemy. What are the key differences in philosophy and usage?"
+        ru: "Сравните Django ORM и SQLAlchemy. В чём ключевые различия в философии и использовании?"
       code: null
     follow_ups:
-      - "What is the difference between active record (Django) and data mapper (SQLAlchemy)?"
-      - "How does SQLAlchemy's declarative base work?"
-      - "When would you choose raw SQL over an ORM?"
+      en:
+        - "What is the difference between active record (Django) and data mapper (SQLAlchemy)?"
+        - "How does SQLAlchemy's declarative base work?"
+        - "When would you choose raw SQL over an ORM?"
+      ru:
+        - "В чём разница между active record (Django) и data mapper (SQLAlchemy)?"
+        - "Как работает декларативная база SQLAlchemy?"
+        - "Когда выбирать чистый SQL вместо ORM?"
     expected_points:
       - "Django ORM: active record — model class wraps a table row"
       - "SQLAlchemy: data mapper — separates models from persistence"
@@ -78,12 +106,19 @@ questions:
     difficulty: 3
     tags: ["testing-frameworks", "pytest"]
     question:
-      text: "How does pytest compare to unittest? What makes pytest the preferred testing framework in modern Python?"
+      text:
+        en: "How does pytest compare to unittest? What makes pytest the preferred testing framework in modern Python?"
+        ru: "Как pytest сравнивается с unittest? Что делает pytest предпочтительным фреймворком для тестирования в современном Python?"
       code: null
     follow_ups:
-      - "How do pytest fixtures work compared to setUp/tearDown?"
-      - "What is pytest's conftest.py and how does it share fixtures?"
-      - "How does pytest parametrization simplify test coverage?"
+      en:
+        - "How do pytest fixtures work compared to setUp/tearDown?"
+        - "What is pytest's conftest.py and how does it share fixtures?"
+        - "How does pytest parametrization simplify test coverage?"
+      ru:
+        - "Как работают фикстуры pytest по сравнению с setUp/tearDown?"
+        - "Что такое conftest.py в pytest и как он обменивается фикстурами?"
+        - "Как параметризация pytest упрощает покрытие тестами?"
     expected_points:
       - "pytest uses plain assert, fixtures, and automatic discovery"
       - "Fixtures are more flexible and composable than setUp/tearDown"
@@ -95,7 +130,9 @@ questions:
     difficulty: 3
     tags: ["fastapi-deps", "dependency-injection"]
     question:
-      text: "How does FastAPI's dependency injection system work? What can you use it for?"
+      text:
+        en: "How does FastAPI's dependency injection system work? What can you use it for?"
+        ru: "Как работает система внедрения зависимостей FastAPI? Для чего её можно использовать?"
       code: |
         from fastapi import Depends, FastAPI
 
@@ -112,9 +149,14 @@ questions:
         async def read_items(db=Depends(get_db)):
             return await db.fetch_items()
     follow_ups:
-      - "How do you create reusable dependencies with yield (context managers)?"
-      - "Can you nest dependencies? How does the dependency graph work?"
-      - "How does FastAPI handle dependency caching per request?"
+      en:
+        - "How do you create reusable dependencies with yield (context managers)?"
+        - "Can you nest dependencies? How does the dependency graph work?"
+        - "How does FastAPI handle dependency caching per request?"
+      ru:
+        - "Как создавать переиспользуемые зависимости с yield (контекстные менеджеры)?"
+        - "Можно ли вкладывать зависимости? Как работает граф зависимостей?"
+        - "Как FastAPI кеширует зависимости в рамках запроса?"
     expected_points:
       - "Depends() injects the return value of a callable"
       - "Dependencies with yield support setup/teardown (resource management)"
@@ -126,12 +168,19 @@ questions:
     difficulty: 3
     tags: ["asgi", "wsgi", "protocols"]
     question:
-      text: "What is the difference between WSGI and ASGI? Why does ASGI matter for modern Python web apps?"
+      text:
+        en: "What is the difference between WSGI and ASGI? Why does ASGI matter for modern Python web apps?"
+        ru: "В чём разница между WSGI и ASGI? Почему ASGI важен для современных Python веб-приложений?"
       code: null
     follow_ups:
-      - "How does WSGI handle long-lived connections like WebSockets?"
-      - "What are the performance characteristics of ASGI vs WSGI?"
-      - "How do you run WSGI and ASGI apps in production (Gunicorn, Uvicorn)?"
+      en:
+        - "How does WSGI handle long-lived connections like WebSockets?"
+        - "What are the performance characteristics of ASGI vs WSGI?"
+        - "How do you run WSGI and ASGI apps in production (Gunicorn, Uvicorn)?"
+      ru:
+        - "Как WSGI обрабатывает долгоживущие соединения, такие как WebSockets?"
+        - "Каковы характеристики производительности ASGI vs WSGI?"
+        - "Как запускать WSGI и ASGI приложения в продакшене (Gunicorn, Uvicorn)?"
     expected_points:
       - "WSGI: synchronous, request-response only, blocks during processing"
       - "ASGI: async, supports HTTP, WebSocket, SSE, and HTTP/2"

@@ -10,12 +10,19 @@ questions:
     difficulty: 3
     tags: ["normalization", "denormalization"]
     question:
-      text: "When would you denormalize a database schema? What techniques exist?"
+      text:
+        en: "When would you denormalize a database schema? What techniques exist?"
+        ru: "Когда имеет смысл денормализовать схему базы данных? Какие приёмы существуют?"
       code: null
     follow_ups:
-      - "What performance problems does denormalization solve?"
-      - "How do you maintain data consistency in a denormalized schema?"
-      - "What is the difference between denormalization and pre-aggregation?"
+      en:
+        - "What performance problems does denormalization solve?"
+        - "How do you maintain data consistency in a denormalized schema?"
+        - "What is the difference between denormalization and pre-aggregation?"
+      ru:
+        - "Какие проблемы производительности решает денормализация?"
+        - "Как поддерживать согласованность данных в денормализованной схеме?"
+        - "В чём разница между денормализацией и предагрегацией?"
     expected_points:
       - "Denormalize for read-heavy workloads — fewer JOINs"
       - "Add redundant columns or pre-computed summary tables"
@@ -27,12 +34,19 @@ questions:
     difficulty: 4
     tags: ["partitioning", "table-partitioning"]
     question:
-      text: "What is table partitioning? How does it differ from sharding?"
+      text:
+        en: "What is table partitioning? How does it differ from sharding?"
+        ru: "Что такое секционирование (partitioning) таблиц? Чем оно отличается от шардирования?"
       code: null
     follow_ups:
-      - "What partition types exist (RANGE, LIST, HASH)?"
-      - "How does partition pruning improve query performance?"
-      - "How do you manage partitions over time (time-based partitioning)?"
+      en:
+        - "What partition types exist (RANGE, LIST, HASH)?"
+        - "How does partition pruning improve query performance?"
+        - "How do you manage partitions over time (time-based partitioning)?"
+      ru:
+        - "Какие типы секций существуют (RANGE, LIST, HASH)?"
+        - "Как partition pruning ускоряет запросы?"
+        - "Как управлять секциями со временем (секционирование по времени)?"
     expected_points:
       - "Partitioning splits a table into segments within the same database"
       - "Sharding distributes data across multiple database instances"
@@ -44,12 +58,19 @@ questions:
     difficulty: 3
     tags: ["index-strategies", "composite-indexes"]
     question:
-      text: "How do you design an effective indexing strategy? What are composite indexes and column order?"
+      text:
+        en: "How do you design an effective indexing strategy? What are composite indexes and column order?"
+        ru: "Как спроектировать эффективную стратегию индексов? Что такое составные индексы и порядок столбцов?"
       code: null
     follow_ups:
-      - "How does column order in a composite index affect query performance?"
-      - "What is a covering index and why is it powerful?"
-      - "How do partial indexes (PostgreSQL) work?"
+      en:
+        - "How does column order in a composite index affect query performance?"
+        - "What is a covering index and why is it powerful?"
+        - "How do partial indexes (PostgreSQL) work?"
+      ru:
+        - "Как порядок столбцов в составном индексе влияет на производительность?"
+        - "Что такое covering index и почему он эффективен?"
+        - "Как работают частичные индексы (PostgreSQL)?"
     expected_points:
       - "Index columns used in WHERE, JOIN, and ORDER BY"
       - "Composite index: order columns by selectivity (most selective first)"
@@ -61,12 +82,19 @@ questions:
     difficulty: 3
     tags: ["polymorphic", "inheritance-patterns"]
     question:
-      text: "How do you model polymorphic associations and inheritance in relational databases?"
+      text:
+        en: "How do you model polymorphic associations and inheritance in relational databases?"
+        ru: "Как моделировать полиморфные связи и наследование в реляционных базах данных?"
       code: null
     follow_ups:
-      - "What is single table inheritance (STI) vs class table inheritance (CTI)?"
-      - "What are the trade-offs of polymorphic associations (nullable foreign keys)?"
-      - "How do ORMs (Django, SQLAlchemy) handle inheritance mapping?"
+      en:
+        - "What is single table inheritance (STI) vs class table inheritance (CTI)?"
+        - "What are the trade-offs of polymorphic associations (nullable foreign keys)?"
+        - "How do ORMs (Django, SQLAlchemy) handle inheritance mapping?"
+      ru:
+        - "Что такое single table inheritance (STI) и class table inheritance (CTI)?"
+        - "Какие компромиссы у полиморфных связей (nullable foreign keys)?"
+        - "Как ORM (Django, SQLAlchemy) маппят наследование?"
     expected_points:
       - "STI: one table with nullable columns for subclass-specific fields"
       - "CTI: one table per class, joined on shared primary key"
@@ -78,12 +106,19 @@ questions:
     difficulty: 3
     tags: ["slow-schema-change", "migrations"]
     question:
-      text: "How do you handle schema migrations in production with zero downtime?"
+      text:
+        en: "How do you handle schema migrations in production with zero downtime?"
+        ru: "Как выполнять миграции схемы в продакшене без простоя?"
       code: null
     follow_ups:
-      - "What is the expand-migrate-contract pattern?"
-      - "How do you rename a column without downtime?"
-      - "How do large table migrations affect replication lag?"
+      en:
+        - "What is the expand-migrate-contract pattern?"
+        - "How do you rename a column without downtime?"
+        - "How do large table migrations affect replication lag?"
+      ru:
+        - "Что такое паттерн expand-migrate-contract?"
+        - "Как переименовать столбец без простоя?"
+        - "Как крупные миграции таблиц влияют на лаг репликации?"
     expected_points:
       - "Expand: add new column/table alongside old one"
       - "Migrate: backfill data, update application to use new schema"

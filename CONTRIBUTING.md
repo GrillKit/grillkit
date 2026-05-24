@@ -92,6 +92,8 @@ test(repositories): cover mark_completed
 
 ## Code Standards
 
+The same checks run automatically in GitHub Actions on pull requests and pushes to `main` (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+
 ```bash
 uv run ruff check --fix .
 uv run ruff format .

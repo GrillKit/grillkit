@@ -9,12 +9,17 @@ questions:
     type: "knowledge"
     difficulty: 1
     tags: ["list", "tuple"]
-    question:
-      text: "What is the difference between a list and a tuple in Python?"
+    question:      text:
+        en: "What is the difference between a list and a tuple in Python?"
+        ru: "В чём разница между списком (list) �� кортежем (tuple) в Python?"
       code: null
     follow_ups:
-      - "When would you choose a tuple over a list?"
-      - "Can a tuple contain mutable objects?"
+      en:
+        - "When would you choose a tuple over a list?"
+        - "Can a tuple contain mutable objects?"
+      ru:
+        - "Когда стоит выбрать кортеж вместо списка?"
+        - "Может ли кортеж содержать изменяемые объекты?"
     expected_points:
       - "Lists are mutable, tuples are immutable"
       - "Lists use [], tuples use ()"
@@ -24,11 +29,17 @@ questions:
     difficulty: 2
     tags: ["dict", "hash-map"]
     question:
-      text: "How does a Python dictionary work internally?"
+      text:
+        en: "How does a Python dictionary work internally?"
+        ru: "Как работает словарь (dict) в Python внутри?"
       code: null
     follow_ups:
-      - "Why are dictionary keys required to be hashable?"
-      - "What is the time complexity of dictionary lookup?"
+      en:
+        - "Why are dictionary keys required to be hashable?"
+        - "What is the time complexity of dictionary lookup?"
+      ru:
+        - "Почему ключи словаря должны быть хешируемыми?"
+        - "Какова временная сложность поиска в словаре?"
     expected_points:
       - "Uses hash table implementation"
       - "Keys must be hashable and unique"
@@ -39,11 +50,17 @@ questions:
     difficulty: 1
     tags: ["set", "frozenset"]
     question:
-      text: "What is the difference between a set and a frozenset in Python? When would you use each?"
+      text:
+        en: "What is the difference between a set and a frozenset in Python? When would you use each?"
+        ru: "В чём разница между set и frozenset в Python? Когда исп��льзовать каждый из них?"
       code: null
     follow_ups:
-      - "What operations does a set support (union, intersection, difference)?"
-      - "Why can a frozenset be used as a dict key but a set cannot?"
+      en:
+        - "What operations does a set support (union, intersection, difference)?"
+        - "Why can a frozenset be used as a dict key but a set cannot?"
+      ru:
+        - "Какие операции поддерживает set (объединение, пересечение, разность)?"
+        - "Почему frozenset можно использовать как ключ словаря, а set — нет?"
     expected_points:
       - "set is mutable; frozenset is immutable"
       - "Both store unique, hashable elements"
@@ -55,16 +72,23 @@ questions:
     difficulty: 2
     tags: ["list-operations", "slicing"]
     question:
-      text: "How does list slicing work in Python? What are common list methods for manipulation?"
+      text:
+        en: "How does list slicing work in Python? What are common list methods for manipulation?"
+        ru: "Как работают срезы (slicing) списков в Python? Какие есть распространённые методы для работы со списками?"
       code: |
         nums = [0, 1, 2, 3, 4, 5]
         nums[1:4]    # ???
         nums[::-1]   # ???
         nums[::2]    # ???
     follow_ups:
-      - "What is the time complexity of list.append() vs list.insert()?"
-      - "How do extend() and += differ from append()?"
-      - "How does pop() vs pop(0) differ in performance?"
+      en:
+        - "What is the time complexity of list.append() vs list.insert()?"
+        - "How do extend() and += differ from append()?"
+        - "How does pop() vs pop(0) differ in performance?"
+      ru:
+        - "Какова временная сложность list.append() по сравнению с list.insert()?"
+        - "Чем extend() и += отличаются от append()?"
+        - "Чем pop() отличается от pop(0) по производительности?"
     expected_points:
       - "list[start:stop:step] — returns a new list"
       - "append() is O(1), insert() and pop(0) are O(n)"
@@ -76,12 +100,19 @@ questions:
     difficulty: 2
     tags: ["dict-methods", "defaultdict"]
     question:
-      text: "What are common dictionary methods? How does collections.defaultdict simplify dictionary usage?"
+      text:
+        en: "What are common dictionary methods? How does collections.defaultdict simplify dictionary usage?"
+        ru: "Какие есть распространённые методы словарей? Как collections.defaultdict упрощает работу со словарями?"
       code: null
     follow_ups:
-      - "What is the difference between dict.get() and dict.setdefault()?"
-      - "What does dict.items(), dict.keys(), dict.values() return?"
-      - "How does Counter from collections relate to defaultdict?"
+      en:
+        - "What is the difference between dict.get() and dict.setdefault()?"
+        - "What does dict.items(), dict.keys(), dict.values() return?"
+        - "How does Counter from collections relate to defaultdict?"
+      ru:
+        - "В чём разница между dict.get() и dict.setdefault()?"
+        - "Что возвращают dict.items(), dict.keys(), dict.values()?"
+        - "Как Counter из collections связан с defaultdict?"
     expected_points:
       - "dict.get(key, default) returns value or default without KeyError"
       - "dict.setdefault(key, default) sets default if key missing, returns value"
@@ -93,12 +124,19 @@ questions:
     difficulty: 2
     tags: ["collections", "deque", "Counter"]
     question:
-      text: "What useful data structures does the 'collections' module provide? Describe three of them."
+      text:
+        en: "What useful data structures does the 'collections' module provide? Describe three of them."
+        ru: "Какие полезные структуры данных предоставляет модуль 'collections'? Опишите три из них."
       code: null
     follow_ups:
-      - "When would you use deque over a list?"
-      - "What is namedtuple and when is it useful?"
-      - "What does ChainMap do?"
+      en:
+        - "When would you use deque over a list?"
+        - "What is namedtuple and when is it useful?"
+        - "What does ChainMap do?"
+      ru:
+        - "Когда использовать deque вместо списка?"
+        - "Что такое namedtuple и когда он полезен?"
+        - "Что делает ChainMap?"
     expected_points:
       - "deque: double-ended queue with O(1) append/pop on both ends"
       - "Counter: dict subclass for counting hashable objects"
@@ -110,11 +148,17 @@ questions:
     difficulty: 2
     tags: ["array", "performance"]
     question:
-      text: "What is the difference between list, array.array, and numpy.array? When would you choose each?"
+      text:
+        en: "What is the difference between list, array.array, and numpy.array? When would you choose each?"
+        ru: "В чём разница между list, array.array и numpy.array? Когда выбрать каждый из них?"
       code: null
     follow_ups:
-      - "What are the memory characteristics of lists vs arrays?"
-      - "Why is numpy faster for numerical operations?"
+      en:
+        - "What are the memory characteristics of lists vs arrays?"
+        - "Why is numpy faster for numerical operations?"
+      ru:
+        - "Каковы характеристики памяти списков по сравнению с массивами?"
+        - "Почему numpy быстрее для числовых операций?"
     expected_points:
       - "list: heterogeneous, flexible, stores Python objects (overhead)"
       - "array.array: homogeneous, memory-efficient for primitive types"
@@ -126,12 +170,19 @@ questions:
     difficulty: 2
     tags: ["stack", "queue", "LIFO", "FIFO"]
     question:
-      text: "How would you implement a stack (LIFO) and a queue (FIFO) in Python?"
+      text:
+        en: "How would you implement a stack (LIFO) and a queue (FIFO) in Python?"
+        ru: "К��к реализовать стек (LIFO) и очередь (FIFO) в Python?"
       code: null
     follow_ups:
-      - "Why is a list suitable for a stack but not ideal for a queue?"
-      - "How does collections.deque solve the queue problem?"
-      - "What is queue.Queue and how does it differ for threading?"
+      en:
+        - "Why is a list suitable for a stack but not ideal for a queue?"
+        - "How does collections.deque solve the queue problem?"
+        - "What is queue.Queue and how does it differ for threading?"
+      ru:
+        - "Почему список подходит для стека, но не идеален для очереди?"
+        - "Как collections.deque решает проблему очереди?"
+        - "Что такое queue.Queue и чем он отличается для многопоточности?"
     expected_points:
       - "Stack: use list with append() (push) and pop() (pop) — both O(1)"
       - "Queue: use deque with append() (enqueue) and popleft() (dequeue) — both O(1)"

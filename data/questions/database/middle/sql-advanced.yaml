@@ -10,7 +10,9 @@ questions:
     difficulty: 3
     tags: ["window-functions", "OVER", "PARTITION BY"]
     question:
-      text: "How do window functions work in SQL? Explain ROW_NUMBER, RANK, and SUM with OVER."
+      text:
+        en: "How do window functions work in SQL? Explain ROW_NUMBER, RANK, and SUM with OVER."
+        ru: "Как работают оконные функции в SQL? Объясните ROW_NUMBER, RANK и SUM с OVER."
       code: |
         SELECT
             department,
@@ -19,9 +21,14 @@ questions:
             AVG(salary) OVER (PARTITION BY department) as dept_avg
         FROM employees;
     follow_ups:
-      - "What is the difference between ROW_NUMBER, RANK, and DENSE_RANK?"
-      - "How does PARTITION BY differ from GROUP BY?"
-      - "What are frames (ROWS BETWEEN, RANGE BETWEEN)?"
+      en:
+        - "What is the difference between ROW_NUMBER, RANK, and DENSE_RANK?"
+        - "How does PARTITION BY differ from GROUP BY?"
+        - "What are frames (ROWS BETWEEN, RANGE BETWEEN)?"
+      ru:
+        - "В чём разница между ROW_NUMBER, RANK и DENSE_RANK?"
+        - "Чем PARTITION BY отличается от GROUP BY?"
+        - "Что такое окна кадров (ROWS BETWEEN, RANGE BETWEEN)?"
     expected_points:
       - "Window functions compute across rows related to current row"
       - "PARTITION BY divides result set into groups"
@@ -33,7 +40,9 @@ questions:
     difficulty: 3
     tags: ["CTE", "WITH", "recursive"]
     question:
-      text: "What are Common Table Expressions (CTEs) and recursive queries in SQL?"
+      text:
+        en: "What are Common Table Expressions (CTEs) and recursive queries in SQL?"
+        ru: "Что такое обобщённые табличные выражения (CTE) и рекурсивные запросы в SQL?"
       code: |
         WITH dept_stats AS (
             SELECT department_id, COUNT(*) as emp_count, AVG(salary) as avg_sal
@@ -44,9 +53,14 @@ questions:
         FROM departments d
         JOIN dept_stats s ON d.id = s.department_id;
     follow_ups:
-      - "What is the difference between CTE and subquery?"
-      - "How do recursive CTEs work (e.g., for tree data)?"
-      - "Can a CTE reference another CTE?"
+      en:
+        - "What is the difference between CTE and subquery?"
+        - "How do recursive CTEs work (e.g., for tree data)?"
+        - "Can a CTE reference another CTE?"
+      ru:
+        - "В чём разница между CTE и подзапросом?"
+        - "Как работают рекурсивные CTE (например, для древовидных данных)?"
+        - "Может ли CTE ссылаться на другой CTE?"
     expected_points:
       - "CTEs make complex queries more readable and reusable"
       - "Recursive CTEspecially useful for recursive data (org charts, categories)"
@@ -58,30 +72,44 @@ questions:
     difficulty: 3
     tags: ["subqueries", "correlated", "EXISTS"]
     question:
-      text: "What is the difference between correlated and non-correlated subqueries? When is EXISTS preferred over IN?"
+      text:
+        en: "What is the difference between correlated and non-correlated subqueries? When is EXISTS preferred over IN?"
+        ru: "В чём разница между коррелированными и некоррелированными подзапросами? Когда EXISTS предпочтительнее IN?"
       code: |
         -- Find departments with employees above average salary
-      follow_ups:
+    follow_ups:
+      en:
         - "What is the difference between IN and EXISTS in terms of performance?"
         - "How does a subquery in SELECT differ from one in WHERE?"
         - "What are lateral joins (LATERAL / CROSS APPLY)?"
-      expected_points:
-        - "Non-correlated: independent, runs once"
-        - "Correlated: references outer query to inner"
-        - "EXISTS the first match — faster than IN for large datasets"
-        - "IN with subquery can return NULL causing unexpected results"
+      ru:
+        - "В чём разница между IN и EXISTS с точки зрения производительности?"
+        - "Чем подзапрос в SELECT отличается от подзапроса в WHERE?"
+        - "Что такое lateral join (LATERAL / CROSS APPLY)?"
+    expected_points:
+      - "Non-correlated: independent, runs once"
+      - "Correlated: references outer query to inner"
+      - "EXISTS the first match — faster than IN for large datasets"
+      - "IN with subquery can return NULL causing unexpected results"
 
   - id: "sqla-004"
     type: "knowledge"
     difficulty: 3
     tags: ["transactions", "ACID", "isolation"]
     question:
-      text: "What are transaction isolation levels (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE)?"
+      text:
+        en: "What are transaction isolation levels (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE)?"
+        ru: "Какие уровни изоляции транзакций существуют (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE)?"
       code: null
     follow_ups:
-      - "What phenomena can occur at each isolation level (dirty read, non-repeatable read, phantom read)?"
-      - "What are the default isolation levels in PostgreSQL vs MySQL?"
-      - "How do row-level locks and MVCC relate to isolation?"
+      en:
+        - "What phenomena can occur at each isolation level (dirty read, non-repeatable read, phantom read)?"
+        - "What are the default isolation levels in PostgreSQL vs MySQL?"
+        - "How do row-level locks and MVCC relate to isolation?"
+      ru:
+        - "Какие аномалии возможны на каждом уровне (грязное чтение, неповторяемое чтение, фантомы)?"
+        - "Какие уровни изоляции по умолчанию в PostgreSQL и MySQL?"
+        - "Как блокировки на уровне строк и MVCC связаны с изоляцией?"
     expected_points:
       - "READ UNCOMMITTED: dirty reads, all phenomena possible"
       - "READ COMMITTED: no dirty reads, non-repeatable reads possible"
@@ -93,12 +121,19 @@ questions:
     difficulty: 3
     tags: ["query-plan", "EXPLAIN ANALYZE"]
     question:
-      text: "How do you read and ANALYZE?"
+      text:
+        en: "How do you read EXPLAIN ANALYZE output?"
+        ru: "Как читать вывод EXPLAIN ANALYZE?"
       code: null
     follow_ups:
-      - "What does a seq scan vs index scan vs index-only scan mean?"
-      - "How do you interpret rows= and cost= in PostgreSQL?"
-      - "What does 'Using filesort' mean in MySQL?"
+      en:
+        - "What does a seq scan vs index scan vs index-only scan mean?"
+        - "How do you interpret rows= and cost= in PostgreSQL?"
+        - "What does 'Using filesort' mean in MySQL?"
+      ru:
+        - "Что означают seq scan, index scan и index-only scan?"
+        - "Как интерпретировать rows= и cost= в PostgreSQL?"
+        - "Что означает «Using filesort» в MySQL?"
     expected_points:
       - "EXPLAIN shows the query plan without executing"
       - "EXPLAIN ANALYZE really runs the query and shows actual timing"
@@ -111,7 +146,9 @@ questions:
     difficulty: 3
     tags: ["views", "materialized-views"]
     question:
-      text: "What are views and materialized views in SQL? When would you use each?"
+      text:
+        en: "What are views and materialized views in SQL? When would you use each?"
+        ru: "Что такое представления (views) и материализованные представления в SQL? Когда что использовать?"
       code: |
         CREATE VIEW active_users AS
         SELECT * FROM users WHERE status = 'active';
@@ -122,9 +159,14 @@ questions:
         FROM orders
         GROUP BY month;
     follow_ups:
-      - "Can you INSERT/UPDATE through a view?"
-      - "How do you refresh a materialized view?"
-      - "What are the performance characteristics of each?"
+      en:
+        - "Can you INSERT/UPDATE through a view?"
+        - "How do you refresh a materialized view?"
+        - "What are the performance characteristics of each?"
+      ru:
+        - "Можно ли выполнять INSERT/UPDATE через представление?"
+        - "Как обновить материализованное представление?"
+        - "Какие у них характеристики производительности?"
     expected_points:
       - "View: virtual table based on a query (saved query definition)"
       - "Materialized view: cached result set stored on disk"

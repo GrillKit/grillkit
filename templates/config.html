@@ -7,10 +7,19 @@
 {% if config and speech_model_status %}
 {% include "speech_model_panel.html" %}
 {% endif %}
+{% if config and config.question_voice_enabled and tts_voice_status %}
+{% include "question_voice_panel.html" %}
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if config and speech_model_status %}
 <script src="/static/js/speech_model.js?v={{ static_version('js/speech_model.js') }}"></script>
+{% endif %}
+{% if config and config.question_voice_enabled and tts_voice_status %}
+<script src="/static/js/question_voice_status.js?v={{ static_version('js/question_voice_status.js') }}"></script>
+{% endif %}
+{% if config and (speech_model_status or (config.question_voice_enabled and tts_voice_status)) %}
+<script src="/static/js/model_download_status.js?v={{ static_version('js/model_download_status.js') }}"></script>
 {% endif %}
 {% endblock %}

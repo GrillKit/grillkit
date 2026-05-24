@@ -14,6 +14,39 @@ SUPPORTED_LOCALES: Final[dict[str, str]] = {
 
 DEFAULT_LOCALE: Final[str] = "en"
 
+TIMEOUT_FEEDBACK_MESSAGES: Final[dict[str, str]] = {
+    "en": "Time expired. You received 0 points for this answer.",
+    "ru": "Время вышло. За этот ответ начислено 0 баллов.",
+    "fr": "Le temps est écoulé. Vous avez reçu 0 point pour cette réponse.",
+    "es": "Se agotó el tiempo. Has recibido 0 puntos por esta respuesta.",
+    "de": "Die Zeit ist abgelaufen. Für diese Antwort wurden 0 Punkte vergeben.",
+}
+
+TIMEOUT_CHAT_LABELS: Final[dict[str, str]] = {
+    "en": "Time expired — 0 points",
+    "ru": "Время вышло — 0 баллов",
+    "fr": "Temps écoulé — 0 point",
+    "es": "Tiempo agotado — 0 puntos",
+    "de": "Zeit abgelaufen — 0 Punkte",
+}
+
+
+def localized_string(locale: str, messages: dict[str, str]) -> str:
+    """Return a UI string for the locale, falling back to ``DEFAULT_LOCALE``.
+
+    Args:
+        locale: Interview locale code (normalized if supported).
+        messages: Mapping of locale code to translated text.
+
+    Returns:
+        Message for the locale, or the default locale when unknown.
+    """
+    try:
+        code = normalize_locale(locale)
+    except ValueError:
+        code = DEFAULT_LOCALE
+    return messages.get(code, messages[DEFAULT_LOCALE])
+
 
 def normalize_locale(locale: str) -> str:
     """Return a supported locale code or raise ``ValueError``.

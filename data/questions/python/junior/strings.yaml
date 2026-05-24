@@ -10,16 +10,22 @@ questions:
     difficulty: 1
     tags: ["f-strings", "formatting"]
     question:
-      text: "What are the different ways to format strings in Python? Compare f-strings, .format(), and %-formatting."
+      text:
+        en: "What are the different ways to format strings in Python? Compare f-strings, .format(), and %-formatting."
+        ru: "Какие существуют способы форматирования строк в Python? Сравните f-строки, .format() и %-форматирование."
       code: |
-        name, age = "Alice"name, age = "Alice", 30
+        name, age = "Alice", 30
         # Compare these approaches
         f"Hello, {name} is {age}"
         "{} is {}".format(name, age)
         "%s is %d" % (name, age)
     follow_ups:
-      - "Why are f-strings preferred in modern Python?"
-      - "Can you use expressions inside f-strings?"
+      en:
+        - "Why are f-strings preferred in modern Python?"
+        - "Can you use expressions inside f-strings?"
+      ru:
+        - "Почему f-строки предпочтительны в современном Python?"
+        - "Можно ли использовать выражения внутри f-строк?"
     expected_points:
       - "f-strings (Python 3.6+): fastest and most readable"
       - ".format(): more flexible, good for templates"
@@ -31,13 +37,19 @@ questions:
     difficulty: 2
     tags: ["string-methods", "immutability"]
     question:
-      text: "Are strings mutable or immutable in Python? How does this affect common string operations?"
+      text:
+        en: "Are strings mutable or immutable in Python? How does this affect common string operations?"
+        ru: "Строки изменяемы или неизменяемы в Python? Как это влияет на обычные операции со строками?"
       code: |
         s = "hello"
         s_upper = s.upper()  # What does s contain after this?
     follow_ups:
-      - "If strings are immutable, how does s += ' world' work?"
-      - "What string methods modify vs return new strings?"
+      en:
+        - "If strings are immutable, how does s += ' world' work?"
+        - "What string methods modify vs return new strings?"
+      ru:
+        - "Если строки неизменяемы, как работает s += ' world'?"
+        - "Какие методы строк изменяют, а какие возвращают новые строки?"
     expected_points:
       - "Strings are immutable — all 'modification' methods return a new string"
       - "s += ' world' creates a new string object"
@@ -48,7 +60,9 @@ questions:
     difficulty: 2
     tags: ["slicing", "indexing"]
     question:
-      text: "How does string slicing work in Python? Explain negative indexing and step values."
+      text:
+        en: "How does string slicing work in Python? Explain negative indexing and step values."
+        ru: "Как работают срезы строк в Python? Объясните отрицательную индексацию и значения шага."
       code: |
         s = "Python"
         # What do these produce?
@@ -57,8 +71,12 @@ questions:
         s[::-1]   # ???
         s[::2]    # ???
     follow_ups:
-      - "What is the difference between s[0] and s[0:1]?"
-      - "What happens with out-of-range indices in slicing vs indexing?"
+      en:
+        - "What is the difference between s[0] and s[0:1]?"
+        - "What happens with out-of-range indices in slicing vs indexing?"
+      ru:
+        - "В чём разница между s[0] и s[0:1]?"
+        - "Что происходит с индексами вне диапазона при срезах vs индексации?"
     expected_points:
       - "s[start:stop:step] — start inclusive, stop exclusive"
       - "Negative indices count from end (-1 is last char)"
@@ -70,9 +88,11 @@ questions:
     difficulty: 2
     tags: ["join", "split", "concatenation"]
     question:
-      text: "Why is ''.join(list) preferred over string concatenation in a loop?"
+      text:
+        en: "Why is ''.join(list) preferred over string concatenation in a loop?"
+        ru: "Почему ''.join(list) предпочтительнее конкатенации строк в цикле?"
       code: |
-        items = ["a", "b""a", "b", "c"]
+        items = ["a", "b", "c"]
         # Bad approach
         result = ""
         for item in items:
@@ -80,8 +100,12 @@ questions:
         # Good approach
         result = "".join(items)
     follow_ups:
-      - "How does .join() work internally?"
-      - "What is the opposite of .join()?"
+      en:
+        - "How does .join() work internally?"
+        - "What is the opposite of .join()?"
+      ru:
+        - "Как .join() работает внутри?"
+        - "Что является противоположностью .join()?"
     expected_points:
       - "String concatenation in loop creates many intermediate objects (O(n²))"
       - ".join() allocates once, computes final size"
@@ -92,12 +116,19 @@ questions:
     difficulty: 2
     tags: ["encoding", "unicode"]
     question:
-      text: "How does Python handle Unicode and string encoding? What is the difference between str and bytes?"
+      text:
+        en: "How does Python handle Unicode and string encoding? What is the difference between str and bytes?"
+        ru: "Как Python работает с Unicode и кодировками строк? В чём разница между str и bytes?"
       code: null
     follow_ups:
-      - "What does .encode() and .decode() do?"
-      - "How do you handle UnicodeDecodeError?"
-      - "What is a BOM and encoding detection?"
+      en:
+        - "What does .encode() and .decode() do?"
+        - "How do you handle UnicodeDecodeError?"
+        - "What is a BOM and encoding detection?"
+      ru:
+        - "Что делают .encode() и .decode()?"
+        - "Как обрабатывать UnicodeDecodeError?"
+        - "Что такое BOM и обнаружение кодировки?"
     expected_points:
       - "str is Unicode text, bytes is raw byte sequences"
       - ".encode(encoding) converts str to bytes"
@@ -110,13 +141,19 @@ questions:
     difficulty: 1
     tags: ["raw-strings", "escape"]
     question:
-      text: "What are raw strings in Python? When would you use them?"
+      text:
+        en: "What are raw strings in Python? When would you use them?"
+        ru: "Что такое сырые строки (raw strings) в Python? Когда их использовать?"
       code: |
         normal = "C:\Users\name"
         raw = r"C:\Users\name"
     follow_ups:
-      - "How do raw strings help with regular expressions?"
-      - "Can a raw string end with a backslash?"
+      en:
+        - "How do raw strings help with regular expressions?"
+        - "Can a raw string end with a backslash?"
+      ru:
+        - "Как сырые строки помогают в работе с регулярными выражениями?"
+        - "Может ли сырая строка заканчиваться обратной косой чертой?"
     expected_points:
       - "Raw strings (r'...') treat backslashes as literal characters"
       - "Commonly used for Windows paths and regex patterns"

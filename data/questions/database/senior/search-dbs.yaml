@@ -10,12 +10,19 @@ questions:
     difficulty: 4
     tags: ["elasticsearch", "inverted-index", "lucene"]
     question:
-      text: "How does Elasticsearch index and search data? What is an inverted index?"
+      text:
+        en: "How does Elasticsearch index and search data? What is an inverted index?"
+        ru: "Как Elasticsearch индексирует и ищет данные? Что такое инвертированный индекс?"
       code: null
     follow_ups:
-      - "How does Lucene's inverted index work?"
-      - "What is the difference between Elasticsearch and a traditional database?"
-      - "How does Elasticsearch handle full-text search vs structured queries?"
+      en:
+        - "How does Lucene's inverted index work?"
+        - "What is the difference between Elasticsearch and a traditional database?"
+        - "How does Elasticsearch handle full-text search vs structured queries?"
+      ru:
+        - "Как работает инвертированный индекс Lucene?"
+        - "В чём разница между Elasticsearch и обычной базой данных?"
+        - "Как Elasticsearch обрабатывает полнотекстовый и структурированный поиск?"
     expected_points:
       - "Elasticsearch builds an inverted index: term → document mapping"
       - "Documents are JSON, indexed into shards across nodes"
@@ -27,12 +34,19 @@ questions:
     difficulty: 4
     tags: ["elasticsearch-cluster", "shards", "replicas"]
     question:
-      text: "How do Elasticsearch shards and replicas work? How do you plan capacity?"
+      text:
+        en: "How do Elasticsearch shards and replicas work? How do you plan capacity?"
+        ru: "Как работают шарды и реплики в Elasticsearch? Как планировать ёмкость?"
       code: null
     follow_ups:
-      - "What is the relationship between primary shards, replicas, and nodes?"
-      - "How does Elasticsearch handle rebalancing when adding nodes?"
-      - "What is the optimal shard size and how do you choose shard count?"
+      en:
+        - "What is the relationship between primary shards, replicas, and nodes?"
+        - "How does Elasticsearch handle rebalancing when adding nodes?"
+        - "What is the optimal shard size and how do you choose shard count?"
+      ru:
+        - "Как связаны primary-шарды, реплики и узлы?"
+        - "Как Elasticsearch перебалансирует данные при добавлении узлов?"
+        - "Какой оптимальный размер шарда и как выбрать их число?"
     expected_points:
       - "Primary shards: split data horizontally; replicas: copies for HA"
       - "Replicas also serve read requests — more replicas = better read throughput"
@@ -44,12 +58,19 @@ questions:
     difficulty: 4
     tags: ["mapping", "analysis", "tokenizers"]
     question:
-      text: "What are Elasticsearch mappings and analyzers? How do you customize text analysis?"
+      text:
+        en: "What are Elasticsearch mappings and analyzers? How do you customize text analysis?"
+        ru: "Что такое mapping и analyzers в Elasticsearch? Как настроить анализ текста?"
       code: null
     follow_ups:
-      - "What is the difference between exact value and full-text fields?"
-      - "How do you define custom analyzers with tokenizers and filters?"
-      - "What is dynamic mapping and why might you disable it?"
+      en:
+        - "What is the difference between exact value and full-text fields?"
+        - "How do you define custom analyzers with tokenizers and filters?"
+        - "What is dynamic mapping and why might you disable it?"
+      ru:
+        - "В чём разница между exact value и full-text полями?"
+        - "Как задать кастомный analyzer с tokenizer и filters?"
+        - "Что такое dynamic mapping и зачем его отключать?"
     expected_points:
       - "Mapping defines field types and analysis rules"
       - "Analyzer: character filters → tokenizer → token filters"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["search-relevance", "boosting"]
     question:
-      text: "How do you tune search relevance and ranking in Elasticsearch?"
+      text:
+        en: "How do you tune search relevance and ranking in Elasticsearch?"
+        ru: "Как настраивать релевантность и ранжирование поиска в Elasticsearch?"
       code: null
     follow_ups:
-      - "How does function_score query boost results based on custom factors?"
-      - "What is the difference between boosting at index time vs query time?"
-      - "How do you measure search relevance (precision, recall, NDCG)?"
+      en:
+        - "How does function_score query boost results based on custom factors?"
+        - "What is the difference between boosting at index time vs query time?"
+        - "How do you measure search relevance (precision, recall, NDCG)?"
+      ru:
+        - "Как function_score повышает результаты по кастомным факторам?"
+        - "В чём разница между boosting при индексации и при запросе?"
+        - "Как измерять релевантность поиска (precision, recall, NDCG)?"
     expected_points:
       - "function_score: combine BM25 score with custom factors (recency, popularity)"
       - "Query-time boosting: boost certain fields or values"
@@ -78,12 +106,19 @@ questions:
     difficulty: 4
     tags: ["log-aggregation", "ELK-stack"]
     question:
-      text: "What is the ELK stack (Elasticsearch, Logstash, Kibana)? How do you use it for log aggregation?"
+      text:
+        en: "What is the ELK stack (Elasticsearch, Logstash, Kibana)? How do you use it for log aggregation?"
+        ru: "Что такое стек ELK (Elasticsearch, Logstash, Kibana)? Как использовать его для агрегации логов?"
       code: null
     follow_ups:
-      - "How does Logstash vs Filebeat vs Elastic Agent differ for log shipping?"
-      - "How do you design an index strategy for time-series log data?"
-      - "What is ILM (Index Lifecycle Management) and how does it manage rollover?"
+      en:
+        - "How does Logstash vs Filebeat vs Elastic Agent differ for log shipping?"
+        - "How do you design an index strategy for time-series log data?"
+        - "What is ILM (Index Lifecycle Management) and how does it manage rollover?"
+      ru:
+        - "Чем отличаются Logstash, Filebeat и Elastic Agent для доставки логов?"
+        - "Как спроектировать стратегию индексов для временных рядов логов?"
+        - "Что такое ILM и как он управляет rollover?"
     expected_points:
       - "ELK: ingest (Logstash/Beats), store/search (Elasticsearch), visualize (Kibana)"
       - "Use data streams with ILM for time-series data"
@@ -95,12 +130,19 @@ questions:
     difficulty: 5
     tags: ["opensearch", "elasticsearch-comparison"]
     question:
-      text: "Compare Elasticsearch and OpenSearch. When would you choose one over the other?"
+      text:
+        en: "Compare Elasticsearch and OpenSearch. When would you choose one over the other?"
+        ru: "Сравните Elasticsearch и OpenSearch. Когда выбрать одно вместо другого?"
       code: null
     follow_ups:
-      - "What features are Elasticsearch-only vs available in both?"
-      - "How does migration from Elasticsearch to OpenSearch work?"
-      - "What licensing differences exist (Elastic License vs Apache 2.0)?"
+      en:
+        - "What features are Elasticsearch-only vs available in both?"
+        - "How does migration from Elasticsearch to OpenSearch work?"
+        - "What licensing differences exist (Elastic License vs Apache 2.0)?"
+      ru:
+        - "Какие возможности только у Elasticsearch, а какие у обоих?"
+        - "Как мигрировать с Elasticsearch на OpenSearch?"
+        - "В чём разница лицензий (Elastic License vs Apache 2.0)?"
     expected_points:
       - "OpenSearch: fork of Elasticsearch 7.10, Apache 2.0 license"
       - "Elasticsearch newer features: ELSER, inference API, searchable snapshots"

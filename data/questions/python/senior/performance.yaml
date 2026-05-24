@@ -10,12 +10,19 @@ questions:
     difficulty: 5
     tags: ["profiling", "cProfile", "py-spy"]
     question:
-      text: "How do you profile a Python application? Compare cProfile, py-spy, and flame graphs."
+      text:
+        en: "How do you profile a Python application? Compare cProfile, py-spy, and flame graphs."
+        ru: "Как профилировать Python-приложение? Сравните cProfile, py-spy и flame graphs."
       code: null
     follow_ups:
-      - "What is the difference between deterministic and statistical profiling?"
-      - "How do you read a flame graph to identify bottlenecks?"
-      - "How does py-spy work without modifying code (sampling)?"
+      en:
+        - "What is the difference between deterministic and statistical profiling?"
+        - "How do you read a flame graph to identify bottlenecks?"
+        - "How does py-spy work without modifying code (sampling)?"
+      ru:
+        - "В чём разница между детерминированным и статистическим профилированием?"
+        - "Как читать flame graph для выявления узких мест?"
+        - "Как py-spy работает без изменения кода (сэмплирование)?"
     expected_points:
       - "cProfile: deterministic, measures function call counts and time"
       - "py-spy: statistical, sampling profiler for running programs"
@@ -27,12 +34,19 @@ questions:
     difficulty: 5
     tags: ["memory-profiling", "memory-leaks"]
     question:
-      text: "How do you detect and debug memory leaks in Python? What tools are available?"
+      text:
+        en: "How do you detect and debug memory leaks in Python? What tools are available?"
+        ru: "Как обнаруживать и отлаживать утечки памяти в Python? Какие инструменты доступны?"
       code: null
     follow_ups:
-      - "How does tracemalloc track memory allocations?"
-      - "What is gc.get_objects() and how does it help finding leaks?"
-      - "How do weakrefs and slots help with memory management?"
+      en:
+        - "How does tracemalloc track memory allocations?"
+        - "What is gc.get_objects() and how does it help finding leaks?"
+        - "How do weakrefs and slots help with memory management?"
+      ru:
+        - "Как tracemalloc отслеживает выделения памяти?"
+        - "Что такое gc.get_objects() и как это помогает в поиске утечек?"
+        - "Как weakrefs и slots помогают в управлении памятью?"
     expected_points:
       - "tracemalloc: tracks Python memory allocations with stack traces"
       - "objgraph: visualizes object references and cycles"
@@ -44,12 +58,19 @@ questions:
     difficulty: 4
     tags: ["GIL", "multi-threading", "multi-processing"]
     question:
-      text: "How does the GIL (Global Interpreter Lock) affect Python performance? When is multiprocessing preferred over threading?"
+      text:
+        en: "How does the GIL (Global Interpreter Lock) affect Python performance? When is multiprocessing preferred over threading?"
+        ru: "Как GIL (Global Interpreter Lock) влияет на производительность Python? Когда предпочесть multiprocessing threading?"
       code: null
     follow_ups:
-      - "What is the GIL and why does it exist?"
-      - "How do I/O-bound vs CPU-bound tasks behave with threads?"
-      - "What Python implementations (PyPy, Jython) don't have a GIL?"
+      en:
+        - "What is the GIL and why does it exist?"
+        - "How do I/O-bound vs CPU-bound tasks behave with threads?"
+        - "What Python implementations (PyPy, Jython) don't have a GIL?"
+      ru:
+        - "Что такое GIL и почему он существует?"
+        - "Как ведут себя I/O-bound и CPU-bound задачи с потоками?"
+        - "Какие реализации Python (PyPy, Jython) не имеют GIL?"
     expected_points:
       - "GIL: only one thread runs Python bytecode at a time"
       - "Threads good for I/O-bound (blocking releases GIL)"
@@ -61,12 +82,19 @@ questions:
     difficulty: 5
     tags: ["C-extensions", "Cython", "Rust"]
     question:
-      text: "How do you optimize performance-critical Python code with C extensions or alternative runtimes?"
+      text:
+        en: "How do you optimize performance-critical Python code with C extensions or alternative runtimes?"
+        ru: "Как оптимизировать критичный к производительности код на Python с помощью C-расширений или альтернативных сред выполнения?"
       code: null
     follow_ups:
-      - "What is Cython and how does it compile Python to C?"
-      - "How does Rust/PyO3 compare to C extensions for safety and speed?"
-      - "When would you use Numba/JIT compilation?"
+      en:
+        - "What is Cython and how does it compile Python to C?"
+        - "How does Rust/PyO3 compare to C extensions for safety and speed?"
+        - "When would you use Numba/JIT compilation?"
+      ru:
+        - "Что такое Cython и как он компилирует Python в C?"
+        - "Как Rust/PyO3 сравнивается с C-расширениями по безопасности и скорости?"
+        - "Когда использовать Numba/JIT-компиляцию?"
     expected_points:
       - "Cython: Python-to-C compiler, type declarations for speed"
       - "C extensions (CPython API): maximum control, complex"
@@ -78,12 +106,19 @@ questions:
     difficulty: 4
     tags: ["async-perf", "connection-pools", "batch-processing"]
     question:
-      text: "How do you optimize async I/O performance in Python? What patterns improve throughput?"
+      text:
+        en: "How do you optimize async I/O performance in Python? What patterns improve throughput?"
+        ru: "Как оптимизировать производительность асинхронного ввода-вывода в Python? Какие паттерны улучшают пропускную способность?"
       code: null
     follow_ups:
-      - "Why is connection pooling critical for async database/web clients?"
-      - "How do semaphores help with rate limiting in async code?"
-      - "What is the difference between asyncio.gather and asyncio.wait?"
+      en:
+        - "Why is connection pooling critical for async database/web clients?"
+        - "How do semaphores help with rate limiting in async code?"
+        - "What is the difference between asyncio.gather and asyncio.wait?"
+      ru:
+        - "Почему пул соединений критичен для асинхронных БД/веб-клиентов?"
+        - "Как семафоры помогают с ограничением скорости в асинхронном коде?"
+        - "В чём разница между asyncio.gather и asyncio.wait?"
     expected_points:
       - "Use connection pools (aiohttp.TCPConnector, asyncpg.create_pool)"
       - "Limit concurrency with asyncio.Semaphore to avoid resource exhaustion"
@@ -95,7 +130,9 @@ questions:
     difficulty: 4
     tags: ["caching", "lru-cache", "memoization"]
     question:
-      text: "How does functools.lru_cache and functools.cache work? When should you use caching to optimize Python code?"
+      text:
+        en: "How does functools.lru_cache and functools.cache work? When should you use caching to optimize Python code?"
+        ru: "Как работают functools.lru_cache и functools.cache? Когда использовать кеширование для оптимизации Python-кода?"
       code: |
         from functools import lru_cache
 
@@ -103,9 +140,14 @@ questions:
         def expensive_computation(n: int) -> int:
             return n ** n
     follow_ups:
-      - "What are the memory implications of unbounded caching?"
-      - "How does lru_cache handle unhashable arguments?"
-      - "What caching strategies exist (TTL, LRU, LFU)?"
+      en:
+        - "What are the memory implications of unbounded caching?"
+        - "How does lru_cache handle unhashable arguments?"
+        - "What caching strategies exist (TTL, LRU, LFU)?"
+      ru:
+        - "Каковы последствия для памяти при неограниченном кешировании?"
+        - "Как lru_cache обрабатывает нехешируемые аргументы?"
+        - "Какие стратегии кеширования существуют (TTL, LRU, LFU)?"
     expected_points:
       - "lru_cache caches return values based on arguments (LRU eviction)"
       - "cache is unbounded — use it carefully with finite inputs"
@@ -117,12 +159,19 @@ questions:
     difficulty: 4
     tags: ["lazy-evaluation", "generators", "iterators"]
     question:
-      text: "How do lazy evaluation patterns (generators, iterators, itertools) improve performance in Python?"
+      text:
+        en: "How do lazy evaluation patterns (generators, iterators, itertools) improve performance in Python?"
+        ru: "Как паттерны ленивых вычислений (генераторы, итераторы, itertools) улучшают производительность в Python?"
       code: null
     follow_ups:
-      - "What is the memory difference between range() and list(range())?"
-      - "How do itertools.chain, itertools.islice help with large data?"
-      - "What is the performance impact of generator.send() and yield from?"
+      en:
+        - "What is the memory difference between range() and list(range())?"
+        - "How do itertools.chain, itertools.islice help with large data?"
+        - "What is the performance impact of generator.send() and yield from?"
+      ru:
+        - "Какова разница в памяти между range() и list(range())?"
+        - "Как itertools.chain, itertools.islice помогают с большими данными?"
+        - "Какое влияние на производительность оказывают generator.send() и yield from?"
     expected_points:
       - "Generators: lazy sequences that compute values on demand"
       - "Itertools provides lazy combinatoric iterators (chain, product, islice)"

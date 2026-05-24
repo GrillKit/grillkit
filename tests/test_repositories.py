@@ -14,6 +14,7 @@ from app.shared.domain.exceptions import AnswerNotFoundError
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
+from tests.helpers.selection import minimal_selection_spec
 
 
 @pytest.fixture
@@ -42,8 +43,7 @@ def db_session(engine):
 def _create_test_interview(db_session, interview_id="session-1") -> Interview:
     sess = Interview(
         id=interview_id,
-        level="junior",
-        category="python",
+        selection_spec=minimal_selection_spec(),
         question_count=3,
         question_ids='["q1","q2","q3"]',
         status="active",
@@ -90,14 +90,14 @@ class TestSqlAlchemyRepository:
     def test_add_and_get(self, db_session):
         """Test adding an entity and retrieving it by ID."""
         repo = _ConcreteRepo(db_session)
-        session = Interview(id="test-1", level="junior", category="python")
+        session = Interview(id="test-1", selection_spec=minimal_selection_spec())
         repo.add(session)
         db_session.commit()
 
         result = repo.get("test-1")
         assert result is not None
         assert result.id == "test-1"
-        assert result.level == "junior"
+        assert result.selection_spec
 
     def test_get_not_found(self, db_session):
         """Test get returns None for missing entity."""
@@ -114,8 +114,15 @@ class TestSqlAlchemyRepository:
     def test_list_all(self, db_session):
         """Test list_all returns all entities."""
         repo = _ConcreteRepo(db_session)
-        repo.add(Interview(id="a1", level="junior", category="python"))
-        repo.add(Interview(id="a2", level="middle", category="ds"))
+        repo.add(Interview(id="a1", selection_spec=minimal_selection_spec()))
+        repo.add(
+            Interview(
+                id="a2",
+                selection_spec=minimal_selection_spec(
+                    level="middle", categories=["ds"]
+                ),
+            )
+        )
         db_session.commit()
 
         results = repo.list_all()

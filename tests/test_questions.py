@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for question loading."""
 
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -10,8 +12,27 @@ from app.questions import (
     list_categories,
     list_languages,
     list_levels,
+    load_categories,
     load_category,
 )
+
+
+def _write_category_yaml(path: Path, questions: list[dict]) -> None:
+    """Write a minimal category YAML file for loader tests.
+
+    Args:
+        path: Destination ``.yaml`` file path.
+        questions: Question dicts under the ``questions`` key.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = {
+        "category": "Test",
+        "language": "python",
+        "level": "junior",
+        "questions": questions,
+    }
+    with open(path, "w") as f:
+        yaml.dump(content, f)
 
 
 @pytest.fixture
@@ -226,3 +247,155 @@ class TestQuestions:
         assert len(questions) == 2
         assert questions[0].id == "mq-001"
         assert questions[1].id == "mq-002"
+
+    def test_load_categories_merges_and_dedupes(self, temp_questions_dir):
+        """load_categories merges multiple YAML files and de-duplicates by id."""
+        questions = load_categories(
+            "python", "junior", ["data-structures", "algorithms"]
+        )
+        ids = {q.id for q in questions}
+        assert "ds-001" in ids
+        assert "algo-001" in ids
+        assert len(questions) == len(ids)
+
+
+class TestQuestionLocalization:
+    """Tests for multilingual question text and follow-ups in YAML banks."""
+
+    @pytest.fixture
+    def i18n_questions_dir(self, tmp_path, monkeypatch):
+        """Temporary question bank with localized and legacy entries.
+
+        Returns:
+            Path: Root of the patched ``QUESTIONS_DIR``.
+        """
+        questions_root = tmp_path / "data" / "questions"
+        junior_dir = questions_root / "python" / "junior"
+        _write_category_yaml(
+            junior_dir / "i18n.yaml",
+            [
+                {
+                    "id": "i18n-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "tags": ["locale"],
+                    "question": {
+                        "text": {
+                            "en": "English question text.",
+                            "ru": "Русский текст вопроса.",
+                        },
+                        "code": "x = 1",
+                    },
+                    "follow_ups": {
+                        "en": ["English follow-up?"],
+                        "ru": ["Русский уточняющий вопрос?"],
+                    },
+                    "expected_points": ["Point in English"],
+                },
+                {
+                    "id": "i18n-002",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {
+                        "text": {"en": "English only question."},
+                        "code": None,
+                    },
+                    "follow_ups": {"en": ["English only follow-up."]},
+                },
+                {
+                    "id": "legacy-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {"text": "Legacy plain string question.", "code": None},
+                    "follow_ups": ["Legacy follow-up."],
+                },
+            ],
+        )
+        monkeypatch.setattr("app.questions.QUESTIONS_DIR", questions_root)
+        return questions_root
+
+    def test_load_resolves_requested_locale(self, i18n_questions_dir):
+        """Localized maps return text and follow-ups for the requested locale."""
+        questions = load_category("python", "junior", "i18n", locale="ru")
+        by_id = {q.id: q for q in questions}
+
+        q = by_id["i18n-001"]
+        assert q.text == "Русский текст вопроса."
+        assert q.follow_ups == ["Русский уточняющий вопрос?"]
+        assert q.code == "x = 1"
+
+    def test_load_normalizes_locale_code(self, i18n_questions_dir):
+        """Locale codes are normalized before lookup (e.g. ``RU`` → ``ru``)."""
+        questions = load_category("python", "junior", "i18n", locale=" RU ")
+        assert questions[0].text == "Русский текст вопроса."
+
+    def test_missing_locale_falls_back_to_english(self, i18n_questions_dir, caplog):
+        """Missing translation falls back to ``en`` and logs a warning."""
+        caplog.set_level("WARNING")
+        questions = load_category("python", "junior", "i18n", locale="fr")
+        by_id = {q.id: q for q in questions}
+
+        assert by_id["i18n-001"].text == "English question text."
+        assert by_id["i18n-001"].follow_ups == ["English follow-up?"]
+        assert "i18n-001" in caplog.text
+        assert "fr" in caplog.text
+
+        assert by_id["i18n-002"].text == "English only question."
+        assert by_id["i18n-002"].follow_ups == ["English only follow-up."]
+
+    def test_legacy_plain_string_text(self, i18n_questions_dir):
+        """Plain-string ``question.text`` is accepted as English for any locale."""
+        for locale in ("en", "ru", "de"):
+            questions = load_category("python", "junior", "i18n", locale=locale)
+            legacy = next(q for q in questions if q.id == "legacy-001")
+            assert legacy.text == "Legacy plain string question."
+            assert legacy.follow_ups == ["Legacy follow-up."]
+
+    def test_code_not_localized(self, i18n_questions_dir):
+        """``question.code`` is shared across locales."""
+        en = load_category("python", "junior", "i18n", locale="en")[0]
+        ru = load_category("python", "junior", "i18n", locale="ru")[0]
+        assert en.code == ru.code == "x = 1"
+
+    def test_text_map_without_en_raises_on_fallback(self, i18n_questions_dir):
+        """Locale map without ``en`` raises when the requested locale is missing."""
+        path = i18n_questions_dir / "python" / "junior" / "bad-text.yaml"
+        _write_category_yaml(
+            path,
+            [
+                {
+                    "id": "bad-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {"text": {"ru": "Только русский."}, "code": None},
+                },
+            ],
+        )
+        questions_ru = load_category("python", "junior", "bad-text", locale="ru")
+        assert questions_ru[0].text == "Только русский."
+
+        with pytest.raises(ValueError, match="bad-001"):
+            load_category("python", "junior", "bad-text", locale="en")
+
+    def test_invalid_text_shape_raises(self, i18n_questions_dir):
+        """Non-string, non-map ``question.text`` raises ``ValueError``."""
+        path = i18n_questions_dir / "python" / "junior" / "bad-shape.yaml"
+        _write_category_yaml(
+            path,
+            [
+                {
+                    "id": "bad-002",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {"text": 42, "code": None},
+                },
+            ],
+        )
+        with pytest.raises(ValueError, match="bad-002"):
+            load_category("python", "junior", "bad-shape")
+
+    def test_python_junior_basics_bank_russian(self):
+        """Migrated pilot bank serves Russian text for ``locale=ru``."""
+        questions = load_category("python", "junior", "basics", locale="ru")
+        assert questions
+        assert any(any("\u0400" <= ch <= "\u04ff" for ch in q.text) for q in questions)

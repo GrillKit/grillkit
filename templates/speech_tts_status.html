@@ -1,0 +1,6 @@
+{% set status_hint = "<strong>" ~ status.voice_display_name ~ "</strong> — interview language: " ~ status.locale_label %}
+{% set status_element_id = "speech-tts-status" %}
+{% set download_button_id = "question-voice-download-btn" %}
+{% set download_url = "/speech/tts/voice/download" %}
+{% set download_label = "Download question voice" %}
+{% include "model_status_panel.html" %}

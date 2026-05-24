@@ -19,7 +19,7 @@ class TestCreateApp:
         assert app is not None
         assert app.title == "GrillKit"
         assert app.description == "AI Interview Trainer"
-        assert app.version == "2026.5.20"
+        assert app.version == "2026.5.24"
 
     def test_static_files_mounted(self):
         """Test that static files are mounted."""
@@ -86,7 +86,7 @@ class TestAppIntegration:
     def test_dashboard_endpoint(self, client):
         """Test that the home page returns the dashboard HTML."""
         with patch(
-            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.dashboard.DashboardBuilder.list_rows",
             return_value=[],
         ):
             response = client.get("/")

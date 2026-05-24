@@ -2,21 +2,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pure helpers for navigating unanswered questions within an interview."""
 
+from app.interview.domain.session import AnswerView, InterviewView
 from app.shared.domain.exceptions import (
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,
 )
-from app.shared.infrastructure.models import Answer, Interview
 
 
-def find_first_unanswered(interview: Interview) -> Answer | None:
+def find_first_unanswered(interview: InterviewView) -> AnswerView | None:
     """Return the first unanswered answer in display order.
 
     Args:
-        interview: Interview with eager-loaded answers.
+        interview: Interview session view with answers.
 
     Returns:
-        The first Answer with ``answer_text IS NULL``, or None.
+        The first AnswerView with ``answer_text IS NULL``, or None.
     """
     for answer in interview.answers:
         if answer.answer_text is None:
@@ -24,15 +24,17 @@ def find_first_unanswered(interview: Interview) -> Answer | None:
     return None
 
 
-def find_unanswered_for_question(interview: Interview, question_id: str) -> Answer:
+def find_unanswered_for_question(
+    interview: InterviewView, question_id: str
+) -> AnswerView:
     """Return the unanswered answer row for a question (any follow-up round).
 
     Args:
-        interview: Interview with eager-loaded answers.
+        interview: Interview session view with answers.
         question_id: YAML question ID.
 
     Returns:
-        The first unanswered Answer for that question.
+        The first unanswered AnswerView for that question.
 
     Raises:
         UnansweredAnswerNotFoundError: If no unanswered answer exists for the question.
@@ -44,16 +46,16 @@ def find_unanswered_for_question(interview: Interview, question_id: str) -> Answ
 
 
 def find_next_unanswered_after(
-    interview: Interview, current_index: int
-) -> Answer | None:
+    interview: InterviewView, current_index: int
+) -> AnswerView | None:
     """Return the next unanswered answer after a position in the answer list.
 
     Args:
-        interview: Interview with eager-loaded answers.
+        interview: Interview session view with answers.
         current_index: Index of the current answer in ``interview.answers``.
 
     Returns:
-        The next unanswered Answer, or None if none remain.
+        The next unanswered AnswerView, or None if none remain.
     """
     for answer in interview.answers[current_index + 1 :]:
         if answer.answer_text is None:
@@ -61,11 +63,11 @@ def find_next_unanswered_after(
     return None
 
 
-def require_active(interview: Interview) -> None:
+def require_active(interview: InterviewView) -> None:
     """Ensure the interview accepts new answers.
 
     Args:
-        interview: Loaded interview instance.
+        interview: Loaded interview view.
 
     Raises:
         InterviewNotActiveError: If the interview is not in ``active`` status.

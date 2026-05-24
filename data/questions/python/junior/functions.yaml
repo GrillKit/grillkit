@@ -10,11 +10,17 @@ questions:
     difficulty: 1
     tags: ["args", "kwargs", "parameters"]
     question:
-      text: "Explain the difference between positional arguments, keyword arguments, *args, and **kwargs in Python?"
+      text:
+        en: "Explain the difference between positional arguments, keyword arguments, *args, and **kwargs in Python?"
+        ru: "Объясните разницу между позиционными аргументами, именованными аргументами, *args и **kwargs в Python."
       code: null
     follow_ups:
-      - "What is the order of parameters in a function definition?"
-      - "What happens if you pass more positional arguments than parameters?"
+      en:
+        - "What is the order of parameters in a function definition?"
+        - "What happens if you pass more positional arguments than parameters?"
+      ru:
+        - "Каков порядок параметров в определении функции?"
+        - "Что произойдёт, если передать больше позиционных аргументов, чем параметров?"
     expected_points:
       - "Positional args are matched by position"
       - "Keyword args are passed as name=value"
@@ -27,17 +33,23 @@ questions:
     difficulty: 2
     tags: ["lambdas", "anonymous-functions"]
     question:
-      text: "What are lambda functions in Python? When should you use them vs regular named functions?"
+      text:
+        en: "What are lambda functions in Python? When should you use them vs regular named functions?"
+        ru: "Что такое лямбда-функции в Python? Когда их использовать вместо обычных именованных функций?"
       code: |
         square = lambda x: x ** 2
         squares = list(map(lambda x: x ** 2, [1, 2, 3]))
     follow_ups:
-      - "What are the limitations of lambda functions?"
-      - "Can a lambda contain statements or multiple expressions?"
+      en:
+        - "What are the limitations of lambda functions?"
+        - "Can a lambda contain statements or multiple expressions?"
+      ru:
+        - "Какие ограничения у лямбда-функций?"
+        - "Может ли лямбда содержать инструкции или несколько выражений?"
     expected_points:
       - "Lambda: anonymous single-expression function"
       - "Useful for short callbacks and key functions (sort, filter, map)"
-      - "Limitation: single expression only single expression, no statements or annotations"
+      - "Limitation: single expression only, no statements or annotations"
       - "Prefer named functions for complex logic"
 
   - id: "func-003"
@@ -45,7 +57,9 @@ questions:
     difficulty: 2
     tags: ["scope", "LEGB", "closures"]
     question:
-      text: "Explain Python's LEGB scoping rule. How does it affect variable lookup?"
+      text:
+        en: "Explain Python's LEGB scoping rule. How does it affect variable lookup?"
+        ru: "Объясните правило областей видимости LEGB в Python. Как оно влияет на поиск переменных?"
       code: |
         x = "global"
         def outer():
@@ -56,8 +70,12 @@ questions:
             inner()
         outer()
     follow_ups:
-      - "What do 'global' and 'nonlocal' keywords do?"
-      - "How does scoping work for nested functions?"
+      en:
+        - "What do 'global' and 'nonlocal' keywords do?"
+        - "How does scoping work for nested functions?"
+      ru:
+        - "Что делают ключевые слова 'global' и 'nonlocal'?"
+        - "Как работает область видимости для вложенных функций?"
     expected_points:
       - "LEGB: Local, Enclosing, Global, Built-in"
       - "Python searches scopes in this order"
@@ -69,7 +87,9 @@ questions:
     difficulty: 2
     tags: ["default-arguments", "mutable-defaults"]
     question:
-      text: "What is the problem with mutable default arguments in Python? Why can it lead to bugs?"
+      text:
+        en: "What is the problem with mutable default arguments in Python? Why can it lead to bugs?"
+        ru: "В чём проблема изменяемых аргументов по умолчанию в Python? Почему это может приводить к ошибкам?"
       code: |
         def add_item(item, items=[]):
             items.append(item)
@@ -78,8 +98,12 @@ questions:
         print(add_item(1))  # [1]
         print(add_item(2))  # [1, 2] — unexpected!
     follow_ups:
-      - "How can you safely use mutable defaults?"
-      - "Why is None commonly used as a sentinel for mutable defaults?"
+      en:
+        - "How can you safely use mutable defaults?"
+        - "Why is None commonly used as a sentinel for mutable defaults?"
+      ru:
+        - "Как безопасно использовать изменяемые значения по умолчанию?"
+        - "Почему None часто используется как маркер для изменяемых значений по умолчанию?"
     expected_points:
       - "Default arguments are evaluated once at function definition time"
       - "Mutable defaults are reused across all calls"
@@ -90,23 +114,31 @@ questions:
     difficulty: 2
     tags: ["return", "multiple-return", "None"]
     question:
-      text: "How does the 'return' statement work in Python? What does a function return if there's no return?"
+      text:
+        en: "How does the 'return' statement work in Python? What does a function return if there's no return?"
+        ru: "Как работает оператор 'return' в Python? Что возвращает функция, если в ней нет return?"
       code: null
     follow_ups:
-      - "How can you return multiple values from a function?"
-      - "What is the difference between 'return' and 'yield'?"
+      en:
+        - "How can you return multiple values from a function?"
+        - "What is the difference between 'return' and 'yield'?"
+      ru:
+        - "Как вернуть несколько значений из функции?"
+        - "В чём разница между 'return' и 'yield'?"
     expected_points:
       - "return exits the function and optionally returns a value"
       - "Functions without return return None"
       - "Multiple values are returned as a tuple: return a, b"
-      - automatic packing"
+      - "automatic packing"
 
   - id: "func-006"
     type: "coding"
     difficulty: 2
     tags: ["docstrings", "annotations"]
     question:
-      text: "What are function annotations (type hints) in Python? How do you document a function properly?"
+      text:
+        en: "What are function annotations (type hints) in Python? How do you document a function properly?"
+        ru: "Что такое аннотации функций (type hints) в Python? Как правильно документировать функцию?"
       code: |
         # Add type hints and a docstring to this function
         def divide(a, b):
@@ -114,8 +146,12 @@ questions:
                 return None
             return a / b
     follow_ups:
-      - "What is the difference between type hints and docstrings?"
-      - "Are type hints enforced at runtime?"
+      en:
+        - "What is the difference between type hints and docstrings?"
+        - "Are type hints enforced at runtime?"
+      ru:
+        - "В чём разница между аннотациями типов и докстрингами?"
+        - "Проверяются ли аннотации типов во время выполнения?"
     expected_points:
       - "Type hints indicate expected types but are not enforced at runtime"
       - "Docstrings describe what the function does in natural language"
@@ -126,10 +162,12 @@ questions:
     difficulty: 2
     tags: ["first-class", "higher-order"]
     question:
-      text: "What does it mean that functions are first-class citizens in Python? Give examples."
+      text:
+        en: "What does it mean that functions are first-class citizens in Python? Give examples."
+        ru: "Что означает, что функции в Python являются объектами первого класса? Приведите примеры."
       code: |
         def greet(name):
-            return f"Hello, {name}Hello, {name}!"
+            return f"Hello, {name}!"
 
         # Assign to variable
         say_hello = greet
@@ -141,8 +179,12 @@ questions:
 
         print(apply(greet, "Python"))
     follow_ups:
-      - "What is a higher-order function?"
-      - "How do map, filter, and reduce use this concept?"
+      en:
+        - "What is a higher-order function?"
+        - "How do map, filter, and reduce use this concept?"
+      ru:
+        - "Что такое функция высшего порядка?"
+        - "Как map, filter и reduce используют эту концепцию?"
     expected_points:
       - "Functions can be assigned to variables, passed as arguments, and returned from other functions"
       - "Higher-order functions take or return other functions"

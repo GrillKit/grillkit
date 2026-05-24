@@ -6,10 +6,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.platform.api.deps import ConfigServiceDep
+from app.shared.api.negotiated_response import negotiated_response
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.domain.models import SPEECH_MODEL_BY_SIZE
 from app.speech.services.whisper_model import WhisperModelStatus
-from app.templating import templates
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 
@@ -19,21 +19,18 @@ def _status_response(
     status: WhisperModelStatus,
 ) -> Response:
     """Return HTML fragment or JSON depending on the Accept header."""
-    if "application/json" in request.headers.get("accept", ""):
-        return JSONResponse(
-            {
-                "size": status.size,
-                "locale": status.locale,
-                "locale_label": status.locale_label,
-                "state": status.state,
-                "percent": status.percent,
-                "message": status.message,
-                "model_display_name": status.model_display_name,
-                "loaded_in_memory": status.loaded_in_memory,
-            }
-        )
-    return templates.TemplateResponse(
+    return negotiated_response(
         request,
+        {
+            "size": status.size,
+            "locale": status.locale,
+            "locale_label": status.locale_label,
+            "state": status.state,
+            "percent": status.percent,
+            "message": status.message,
+            "model_display_name": status.model_display_name,
+            "loaded_in_memory": status.loaded_in_memory,
+        },
         "speech_model_status.html",
         {"status": status},
     )
