@@ -1,0 +1,6 @@
+<div class="alert alert-warning">
+    Question voice: {{ tts_voice_status.message }}
+    {% if tts_voice_status.state == "missing" %}
+    Download the voice on the <a href="/config">Configuration</a> page.
+    {% endif %}
+</div>

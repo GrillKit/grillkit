@@ -1,0 +1,24 @@
+<div id="{{ status_element_id }}" data-state="{{ status.state }}" data-percent="{{ status.percent }}">
+    <p class="form-hint">{{ status_hint|safe }}</p>
+
+    {% if status.state == "missing" %}
+    <div class="alert alert-warning">{{ status.message }}</div>
+    <button type="button" class="btn btn-secondary" id="{{ download_button_id }}"
+            data-download-url="{{ download_url }}">
+        {{ download_label }}
+    </button>
+    {% elif status.state == "downloading" %}
+    <div class="alert alert-info">{{ status.message }} {{ status.percent }}%</div>
+    <div class="progress-bar" role="progressbar" aria-valuenow="{{ status.percent }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar-fill" style="width: {{ status.percent }}%;"></div>
+    </div>
+    {% elif status.state == "ready" %}
+    <div class="alert alert-success">{{ status.message }}</div>
+    {% elif status.state == "error" %}
+    <div class="alert alert-error">{{ status.message }}</div>
+    <button type="button" class="btn btn-secondary" id="{{ download_button_id }}"
+            data-download-url="{{ download_url }}">
+        Retry download
+    </button>
+    {% endif %}
+</div>
