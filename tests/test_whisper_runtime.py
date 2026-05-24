@@ -30,10 +30,14 @@ class TestWhisperRuntime:
         mock_model = MagicMock()
 
         with (
-            patch("app.speech.services.whisper_runtime.model_dir", return_value=model_dir),
-            patch("app.speech.services.whisper_runtime.is_installed", return_value=True),
             patch(
-                "app.speech.services.whisper_runtime.WhisperRuntime._load_model_sync",
+                "app.speech.services.whisper_runtime.model_dir", return_value=model_dir
+            ),
+            patch(
+                "app.speech.services.whisper_runtime.is_installed", return_value=True
+            ),
+            patch(
+                "app.speech.services.whisper_runtime.WhisperRuntime.load_sync",
                 return_value=mock_model,
             ),
         ):
@@ -46,7 +50,9 @@ class TestWhisperRuntime:
     @pytest.mark.asyncio
     async def test_load_size_missing_unloads(self):
         """load_size clears memory when the model is not installed."""
-        with patch("app.speech.services.whisper_runtime.is_installed", return_value=False):
+        with patch(
+            "app.speech.services.whisper_runtime.is_installed", return_value=False
+        ):
             loaded = await WhisperRuntime.load_size("small")
 
         assert loaded is False

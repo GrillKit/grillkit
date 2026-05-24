@@ -12,6 +12,7 @@ from app.questions import (
     list_categories,
     list_languages,
     list_levels,
+    load_categories,
     load_category,
 )
 
@@ -247,6 +248,16 @@ class TestQuestions:
         assert questions[0].id == "mq-001"
         assert questions[1].id == "mq-002"
 
+    def test_load_categories_merges_and_dedupes(self, temp_questions_dir):
+        """load_categories merges multiple YAML files and de-duplicates by id."""
+        questions = load_categories(
+            "python", "junior", ["data-structures", "algorithms"]
+        )
+        ids = {q.id for q in questions}
+        assert "ds-001" in ids
+        assert "algo-001" in ids
+        assert len(questions) == len(ids)
+
 
 class TestQuestionLocalization:
     """Tests for multilingual question text and follow-ups in YAML banks."""
@@ -387,4 +398,4 @@ class TestQuestionLocalization:
         """Migrated pilot bank serves Russian text for ``locale=ru``."""
         questions = load_category("python", "junior", "basics", locale="ru")
         assert questions
-        assert any(any("\u0400" <= ch <= "\u04FF" for ch in q.text) for q in questions)
+        assert any(any("\u0400" <= ch <= "\u04ff" for ch in q.text) for q in questions)

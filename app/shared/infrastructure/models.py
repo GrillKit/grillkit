@@ -21,12 +21,11 @@ class Interview(Base):
 
     Attributes:
         id: Unique interview identifier (UUID v4).
-        level: Interview difficulty level (junior, middle, senior).
-        language: Programming language (e.g., "python", "javascript").
         locale: Language for AI feedback and follow-ups (e.g., "en", "ru").
-        category: Question topic slug (e.g., "data-structures", "algorithms").
+        selection_spec: JSON describing languages, levels, and topic categories.
         question_count: Number of questions in this interview.
         question_ids: JSON list of question IDs in display order.
+        question_time_limit_seconds: Per-round time limit in seconds (None if disabled).
         status: Interview status ("active", "completed").
         score: Final total score (None if not graded yet).
         overall_feedback: JSON string with final evaluation feedback (None if not evaluated).
@@ -38,14 +37,13 @@ class Interview(Base):
     __tablename__ = "interviews"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    level: Mapped[str] = mapped_column(String)
-    language: Mapped[str] = mapped_column(
-        String, default="python", server_default="python"
-    )
     locale: Mapped[str] = mapped_column(String, default="en", server_default="en")
-    category: Mapped[str] = mapped_column(String)
+    selection_spec: Mapped[str] = mapped_column(Text)
     question_count: Mapped[int] = mapped_column(default=5)
     question_ids: Mapped[str] = mapped_column(Text, default="[]")
+    question_time_limit_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     status: Mapped[str] = mapped_column(String, default="active")
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     overall_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -79,8 +77,9 @@ class Answer(Base):
         question_text: Snapshot of the question text at time of asking.
         question_code: Snapshot of the optional code snippet.
         answer_text: User's answer text (None if skipped).
-        score: AI-assigned score (1-5), None if not yet evaluated.
+        score: AI-assigned score (1-5, or 0 on timeout), None if not yet evaluated.
         feedback: AI-generated feedback text.
+        started_at: When this round became active for the user (None if timer off).
         created_at: Timestamp when this answer was recorded.
         interview: Back-reference to the parent Interview.
     """
@@ -100,6 +99,9 @@ class Answer(Base):
     answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

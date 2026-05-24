@@ -8,10 +8,18 @@ final AI evaluations.
 
 import logging
 
+from app.ai.base import AIProvider
 from app.interview.domain.lifecycle import (
     build_per_question_score_breakdown,
     compute_interview_score,
 )
+from app.interview.domain.selection import (
+    get_interview_selection,
+    selection_sources_summary,
+)
+from app.interview.domain.session import interview_view
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
     EvaluatingEvent,
@@ -19,8 +27,6 @@ from app.interview.services.events import (
     InterviewEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.platform.services.ai_context import ai_provider_from_config
-from app.shared.infrastructure.uow import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +35,10 @@ class InterviewCompletionService:
     """Service for completing interview sessions."""
 
     @staticmethod
-    async def complete_interview(interview_id: str) -> list[InterviewEvent]:
+    async def complete_interview(
+        interview_id: str,
+        provider: AIProvider,
+    ) -> list[InterviewEvent]:
         """Complete a session and generate final AI evaluation.
 
         Orchestrates:
@@ -40,6 +49,7 @@ class InterviewCompletionService:
 
         Args:
             interview_id: The session UUID.
+            provider: AI provider for final evaluation.
 
         Returns:
             Semantic events for optional WebSocket delivery.
@@ -63,31 +73,32 @@ class InterviewCompletionService:
 
         events: list[InterviewEvent] = [EvaluatingEvent()]
 
-        async with ai_provider_from_config() as provider:
-            interview_eval = await InterviewEvaluatorService.evaluate_interview(
-                provider=provider,
-                questions_answers=questions_answers,
-                level=interview.level,
-                category=interview.category,
-                locale=interview.locale,
-            )
+        sources_text = selection_sources_summary(get_interview_selection(interview))
+        interview_eval = await InterviewEvaluatorService.evaluate_interview(
+            provider=provider,
+            questions_answers=questions_answers,
+            sources_text=sources_text,
+            locale=interview.locale,
+        )
 
-        normalized_breakdown = build_per_question_score_breakdown(interview)
+        normalized_breakdown = build_per_question_score_breakdown(
+            interview_view(interview)
+        )
         interview_eval = interview_eval.model_copy(
             update={"score_breakdown": normalized_breakdown}
         )
 
         score = 0
-        with UnitOfWork(auto_commit=True) as uow:
+        with InterviewUnitOfWork(auto_commit=True) as uow:
             db_interview = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
 
             uow.interviews.save_evaluation_feedback(
                 db_interview, interview_eval.model_dump_json()
             )
-            score = compute_interview_score(db_interview)
+            score = compute_interview_score(interview_view(db_interview))
             uow.interviews.mark_completed(db_interview, score)
 
-        max_score = InterviewQuery.compute_max_score(
+        max_score = DashboardBuilder.compute_max_score(
             interview, interview_eval.score_breakdown or None
         )
         events.append(

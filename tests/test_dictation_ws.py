@@ -17,7 +17,8 @@ def client():
     with (
         patch("app.main.init_db"),
         patch(
-            "app.speech.services.whisper_runtime.WhisperRuntime.load_size", return_value=False
+            "app.speech.services.whisper_runtime.WhisperRuntime.load_size",
+            return_value=False,
         ),
     ):
         app = create_app()
@@ -62,7 +63,9 @@ class TestDictationWebSocket:
                 "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=_active_interview(),
             ),
-            patch("app.speech.api.dictation.DictationSession", return_value=mock_session),
+            patch(
+                "app.speech.api.dictation.DictationSession", return_value=mock_session
+            ),
         ):
             client.app.state.speech_transcriber = mock_transcriber
             with client.websocket_connect("/interview/test-session/dictation") as ws:

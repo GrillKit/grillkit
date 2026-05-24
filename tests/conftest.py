@@ -2,17 +2,39 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pytest configuration and shared fixtures."""
 
-from collections.abc import AsyncIterator, Callable
-from contextlib import asynccontextmanager
+from collections.abc import Callable
+from unittest.mock import patch
 
+from fastapi.testclient import TestClient
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.main import create_app
+from app.platform.services.config import ProviderConfig
 from app.shared.infrastructure.database import Base
-from app.shared.infrastructure.uow import UnitOfWork
 from tests.fakes import FakeProvider
+
+
+@pytest.fixture
+def client():
+    """Create a test client with mocked database init."""
+    with patch("app.main.init_db"):
+        app = create_app()
+        with TestClient(app) as test_client:
+            yield test_client
+
+
+@pytest.fixture
+def minimal_provider_config() -> ProviderConfig:
+    """Minimal saved provider configuration for API tests."""
+    return ProviderConfig(
+        provider_type="openai-compatible",
+        base_url="http://localhost",
+        model="gpt-4",
+    )
 
 
 @pytest.fixture
@@ -23,10 +45,9 @@ def isolated_db(monkeypatch):
         SQLAlchemy engine bound to the in-memory database.
     """
     from app.shared.infrastructure import database as db_module
-    from app.shared.infrastructure import uow as uow_module
 
     engine = create_engine(
-        "sqlite://",
+        "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
         echo=False,
@@ -34,48 +55,55 @@ def isolated_db(monkeypatch):
     Base.metadata.create_all(bind=engine)
     testing_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     monkeypatch.setattr(db_module, "SessionLocal", testing_session)
-    monkeypatch.setattr(uow_module, "SessionLocal", testing_session)
+    monkeypatch.setattr(db_module, "engine", engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
-def patch_ai_provider(monkeypatch) -> Callable[[list[str]], FakeProvider]:
-    """Patch ``ai_provider_from_config`` to yield a ``FakeProvider``.
+def fake_ai_provider() -> Callable[[list[str]], FakeProvider]:
+    """Build a ``FakeProvider`` for injection into interview services.
 
     Returns:
-        Callable that accepts reply strings and installs the fake provider.
+        Callable that accepts reply strings and returns the fake provider.
     """
 
-    def _install(replies: list[str]) -> FakeProvider:
+    def _make(replies: list[str]) -> FakeProvider:
+        return FakeProvider(replies)
+
+    return _make
+
+
+@pytest.fixture
+def override_ws_ai_provider() -> Callable:
+    """Override the interview WebSocket AI provider dependency on a test client.
+
+    Returns:
+        Callable ``(test_client, replies) -> FakeProvider``.
+    """
+    from app.interview.api.deps import get_ai_provider
+
+    def _apply(test_client, replies: list[str]) -> FakeProvider:
         provider = FakeProvider(replies)
 
-        @asynccontextmanager
-        async def _fake_context() -> AsyncIterator[FakeProvider]:
+        async def _dep():
             yield provider
 
-        monkeypatch.setattr(
-            "app.interview.services.answer_processing.ai_provider_from_config",
-            _fake_context,
-        )
-        monkeypatch.setattr(
-            "app.interview.services.completion.ai_provider_from_config",
-            _fake_context,
-        )
+        test_client.app.dependency_overrides[get_ai_provider] = _dep
         return provider
 
-    return _install
+    return _apply
 
 
 @pytest.fixture
 def uow(isolated_db):
-    """Yield a committed UnitOfWork using the isolated in-memory database.
+    """Yield a committed InterviewUnitOfWork using the isolated in-memory database.
 
     Yields:
-        UnitOfWork instance with auto_commit enabled.
+        InterviewUnitOfWork instance with auto_commit enabled.
     """
     del isolated_db
-    with UnitOfWork(auto_commit=True) as work:
+    with InterviewUnitOfWork(auto_commit=True) as work:
         yield work
 
 

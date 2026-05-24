@@ -440,6 +440,19 @@ textarea.form-control {
     border-color: var(--accent-primary);
 }
 
+.llm-preset-instructions {
+    margin-bottom: 1.5rem;
+}
+
+.llm-setup-steps {
+    margin: 0.75rem 0 0.75rem 1.25rem;
+    padding: 0;
+}
+
+.llm-setup-steps li + li {
+    margin-top: 0.35rem;
+}
+
 .progress-bar {
     width: 100%;
     height: 0.5rem;
@@ -703,6 +716,21 @@ textarea.form-control {
     font-style: italic;
 }
 
+.interview-timer-display.timer-warning {
+    color: var(--warning, #b45309);
+    font-weight: 600;
+}
+
+.interview-timer-display.timer-expired {
+    color: var(--danger, #b91c1c);
+    font-weight: 600;
+}
+
+.chat-bubble.system-bubble {
+    color: var(--text-muted, #6b7280);
+    font-style: italic;
+}
+
 .interview-actions {
     display: flex;
     flex-direction: column;
@@ -784,6 +812,10 @@ textarea.form-control {
 .dictation-hint {
     font-size: 0.8125rem;
     color: var(--text-muted);
+}
+
+.composer-footer .btn-question-voice {
+    flex-shrink: 0;
 }
 
 .composer-footer .btn-primary {
@@ -1044,4 +1076,44 @@ textarea.form-control {
     .history-table td:nth-child(2) {
         display: none;
     }
+}
+
+.setup-language-block {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.setup-language-legend {
+    font-weight: 600;
+}
+
+.setup-language-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.setup-topic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.setup-topic-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.selection-sources-list {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.selection-sources-list li {
+    margin-bottom: 0.25rem;
 }

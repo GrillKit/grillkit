@@ -27,6 +27,9 @@ class AnswerFeedbackEvent:
         follow_up_needed: Whether a follow-up question was created.
         follow_up_text: Follow-up question text when applicable.
         next_question: Next unanswered question payload for the client.
+        timed_out: Whether this round ended due to timer expiry.
+        feedback: Short feedback for the client (e.g. timeout message).
+        timer_remaining_seconds: Seconds left on the next round timer, if any.
     """
 
     question_id: str
@@ -35,6 +38,9 @@ class AnswerFeedbackEvent:
     follow_up_needed: bool
     follow_up_text: str | None
     next_question: dict[str, Any] | None
+    timed_out: bool = False
+    feedback: str | None = None
+    timer_remaining_seconds: int | None = None
 
 
 @dataclass(frozen=True)

@@ -3,11 +3,13 @@
 """Tests for API routers."""
 
 import time
-from unittest.mock import AsyncMock, patch
+from typing import Any
+from unittest.mock import ANY, AsyncMock, patch
 
 from fastapi.testclient import TestClient
 import pytest
 
+from app.ai.llm_models import LLMModelEntry
 from app.main import create_app
 from app.platform.services.config import ProviderConfig
 from app.shared.domain.exceptions import InterviewNotActiveError, InterviewNotFoundError
@@ -18,6 +20,7 @@ async def _raising_answer_stream(
     interview_id: str,
     question_id: str,
     answer_text: str,
+    **kwargs: Any,
 ) -> None:
     raise exc
     yield  # type: ignore[misc, unreachable]
@@ -26,10 +29,18 @@ async def _raising_answer_stream(
 @pytest.fixture
 def client():
     """Create a test client with mocked database."""
+    from app.interview.api.deps import get_ai_provider
+    from tests.fakes import FakeProvider
+
+    async def _fake_ai_provider():
+        yield FakeProvider([])
+
     with patch("app.main.init_db"):
         app = create_app()
+        app.dependency_overrides[get_ai_provider] = _fake_ai_provider
         with TestClient(app) as test_client:
             yield test_client
+        app.dependency_overrides.clear()
 
 
 class MockInterview:
@@ -40,10 +51,11 @@ class MockInterview:
         self.status = status
         self.answers = []
         self.question_count = 5
-        self.level = "junior"
-        self.language = "python"
         self.locale = "en"
-        self.category = "data-structures"
+        self.selection_spec = (
+            '{"version":1,"sources":[{"language":"python","level":"junior",'
+            '"categories":["data-structures"]}]}'
+        )
         self.score = None
         self.overall_feedback = None
 
@@ -70,7 +82,7 @@ class TestDashboardRouter:
             )(),
         ]
         with patch(
-            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.dashboard.DashboardBuilder.list_rows",
             return_value=mock_rows,
         ):
             response = client.get("/")
@@ -81,7 +93,7 @@ class TestDashboardRouter:
     def test_dashboard_returns_html(self, client):
         """Dashboard always returns HTML, even without provider config."""
         with patch(
-            "app.interview.services.query.InterviewQuery.list_dashboard_rows",
+            "app.interview.services.dashboard.DashboardBuilder.list_rows",
             return_value=[],
         ):
             response = client.get("/")
@@ -92,6 +104,27 @@ class TestDashboardRouter:
 
 class TestConfigRouter:
     """Tests for config router endpoints."""
+
+    _catalog_entry = LLMModelEntry(
+        id="cloud",
+        display_name="Cloud",
+        provider_type="openai-compatible",
+        model="gpt-4",
+        base_url="https://api.openai.com",
+        api_key_required=True,
+        api_key="stored-secret",
+    )
+
+    def _config_form_data(self, **overrides):
+        """Build a valid config form payload."""
+        data = {
+            "llm_preset_id": "cloud",
+            "api_key": "test-key",
+            "timeout": 60.0,
+            "locale": "en",
+        }
+        data.update(overrides)
+        return data
 
     def test_config_page_get(self, client):
         """Test GET /config endpoint returns HTML."""
@@ -104,50 +137,98 @@ class TestConfigRouter:
 
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config", return_value=mock_config
-            ),
-            patch(
-                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=mock_config,
             ),
         ):
             response = client.get("/config")
             assert response.status_code == 200
             assert "text/html" in response.headers.get("content-type", "")
+            assert "Interview model" in response.text
+            assert "Add model to catalog" in response.text
 
     def test_config_page_get_no_config(self, client):
         """Test GET /config without existing config."""
         with (
-            patch("app.platform.services.config.ConfigService.get_config", return_value=None),
             patch(
-                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=None,
             ),
         ):
             response = client.get("/config")
             assert response.status_code == 200
+            assert "Interview model" in response.text
+
+    async def test_save_config_preserves_api_key_when_field_empty(self, client):
+        """POST /config keeps the stored key when the password field is left blank."""
+        existing = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="https://api.openai.com",
+            model="gpt-4",
+            api_key="stored-secret",
+            llm_preset_id="cloud",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=existing,
+            ),
+            patch(
+                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                return_value="cloud",
+            ),
+            patch(
+                "app.platform.api.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.ConfigService.test_connection",
+                return_value=(True, "OK"),
+            ),
+            patch(
+                "app.platform.services.config.ConfigService.save_config"
+            ) as mock_save,
+        ):
+            response = client.post(
+                "/config",
+                data=self._config_form_data(api_key=""),
+            )
+
+        assert response.status_code == 200
+        saved = mock_save.call_args[0][0]
+        assert saved.api_key == "stored-secret"
 
     @pytest.mark.asyncio
     async def test_save_config_success(self, client):
         """Test POST /config with successful connection test."""
         with (
             patch(
+                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                return_value="cloud",
+            ),
+            patch(
+                "app.platform.api.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
                 "app.platform.services.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch("app.platform.services.config.ConfigService.save_config") as mock_save,
             patch(
-                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
-            ),
+                "app.platform.services.config.ConfigService.save_config"
+            ) as mock_save,
         ):
             response = client.post(
                 "/config",
-                data={
-                    "provider_type": "openai-compatible",
-                    "base_url": "https://api.openai.com",
-                    "model": "gpt-4",
-                    "api_key": "test-key",
-                    "timeout": 60.0,
-                    "locale": "en",
-                },
+                data=self._config_form_data(),
             )
 
             assert response.status_code == 200
@@ -158,23 +239,25 @@ class TestConfigRouter:
         """Test POST /config with failed connection test."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
-                return_value=(False, "Connection failed"),
+                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                return_value="cloud",
             ),
             patch(
-                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
+                "app.platform.api.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.ConfigService.test_connection",
+                return_value=(False, "Connection failed"),
             ),
         ):
             response = client.post(
                 "/config",
-                data={
-                    "provider_type": "openai-compatible",
-                    "base_url": "https://api.openai.com",
-                    "model": "gpt-4",
-                    "api_key": "test-key",
-                    "timeout": 60.0,
-                    "locale": "en",
-                },
+                data=self._config_form_data(),
             )
 
             assert response.status_code == 200
@@ -182,10 +265,9 @@ class TestConfigRouter:
     def test_delete_config(self, client):
         """Test DELETE /config endpoint."""
         with (
-            patch("app.platform.services.config.ConfigService.delete_config") as mock_delete,
             patch(
-                "app.platform.services.config.ConfigService.get_provider_types", return_value=[]
-            ),
+                "app.platform.services.config.ConfigService.delete_config"
+            ) as mock_delete,
         ):
             response = client.delete("/config")
 
@@ -195,20 +277,27 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_test_config_success(self, client):
         """Test POST /config/test with successful connection."""
-        with patch(
-            "app.platform.services.config.ConfigService.test_connection",
-            return_value=(True, "Connection successful"),
+        with (
+            patch(
+                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                return_value="cloud",
+            ),
+            patch(
+                "app.platform.api.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.ConfigService.test_connection",
+                return_value=(True, "Connection successful"),
+            ),
         ):
             response = client.post(
                 "/config/test",
-                data={
-                    "provider_type": "openai-compatible",
-                    "base_url": "https://api.openai.com",
-                    "model": "gpt-4",
-                    "api_key": "test-key",
-                    "timeout": 60.0,
-                    "locale": "en",
-                },
+                data=self._config_form_data(),
             )
 
             assert response.status_code == 200
@@ -216,20 +305,27 @@ class TestConfigRouter:
     @pytest.mark.asyncio
     async def test_test_config_failure(self, client):
         """Test POST /config/test with failed connection."""
-        with patch(
-            "app.platform.services.config.ConfigService.test_connection",
-            return_value=(False, "Invalid API key"),
+        with (
+            patch(
+                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                return_value="cloud",
+            ),
+            patch(
+                "app.platform.api.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.LLMCatalogService.get_model",
+                return_value=self._catalog_entry,
+            ),
+            patch(
+                "app.platform.services.config.ConfigService.test_connection",
+                return_value=(False, "Invalid API key"),
+            ),
         ):
             response = client.post(
                 "/config/test",
-                data={
-                    "provider_type": "openai-compatible",
-                    "base_url": "https://api.openai.com",
-                    "model": "gpt-4",
-                    "api_key": "invalid-key",
-                    "timeout": 60.0,
-                    "locale": "en",
-                },
+                data=self._config_form_data(api_key="invalid-key"),
             )
 
             assert response.status_code == 200
@@ -274,6 +370,7 @@ class TestInterviewWebSocket:
             interview_id: str,
             question_id: str,
             answer_text: str,
+            **kwargs: Any,
         ) -> None:
             stream_calls.append((interview_id, question_id, answer_text))
             return
@@ -401,7 +498,10 @@ class TestInterviewWebSocket:
                 if mock_complete.await_count:
                     break
                 time.sleep(0.01)
-            mock_complete.assert_awaited_once_with(interview_id="test-id")
+            mock_complete.assert_awaited_once_with(
+                interview_id="test-id",
+                provider=ANY,
+            )
 
     def test_websocket_answer_service_error(self, client):
         """Test WebSocket handles ValueError from service layer."""

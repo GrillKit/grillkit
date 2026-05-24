@@ -8,27 +8,26 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Added
 
-- Design doc for multilingual question banks and optional question voice (MOSS-TTS sidecar): [`docs/design/question-voice-and-i18n.md`](docs/design/question-voice-and-i18n.md)
-- Offline **Whisper** speech recognition via faster-whisper with configurable model size (`small`, `medium`, `large`) and trade-off hints on `/config`
-- Server-side model download (`/speech/model/status`, `/speech/model/download`, `/speech/model/options`) with in-process hot-reload after install
-- Interview dictation WebSocket (`/interview/{id}/dictation`): buffer PCM on the server, transcribe on stop with `language` from interview locale
-- Voice input button on the interview page (mic records answer audio; transcript appears after stop)
+### Changed
 
 ### Fixed
 
-- Voice input on the interview page: show the mic when the model is installed, load Whisper on connect if needed, surface connection/microphone errors in the sidebar, and avoid a silent hang while waiting for the dictation WebSocket
+### Removed
+
+## 2026.5.24
+
+### Added
+
+- Optional **per-round timer** on interview setup — expired rounds score 0 and the session moves on
+- **Voice input** for answers — offline Whisper; download the model on `/config`
+- **Question audio** (optional) — Piper TTS reads questions aloud; enable and download a voice on `/config`
+- **LLM model catalog** in `data/llm_models.json` — API keys and model list live separately from `data/config.json`; pick the interview model on `/config`
 
 ### Changed
 
-- Reorganize `app/` into feature-first packages: `interview/`, `speech/`, `platform/`, and `shared/` (domain, infrastructure, repositories)
-- Declare `huggingface-hub` as a direct dependency for Whisper model downloads
-- Move interview language (`locale`) to provider configuration: set on `/config`, read-only on setup, snapshot when creating a session
-- Show the user's answer in chat as soon as they submit; AI evaluation continues in the background
-- AI evaluator prompts: score answer substance only; treat typos and misheard technical names (typed or voice input) as input errors, not gaps in knowledge, and omit them from feedback
+### Fixed
 
 ### Removed
-
-- Vosk per-locale speech models (`data/vosk-models/`, `vosk` dependency)
 
 ## 2026.5.20
 

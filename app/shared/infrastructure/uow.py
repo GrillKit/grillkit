@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit of Work pattern for atomic database transactions.
 
-Provides a ``UnitOfWork`` context manager that coordinates repositories
-and commits/rolls back a single database transaction.  Service-layer
-code uses the UoW to ensure that all writes within a business operation
-are atomic.
+Provides a base ``UnitOfWork`` context manager that owns a SQLAlchemy
+session and transaction lifecycle. Feature modules extend it with their
+own repository accessors (for example ``InterviewUnitOfWork``).
 """
 
 from __future__ import annotations
@@ -14,20 +13,17 @@ from typing import Self
 
 from sqlalchemy.orm import Session
 
-from app.interview.repositories.answer import AnswerRepository
-from app.interview.repositories.interview import InterviewRepository
-from app.shared.infrastructure.database import SessionLocal
+from app.shared.infrastructure import database
 
 
 class UnitOfWork:
-    """Unit of Work — coordinates database operations in a single transaction.
+    """Base unit of work — session and transaction lifecycle only.
 
     Usage::
 
         with UnitOfWork() as uow:
-            session = uow.interviews.get(interview_id)
-            uow.interviews.mark_completed(session, score=0)
-            uow.commit()  # or rollback on exception
+            ...
+            uow.commit()
 
     Typical pattern (auto-commit)::
 
@@ -43,38 +39,14 @@ class UnitOfWork:
                 if no exception occurred.
         """
         self._session: Session | None = None
-        self._interviews_repo: InterviewRepository | None = None
-        self._answers_repo: AnswerRepository | None = None
         self._auto_commit = auto_commit
-
-    # ------------------------------------------------------------------
-    # Repository accessors (lazy-initialised)
-    # ------------------------------------------------------------------
-
-    @property
-    def interviews(self) -> InterviewRepository:
-        """Access the ``InterviewRepository`` bound to this UoW."""
-        if self._interviews_repo is None:
-            self._interviews_repo = InterviewRepository(self.session)
-        return self._interviews_repo
-
-    @property
-    def answers(self) -> AnswerRepository:
-        """Access the ``AnswerRepository`` bound to this UoW."""
-        if self._answers_repo is None:
-            self._answers_repo = AnswerRepository(self.session)
-        return self._answers_repo
 
     @property
     def session(self) -> Session:
         """Access the underlying SQLAlchemy ``Session``."""
         if self._session is None:
-            self._session = SessionLocal()
+            self._session = database.SessionLocal()
         return self._session
-
-    # ------------------------------------------------------------------
-    # Transaction lifecycle
-    # ------------------------------------------------------------------
 
     def commit(self) -> None:
         """Commit the current transaction."""
@@ -92,10 +64,6 @@ class UnitOfWork:
         """Release database resources."""
         if self._session is not None:
             self._session.close()
-
-    # ------------------------------------------------------------------
-    # Context-manager support
-    # ------------------------------------------------------------------
 
     def __enter__(self) -> Self:
         return self

@@ -18,12 +18,11 @@ from app.interview.api import routes as interview_router
 from app.interview.api import setup as setup_router
 from app.paths import STATIC_DIR
 from app.platform.api import config as config_router
-from app.platform.services.config import ConfigService
+from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
+from app.question_voice.api import routes as question_voice_router
 from app.shared.infrastructure.database import init_db
 from app.speech.api import dictation as dictation_router
 from app.speech.api import routes as speech_router
-from app.speech.services.whisper_runtime import WhisperRuntime
-from app.speech.services.whisper_storage import is_installed
 
 
 @asynccontextmanager
@@ -33,12 +32,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Initializes database and loads the Whisper model when installed.
     """
     init_db()
-    WhisperRuntime.bind_app(app)
-    config = ConfigService.get_config()
-    if config is not None and is_installed(config.speech_model_size):
-        await WhisperRuntime.load_size(config.speech_model_size)
+    await SpeechRuntimeCoordinator.startup(app)
     yield
-    WhisperRuntime.unload()
+    await SpeechRuntimeCoordinator.shutdown()
 
 
 def create_app() -> FastAPI:
@@ -50,7 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="GrillKit",
         description="AI Interview Trainer",
-        version="2026.5.20",
+        version="2026.5.24",
         lifespan=lifespan,
     )
 
@@ -61,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(interview_router.router)
     app.include_router(dictation_router.router)
     app.include_router(speech_router.router)
+    app.include_router(question_voice_router.router)
 
     return app
 

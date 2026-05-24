@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for configuration service."""
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.ai.llm_models import LLMModelEntry
 from app.platform.services.config import ConfigService, ProviderConfig
+from app.platform.services.llm_catalog import LLMCatalogService
 
 
 @pytest.fixture
@@ -48,65 +51,137 @@ class TestProviderConfig:
             "timeout": 30.0,
             "locale": "en",
             "speech_model_size": "small",
+            "question_voice_enabled": False,
+            "tts_voice_id": "en_US-lessac-medium",
+            "llm_preset_id": None,
         }
-        assert config.to_dict(mask_secret=True) == {
-            "provider_type": "openai-compatible",
-            "base_url": "http://localhost",
-            "model": "gpt-4",
-            "api_key": "***",
-            "timeout": 30.0,
+        assert config.to_dict(mask_secret=True)["api_key"] == "***"
+
+    def test_to_storage_dict(self):
+        """Application settings persist without LLM fields."""
+        config = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4",
+            api_key="test_key",
+            llm_preset_id="cloud",
+        )
+        assert config.to_storage_dict() == {
+            "timeout": 60.0,
             "locale": "en",
             "speech_model_size": "small",
+            "question_voice_enabled": False,
+            "tts_voice_id": "en_US-lessac-medium",
         }
 
     def test_from_dict(self):
-        """Test from_dict method creates instance correctly."""
+        """Test from_dict reads application settings only."""
         data = {
-            "provider_type": "openai-compatible",
-            "base_url": "http://localhost",
-            "model": "gpt-4",
-            "api_key": "test_key",
             "timeout": 30.0,
+            "locale": "en",
+            "speech_model_size": "medium",
+            "question_voice_enabled": True,
         }
         config = ProviderConfig.from_dict(data)
         assert config.provider_type == "openai-compatible"
-        assert config.base_url == "http://localhost"
-        assert config.model == "gpt-4"
-        assert config.api_key == "test_key"
+        assert config.base_url == ""
+        assert config.model == ""
+        assert config.api_key is None
         assert config.timeout == 30.0
         assert config.locale == "en"
-        assert config.speech_model_size == "small"
+        assert config.speech_model_size == "medium"
+        assert config.question_voice_enabled is True
+
+    def test_from_dict_question_voice_enabled(self):
+        """Test from_dict reads question_voice_enabled when present."""
+        data = {"question_voice_enabled": True}
+        config = ProviderConfig.from_dict(data)
+        assert config.question_voice_enabled is True
 
     def test_from_dict_defaults(self):
         """Test from_dict uses default values when keys are missing."""
-        data = {
-            "base_url": "http://localhost",
-            "model": "gpt-4",
-        }
-        config = ProviderConfig.from_dict(data)
+        config = ProviderConfig.from_dict({})
         assert config.provider_type == "openai-compatible"
         assert config.api_key is None
         assert config.timeout == 60.0
         assert config.locale == "en"
         assert config.speech_model_size == "small"
+        assert config.question_voice_enabled is False
+
+    def test_effective_uses_catalog_base_url(self, monkeypatch):
+        """effective() applies catalog model and base URL."""
+        entry = LLMModelEntry(
+            id="cloud",
+            display_name="Cloud",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="https://api.example.com/v1",
+            api_key_required=True,
+            api_key="secret",
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
+        config = ProviderConfig(
+            provider_type="openai-compatible",
+            base_url="",
+            model="ignored",
+            llm_preset_id="cloud",
+        )
+        effective = config.effective()
+        assert effective.base_url == "https://api.example.com/v1"
+        assert effective.model == "gpt-4"
+        assert effective.api_key == "secret"
 
     def test_from_dict_normalizes_locale(self):
         """Test from_dict normalizes locale codes."""
-        data = {
-            "base_url": "http://localhost",
-            "model": "gpt-4",
-            "locale": " RU ",
-        }
+        data = {"locale": " RU "}
         config = ProviderConfig.from_dict(data)
         assert config.locale == "ru"
 
+    def test_resolve_api_key_from_form_uses_catalog_key(self, monkeypatch):
+        """Blank form values preserve API keys stored in the model catalog."""
+        entry = LLMModelEntry(
+            id="work",
+            display_name="Work",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="https://api.example.com/v1",
+            api_key_required=True,
+            api_key="catalog-secret",
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
+        assert ProviderConfig.resolve_api_key_from_form("", "work") == "catalog-secret"
+
+    def test_resolve_api_key_from_form_accepts_new_key(self):
+        """Non-empty form value replaces the stored API key."""
+        assert ProviderConfig.resolve_api_key_from_form("new-key", "work") == "new-key"
+
+    def test_resolve_api_key_from_form_clears_when_empty_and_no_catalog_key(
+        self, monkeypatch
+    ):
+        """Empty form with no stored catalog key yields no API key."""
+        entry = LLMModelEntry(
+            id="work",
+            display_name="Work",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="https://api.example.com/v1",
+            api_key_required=False,
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
+        assert ProviderConfig.resolve_api_key_from_form("", "work") is None
+
     def test_from_dict_rejects_unknown_locale(self):
         """Test from_dict raises for unsupported locale."""
-        data = {
-            "base_url": "http://localhost",
-            "model": "gpt-4",
-            "locale": "xx",
-        }
+        data = {"locale": "xx"}
         with pytest.raises(ValueError, match="Unsupported locale"):
             ProviderConfig.from_dict(data)
 
@@ -115,31 +190,62 @@ class TestConfigService:
     """Tests for ConfigService class."""
 
     @pytest.fixture
-    def mock_config_path(self, tmp_path):
-        """Fixture providing a patched CONFIG_PATH in a temp directory."""
+    def mock_config_path(self, tmp_path, monkeypatch):
+        """Fixture providing patched config and catalog paths in a temp directory."""
         test_path = tmp_path / "test_config.json"
-        with patch("app.platform.services.config.CONFIG_PATH", test_path):
-            yield test_path
+        catalog_path = tmp_path / "llm_models.json"
+        catalog_path.write_text(
+            json.dumps(
+                {
+                    "selected": "cloud",
+                    "models": {
+                        "cloud": {
+                            "display_name": "Cloud",
+                            "provider_type": "openai-compatible",
+                            "model": "gpt-4",
+                            "base_url": "http://localhost",
+                            "api_key_required": True,
+                            "api_key": "test_key",
+                        }
+                    },
+                }
+            )
+        )
+        monkeypatch.setattr("app.platform.services.config.CONFIG_PATH", test_path)
+        monkeypatch.setattr(
+            "app.platform.services.llm_catalog.LLM_MODELS_PATH", catalog_path
+        )
+        LLMCatalogService.invalidate_cache()
+        yield test_path
 
-    def test_save_and_get_config(self, mock_config_path, config_path):
-        """Test saving and retrieving configuration."""
+    def test_save_and_get_config(self, mock_config_path):
+        """Test saving app settings and selected model."""
+        _config_path = mock_config_path
+        user_path = _config_path.parent / "llm_models.json"
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
             api_key="test_key",
+            llm_preset_id="cloud",
         )
         ConfigService.save_config(config)
 
         retrieved_config = ConfigService.get_config()
-        assert retrieved_config == config
-        assert mock_config_path.exists()
+        assert retrieved_config is not None
+        assert retrieved_config.llm_preset_id == "cloud"
+        assert retrieved_config.model == "gpt-4"
+        stored = json.loads(_config_path.read_text())
+        assert "llm_preset_id" not in stored
+        assert "base_url" not in stored
+        llm_data = json.loads(user_path.read_text())
+        assert llm_data["selected"] == "cloud"
 
     def test_get_config_no_file(self, mock_config_path):
         """Test retrieving config when file does not exist."""
         assert ConfigService.get_config() is None
 
-    def test_delete_config(self, mock_config_path, config_path):
+    def test_delete_config(self, mock_config_path):
         """Test deleting configuration file."""
         config = ProviderConfig(
             provider_type="openai-compatible",
@@ -148,21 +254,35 @@ class TestConfigService:
             api_key="test_key",
         )
         ConfigService.save_config(config)
-        assert config_path.exists()
+        assert mock_config_path.exists()
 
         ConfigService.delete_config()
-        assert not config_path.exists()
+        assert not mock_config_path.exists()
 
     @pytest.mark.asyncio
     async def test_test_connection_success(
-        self, mock_config_path, mock_provider_factory
+        self, mock_config_path, mock_provider_factory, monkeypatch
     ):
         """Test successful provider connection."""
+        entry = LLMModelEntry(
+            id="cloud",
+            display_name="Cloud",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="http://localhost",
+            api_key_required=True,
+            api_key="test_key",
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
             api_key="test_key",
+            llm_preset_id="cloud",
         )
         success, message = await ConfigService.test_connection(config)
         assert success is True
@@ -178,9 +298,22 @@ class TestConfigService:
 
     @pytest.mark.asyncio
     async def test_test_connection_failure_invalid_api_key(
-        self, mock_config_path, mock_provider_factory
+        self, mock_config_path, mock_provider_factory, monkeypatch
     ):
         """Test failed provider connection due to invalid API key."""
+        entry = LLMModelEntry(
+            id="cloud",
+            display_name="Cloud",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="http://localhost",
+            api_key_required=True,
+            api_key="invalid_key",
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
         mock_provider_factory.from_config.return_value.validate.side_effect = (
             ValueError("Authentication failed: Invalid API key")
         )
@@ -189,6 +322,7 @@ class TestConfigService:
             base_url="http://localhost",
             model="gpt-4",
             api_key="invalid_key",
+            llm_preset_id="cloud",
         )
         success, message = await ConfigService.test_connection(config)
         assert success is False
@@ -196,15 +330,29 @@ class TestConfigService:
 
     @pytest.mark.asyncio
     async def test_test_connection_exception(
-        self, mock_config_path, mock_provider_factory
+        self, mock_config_path, mock_provider_factory, monkeypatch
     ):
         """Test failed provider connection due to an exception."""
+        entry = LLMModelEntry(
+            id="cloud",
+            display_name="Cloud",
+            provider_type="openai-compatible",
+            model="gpt-4",
+            base_url="http://localhost",
+            api_key_required=True,
+            api_key="test_key",
+        )
+        monkeypatch.setattr(
+            "app.platform.services.config.LLMCatalogService.get_model",
+            lambda _model_id: entry,
+        )
         mock_provider_factory.from_config.side_effect = ValueError("Test Error")
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
             api_key="test_key",
+            llm_preset_id="cloud",
         )
         success, message = await ConfigService.test_connection(config)
         assert success is False
@@ -215,11 +363,30 @@ class TestConfigService:
         self, mock_config_path, mock_provider_factory
     ):
         """Test creating provider from saved config."""
+        user_path = mock_config_path.parent / "llm_models.json"
+        user_path.write_text(
+            json.dumps(
+                {
+                    "selected": "cloud",
+                    "models": {
+                        "cloud": {
+                            "display_name": "Cloud",
+                            "provider_type": "openai-compatible",
+                            "model": "gpt-4",
+                            "base_url": "http://localhost",
+                            "api_key_required": True,
+                            "api_key": "test_key",
+                        }
+                    },
+                }
+            )
+        )
         config = ProviderConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
             api_key="test_key",
+            llm_preset_id="cloud",
         )
         ConfigService.save_config(config)
 

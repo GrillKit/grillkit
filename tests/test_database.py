@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.shared.infrastructure.database import Base, get_session
 from app.shared.infrastructure.models import Interview
+from tests.helpers.selection import minimal_selection_spec
 
 
 @pytest.fixture
@@ -36,10 +37,10 @@ class TestInterview:
 
     def test_interview_creation(self, test_session):
         """Test creating an Interview record."""
+        spec = minimal_selection_spec()
         session = Interview(
             id="test-session-001",
-            level="junior",
-            category="python",
+            selection_spec=spec,
             status="active",
         )
         test_session.add(session)
@@ -47,16 +48,16 @@ class TestInterview:
 
         result = test_session.query(Interview).filter_by(id="test-session-001").first()
         assert result is not None
-        assert result.level == "junior"
-        assert result.category == "python"
+        assert result.selection_spec == spec
         assert result.status == "active"
 
     def test_session_with_score(self, test_session):
         """Test creating an Interview with a score."""
         session = Interview(
             id="test-session-002",
-            level="senior",
-            category="system-design",
+            selection_spec=minimal_selection_spec(
+                level="senior", categories=["system-design"]
+            ),
             status="completed",
             score=85,
             question_ids='["ds-001","ds-002"]',
@@ -72,8 +73,7 @@ class TestInterview:
         """Test that status defaults to 'active'."""
         session = Interview(
             id="test-session-003",
-            level="mid",
-            category="algorithms",
+            selection_spec=minimal_selection_spec(categories=["algorithms"]),
         )
         test_session.add(session)
         test_session.commit()
@@ -85,8 +85,7 @@ class TestInterview:
         """Test that question_ids defaults to '[]'."""
         session = Interview(
             id="test-session-004",
-            level="junior",
-            category="sql",
+            selection_spec=minimal_selection_spec(categories=["sql"]),
         )
         test_session.add(session)
         test_session.commit()
@@ -98,8 +97,7 @@ class TestInterview:
         """Test that completed_at can be null."""
         session = Interview(
             id="test-session-005",
-            level="junior",
-            category="python",
+            selection_spec=minimal_selection_spec(),
             completed_at=None,
         )
         test_session.add(session)
@@ -112,8 +110,7 @@ class TestInterview:
         """Test that score can be null."""
         session = Interview(
             id="test-session-006",
-            level="junior",
-            category="python",
+            selection_spec=minimal_selection_spec(),
             score=None,
         )
         test_session.add(session)
@@ -126,8 +123,7 @@ class TestInterview:
         """Test that started_at is set automatically."""
         session = Interview(
             id="test-session-007",
-            level="junior",
-            category="python",
+            selection_spec=minimal_selection_spec(),
         )
         test_session.add(session)
         test_session.commit()
@@ -142,10 +138,8 @@ class TestDatabaseFunctions:
 
     def test_init_db_creates_tables(self, test_engine):
         """Test that init_db creates tables."""
-        # Drop tables first
         Base.metadata.drop_all(bind=test_engine)
 
-        # Verify tables don't exist by trying to query
         _Session = sessionmaker(bind=test_engine)  # noqa: N806
         session = _Session()
 
@@ -154,18 +148,15 @@ class TestDatabaseFunctions:
 
         session.close()
 
-        # Create tables
         Base.metadata.create_all(bind=test_engine)
 
-        # Verify tables exist now
         session = _Session()
         result = session.query(Interview).first()
-        assert result is None  # No records yet, but query works
+        assert result is None
         session.close()
 
     def test_get_session_returns_session(self, test_engine, monkeypatch):
         """Test that get_interview returns a Session object."""
-        # Patch the engine used by get_interview
         from app.shared.infrastructure import database
 
         original_engine = database.engine
@@ -179,5 +170,4 @@ class TestDatabaseFunctions:
 
         session.close()
 
-        # Restore original engine
         monkeypatch.setattr(database, "engine", original_engine)

@@ -12,40 +12,37 @@
         <p class="card-subtitle">Configure your AI provider for interview feedback and evaluation</p>
     </div>
 
-    <form method="post" action="/config" class="form">
+    <form method="post" action="/config" class="form" id="config-form">
         <div class="form-group">
-            <label for="provider_type" class="form-label form-label-required">Provider Type</label>
-            <select name="provider_type" id="provider_type" class="form-control" required>
-                {% for provider in providers %}
-                <option value="{{ provider.id }}" {% if config and config.provider_type == provider.id %}selected{% endif %}>
-                    {{ provider.name }}
+            <label for="llm_preset_id" class="form-label form-label-required">Interview model</label>
+            {% if llm_presets %}
+            <select name="llm_preset_id" id="llm_preset_id" class="form-control" required>
+                {% for preset in llm_presets %}
+                <option value="{{ preset.id }}"
+                        {% if selected_llm_preset_id == preset.id %}selected{% endif %}
+                        {% if preset.description %}data-description="{{ preset.description }}"{% endif %}
+                        data-api-key-required="{{ 'true' if preset.api_key_required else 'false' }}">
+                    {{ preset.display_name }}
                 </option>
                 {% endfor %}
             </select>
+            <p class="form-hint" id="llm-preset-description"></p>
+            {% else %}
+            <div class="alert alert-info">
+                No models in the catalog yet. Add one below, then select it and save.
+            </div>
+            <input type="hidden" name="llm_preset_id" value="">
+            {% endif %}
         </div>
 
-        <div class="form-group">
-            <label for="base_url" class="form-label form-label-required">Base URL</label>
-            <input type="url" name="base_url" id="base_url"
-                   class="form-control"
-                   value="{{ config.base_url if config else '' }}"
-                   placeholder="https://api.openai.com/v1" required>
-        </div>
-
-        <div class="form-group">
-            <label for="model" class="form-label form-label-required">Model</label>
-            <input type="text" name="model" id="model"
-                   class="form-control"
-                   value="{{ config.model if config else '' }}"
-                   placeholder="gpt-4" required>
-        </div>
-
-        <div class="form-group">
+        <div class="form-group" id="api-key-group">
             <label for="api_key" class="form-label">API Key <span class="text-muted">(optional for local providers)</span></label>
             <input type="password" name="api_key" id="api_key"
                    class="form-control"
-                   value="{{ config.api_key if config else '' }}"
-                   placeholder="sk-...">
+                   value=""
+                   autocomplete="off"
+                   placeholder="{% if config and config.api_key %}Leave blank to keep existing key{% else %}sk-...{% endif %}">
+            <p class="form-hint">Stored in <code>data/llm_models.json</code> with the selected model.</p>
         </div>
 
         <div class="form-group">
@@ -56,6 +53,15 @@
                 {% endfor %}
             </select>
             <p class="form-hint">Language for AI feedback and voice dictation transcription.</p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <input type="checkbox" name="question_voice_enabled" id="question_voice_enabled" value="true"
+                       {% if config and config.question_voice_enabled %}checked{% endif %}>
+                Read questions aloud
+            </label>
+            <p class="form-hint">When enabled, the interview page reads each question aloud using an offline Piper voice (download on the Configuration page after saving).</p>
         </div>
 
         <div class="form-group">
@@ -85,8 +91,8 @@
         <div class="divider"></div>
 
         <div class="button-group">
-            <button type="submit" class="btn btn-primary">Save Configuration</button>
-            <button type="submit" formaction="/config/test" formmethod="post" class="btn btn-secondary">Test Connection</button>
+            <button type="submit" class="btn btn-primary"{% if not llm_presets %} disabled{% endif %}>Save Configuration</button>
+            <button type="submit" formaction="/config/test" formmethod="post" class="btn btn-secondary"{% if not llm_presets %} disabled{% endif %}>Test Connection</button>
         </div>
     </form>
 
@@ -97,3 +103,72 @@
     </form>
     {% endif %}
 </div>
+
+<div class="card" id="add-llm-model-panel">
+    <div class="card-header">
+        <h2 class="card-title">Add model to catalog</h2>
+        <p class="card-subtitle">Save an OpenAI-compatible provider for reuse in the interview model list</p>
+    </div>
+    <form method="post" action="/config/llm-models" class="form">
+        <div class="form-group">
+            <label for="catalog_model_id" class="form-label form-label-required">Model id</label>
+            <input type="text" name="model_id" id="catalog_model_id" class="form-control"
+                   pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" required
+                   placeholder="my-openai">
+            <p class="form-hint">Lowercase letters, digits, and hyphens. Stored in <code>data/llm_models.json</code>.</p>
+        </div>
+        <div class="form-group">
+            <label for="catalog_display_name" class="form-label form-label-required">Display name</label>
+            <input type="text" name="display_name" id="catalog_display_name" class="form-control" required
+                   placeholder="Work GPT-4">
+        </div>
+        <div class="form-group">
+            <label for="catalog_base_url" class="form-label form-label-required">Base URL</label>
+            <input type="url" name="base_url" id="catalog_base_url" class="form-control" required
+                   placeholder="https://api.openai.com/v1">
+        </div>
+        <div class="form-group">
+            <label for="catalog_model" class="form-label form-label-required">Model name</label>
+            <input type="text" name="model" id="catalog_model" class="form-control" required
+                   placeholder="gpt-4">
+        </div>
+        <div class="form-group">
+            <label for="catalog_api_key" class="form-label">API key</label>
+            <input type="password" name="api_key" id="catalog_api_key" class="form-control"
+                   autocomplete="off" placeholder="sk-...">
+            <p class="form-hint">Optional. Stored in <code>data/llm_models.json</code> with the model.</p>
+        </div>
+        <div class="form-group">
+            <label class="form-label">
+                <input type="checkbox" name="api_key_required" id="catalog_api_key_required" value="true">
+                API key required
+            </label>
+        </div>
+        <button type="submit" class="btn btn-secondary">Add model</button>
+    </form>
+</div>
+
+{% if llm_presets %}
+<script>
+(function () {
+    const presetSelect = document.getElementById("llm_preset_id");
+    const description = document.getElementById("llm-preset-description");
+    const apiKeyGroup = document.getElementById("api-key-group");
+    if (!presetSelect) {
+        return;
+    }
+    function applyPresetMode() {
+        const option = presetSelect.options[presetSelect.selectedIndex];
+        const apiKeyRequired = option.dataset.apiKeyRequired === "true";
+        if (description) {
+            description.textContent = option.dataset.description || "";
+        }
+        if (apiKeyGroup) {
+            apiKeyGroup.hidden = !apiKeyRequired;
+        }
+    }
+    presetSelect.addEventListener("change", applyPresetMode);
+    applyPresetMode();
+})();
+</script>
+{% endif %}

@@ -1,24 +1,6 @@
-<div id="speech-model-status" data-state="{{ status.state }}" data-percent="{{ status.percent }}">
-    <p class="form-hint"><strong>{{ status.model_display_name }}</strong> — transcription language: {{ status.locale_label }}</p>
-
-    {% if status.state == "missing" %}
-    <div class="alert alert-warning">{{ status.message }}</div>
-    <button type="button" class="btn btn-secondary" id="speech-model-download-btn"
-            data-download-url="/speech/model/download">
-        Download speech model
-    </button>
-    {% elif status.state == "downloading" %}
-    <div class="alert alert-info">{{ status.message }} {{ status.percent }}%</div>
-    <div class="progress-bar" role="progressbar" aria-valuenow="{{ status.percent }}" aria-valuemin="0" aria-valuemax="100">
-        <div class="progress-bar-fill" style="width: {{ status.percent }}%;"></div>
-    </div>
-    {% elif status.state == "ready" %}
-    <div class="alert alert-success">{{ status.message }}</div>
-    {% elif status.state == "error" %}
-    <div class="alert alert-error">{{ status.message }}</div>
-    <button type="button" class="btn btn-secondary" id="speech-model-download-btn"
-            data-download-url="/speech/model/download">
-        Retry download
-    </button>
-    {% endif %}
-</div>
+{% set status_hint = "<strong>" ~ status.model_display_name ~ "</strong> — transcription language: " ~ status.locale_label %}
+{% set status_element_id = "speech-model-status" %}
+{% set download_button_id = "speech-model-download-btn" %}
+{% set download_url = "/speech/model/download" %}
+{% set download_label = "Download speech model" %}
+{% include "model_status_panel.html" %}

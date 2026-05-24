@@ -9,6 +9,8 @@ from app.shared.domain.exceptions import (
     InterviewDomainError,
     InterviewNotActiveError,
     InterviewNotFoundError,
+    QuestionTimerNotEnabledError,
+    QuestionTimerNotExpiredError,
     UnansweredAnswerNotFoundError,
 )
 
@@ -36,6 +38,12 @@ def http_exception_from_domain_error(exc: InterviewDomainError) -> HTTPException
     """
     if isinstance(exc, InterviewNotFoundError | AnswerNotFoundError):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, InterviewNotActiveError | UnansweredAnswerNotFoundError):
+    if isinstance(
+        exc,
+        InterviewNotActiveError
+        | UnansweredAnswerNotFoundError
+        | QuestionTimerNotEnabledError
+        | QuestionTimerNotExpiredError,
+    ):
         return HTTPException(status_code=400, detail=str(exc))
     return HTTPException(status_code=400, detail=str(exc))

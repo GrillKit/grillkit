@@ -48,18 +48,3 @@ class ProviderFactory:
             )
 
         raise ValueError(f"Unsupported API type: {api_type}")
-
-    @classmethod
-    def get_provider_types(cls) -> list[dict[str, str]]:
-        """List available API types for UI selection.
-
-        Returns:
-            List of provider type dictionaries with id, name, and description.
-        """
-        return [
-            {
-                "id": "openai-compatible",
-                "name": "OpenAI Compatible",
-                "description": "Any provider with OpenAI-compatible API (OpenAI, Ollama, vLLM)",
-            },
-        ]

@@ -1,55 +1,55 @@
 # GrillKit
 
+
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-2026.5.20-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.5.24-blue.svg)](CHANGELOG.md)
 
-Open-source AI technical interview trainer. Configure an OpenAI-compatible model, pick a topic from YAML question banks, and practice in a real-time WebSocket interview with scoring and feedback.
+Open-source AI technical interview trainer. Configure an OpenAI-compatible model, practice from YAML question banks, and get real-time scoring with optional voice input and question audio.
 
-Release notes: [CHANGELOG.md](CHANGELOG.md) · Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+[Quick start](#quick-start) · [Changelog](CHANGELOG.md) · [Architecture](ARCHITECTURE.md)
 
 ## Screenshots & demo
 
-**Dashboard** — recent sessions and quick start:
+**Dashboard** — recent sessions and quick start
 
-![GrillKit dashboard](assets/dashboard.png)
+<p align="center">
+  <img src="./assets/dashboard.png" alt="GrillKit dashboard" width="900" />
+</p>
 
-**Interview setup** — language, level, topic, and session options:
+**Interview setup** — languages, levels, topics, and session options
 
-![Interview setup](assets/interview-setup.png)
+<p align="center">
+  <img src="./assets/interview-setup.png" alt="Interview setup" width="900" />
+</p>
 
-**Interview session** — real-time Q&A with AI scoring and final evaluation:
+**Interview session** — real-time Q&A with AI scoring and final evaluation
 
-![Completed interview with evaluation](assets/interview-session.png)
+<p align="center">
+  <img src="./assets/interview-session.png" alt="Completed interview with evaluation" width="900" />
+</p>
 
-**Demo video** — full flow from setup to scored feedback:
+**Demo video** — full flow from setup to scored feedback
 
-![Demo video](assets/demo_cut.gif)
+<p align="center">
+  <img src="./assets/demo_cut.gif" alt="Demo video" width="900" />
+</p>
 
 ## Features
 
-- **Interviews** — create a session (language, level, topic, question count), answer in the browser, end when done
-- **Real-time chat** — `WS /interview/{id}/ws`: save answer → AI evaluation → score/feedback → optional follow-up or next question
-- **Scoring** — each round scored 1–5 by the AI; totals and breakdown shown after you end the interview
-- **Follow-ups** — AI-generated probing questions when an answer is insufficient (up to 2 per question)
+- **Interviews** — multi-language setup, several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
+- **Timer** — optional per-round time limit; expired rounds score 0 and the session moves on
+- **Voice** — offline Whisper dictation for answers; optional Piper TTS to read questions aloud
 - **Question banks** — Python and Database/SQL, junior / middle / senior (`data/questions/`)
-- **Locales** — interview language in `data/config.json` (English, Russian, French, Spanish, German); AI feedback uses the locale saved when the session started
+- **Setup** — model catalog on `/config`, interview language, Whisper/Piper downloads from the UI
 - **Dashboard** — recent interview history on the home page
-- **Provider setup** — configure and test an OpenAI-compatible API; settings in `data/config.json`
-- **Persistence** — SQLite (`data/db/grillkit.db`) for interviews and answers
-- **Docker Compose** — recommended way to run locally (port 8000, `./data` volume)
+- **Persistence** — SQLite (`data/db/grillkit.db`); Docker Compose on port 8000 with `./data` volume
 
 ## Roadmap
 
-**In progress**
-
-- Voice input and output in the interview UI
-- Interview timer (session time limit)
-- Optional local model for the interview (e.g. Ollama alongside cloud provider)
-- Response time per question
-
 **Planned**
 
+- Session-wide time limit (total interview duration)
 - More question banks (Go, JavaScript, Java, C++, …)
 - Code editor in the interview UI
 - Custom question banks, PWA / standalone frontend
@@ -59,7 +59,7 @@ Release notes: [CHANGELOG.md](CHANGELOG.md) · Architecture: [ARCHITECTURE.md](A
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-- API key for a cloud provider, **or** a local server (e.g. [Ollama](https://ollama.com/)) with an OpenAI-compatible endpoint
+- API key for a cloud provider, **or** a local OpenAI-compatible server (Ollama, vLLM, …)
 
 ### Run with Docker
 
@@ -71,7 +71,14 @@ docker compose up --build
 
 Open [http://localhost:8000](http://localhost:8000).
 
-`./data` on the host holds SQLite and `config.json`. Question banks, templates, and static files are in the image.
+Optional **question voice** (Piper TTS, same `app` container):
+
+1. Run `docker compose up` (or `uv run uvicorn app.main:app` for development).
+2. Open `/config`, enable **Read questions aloud**, save.
+3. On the Configuration page, use **Download question voice** when prompted (~60 MB per locale voice from Hugging Face).
+4. Start an interview — questions can play aloud; WAV cache lives under `data/tts-cache/v2/{locale}/`.
+
+`./data` on the host holds SQLite, `config.json`, `llm_models.json`, Whisper/Piper models, and TTS cache. Question banks, templates, and static files are in the image.
 
 If bind-mounted `data/` is not writable (Linux UID mismatch):
 
@@ -81,8 +88,8 @@ PUID=$(id -u) PGID=$(id -g) docker compose up --build
 
 ### First-time flow
 
-1. **Configuration** (`/config`) — provider type, base URL, model, interview language, optional API key; test connection, then save.
-2. **New interview** (`/setup`) — language → level → topic, number of questions (interview language is shown read-only from config).
+1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set language; test connection, then save.
+2. **New interview** (`/setup`) — enable one or more programming languages (level per language), select multiple topics, set total question count (at least one per selected topic; interview language is read-only from config).
 3. **Interview** (`/interview/{id}`) — page loads history; answers and completion go over WebSocket.
 
 Without saved provider config, `/setup` redirects to `/config`.
@@ -106,20 +113,35 @@ Any **OpenAI-compatible** HTTP API works (single adapter in code):
 | Ollama | `http://localhost:11434/v1` |
 | vLLM / others | your endpoint + `/v1` |
 
-Provider settings and interview language (`locale`) are stored in `data/config.json` (gitignored). Do not commit API keys.
+### Model catalog
 
-After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the interview language from `locale` (e.g. `ru` → Russian transcription). The app loads the model into memory when the download finishes or on the next startup.
+On `/config`, use **Add model to catalog** to save OpenAI-compatible providers (base URL, model name, optional API key). Entries are stored in [`data/llm_models.json`](data/llm_models.json) (gitignored). Select an interview model from the list, run **Test Connection**, then save.
 
-Optional environment variables: `WHISPER_DEVICE` (`cpu` or `cuda`, default `cpu`), `WHISPER_COMPUTE_TYPE` (`int8` or `float16`, default `int8` on CPU).
+Application settings and interview language (`locale`) live in `data/config.json` (gitignored). Do not commit secrets.
+
+After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the interview language from `locale`. The app loads the model into memory when the download finishes or on the next startup.
+
+**Read questions aloud** (`question_voice_enabled`) requests synthesized audio for question text only (never code blocks). Download the Piper voice on `/config` after enabling the option (~60 MB per voice from Hugging Face).
+
+Optional environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `HF_TOKEN` | Hugging Face read token for faster, more reliable Whisper and Piper model downloads ([create token](https://huggingface.co/settings/tokens)). Passed through in `docker compose` when set on the host. |
+| `WHISPER_DEVICE` | `cpu` or `cuda` (default `cpu`) |
+| `WHISPER_COMPUTE_TYPE` | `int8` or `float16` (default `int8` on CPU) |
 
 ## Data layout
 
 ```
 data/
-├── config.json       # AI provider (gitignored)
-├── db/grillkit.db    # SQLite (gitignored, created on startup)
-├── whisper-models/   # Offline Whisper models per size (gitignored content)
-└── questions/        # YAML banks: {language}/{level}/{category}.yaml
+├── config.json              # Locale, speech/TTS flags, timer defaults (gitignored)
+├── llm_models.json          # Interview model catalog (gitignored)
+├── db/grillkit.db           # SQLite (gitignored, created on startup)
+├── whisper-models/          # Offline Whisper models per size (gitignored content)
+├── piper-voices/            # Piper ONNX voices for question TTS (gitignored content)
+├── tts-cache/               # Cached question WAVs per locale (gitignored content)
+└── questions/               # YAML banks: {language}/{level}/{category}.yaml
 ```
 
 There are no database migrations yet. After a schema change, remove `data/db/grillkit.db` and restart the app to recreate tables.
@@ -128,24 +150,25 @@ There are no database migrations yet. After a schema change, remove `data/db/gri
 
 ```
 app/
-├── main.py           # FastAPI app, routers, static files
-├── api/              # HTTP + WebSocket routes
-├── services/         # Use cases (create, answer, complete, evaluate, config)
-├── domain/           # Progress, scoring rules, exceptions, locales
-├── repositories/     # SQLAlchemy data access
-├── uow.py            # Unit of Work
-├── ai/               # OpenAI-compatible provider
-├── models.py         # Interview, Answer
-└── questions.py      # YAML loader
-templates/            # Jinja2 UI
-static/               # CSS
+├── main.py              # FastAPI app, routers, lifespan
+├── interview/           # Sessions, WebSocket chat, scoring, timer
+├── speech/              # Whisper download + dictation
+├── question_voice/      # Piper TTS, cache, question audio API
+├── platform/            # Provider config, LLM catalog (/config)
+├── shared/              # DB, UoW, locales, artifact download helpers
+└── ai/                  # OpenAI-compatible + faster-whisper adapters
+templates/               # Jinja2 UI
+static/                  # CSS, JS (dictation, timer, question voice)
 tests/
-ARCHITECTURE.md       # Layers, routes, data flows
+ARCHITECTURE.md          # Layers, routes, data flows
 ```
 
 ## Development
 
+CI runs on every pull request and on pushes to `main` (ruff, mypy, pytest). See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
 ```bash
+uv sync --frozen --extra dev
 uv run pytest
 uv run ruff check --fix .
 uv run ruff format .

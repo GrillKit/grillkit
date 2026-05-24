@@ -6,8 +6,8 @@ This module provides functionality for loading interview questions
 from YAML files organized by language, level, and category.
 """
 
-import logging
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 import yaml
@@ -105,7 +105,9 @@ def _resolve_follow_ups(value: Any, locale: str, question_id: str) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in value]
     if not isinstance(value, dict):
-        msg = f"Question {question_id}: invalid follow_ups (expected list or locale map)"
+        msg = (
+            f"Question {question_id}: invalid follow_ups (expected list or locale map)"
+        )
         raise ValueError(msg)
     code = normalize_locale(locale)
     if code in value:
@@ -170,6 +172,34 @@ def load_category(
             )
         )
     return questions
+
+
+def load_categories(
+    language: str,
+    level: str,
+    categories: list[str],
+    locale: str = DEFAULT_LOCALE,
+) -> list[Question]:
+    """Load and merge questions from multiple categories for one language/level.
+
+    Args:
+        language: Programming language slug.
+        level: Difficulty level slug.
+        categories: Category YAML stems to load.
+        locale: Locale for question text.
+
+    Returns:
+        De-duplicated list of questions (first occurrence wins by question id).
+    """
+    seen: set[str] = set()
+    merged: list[Question] = []
+    for category in categories:
+        for question in load_category(language, level, category, locale=locale):
+            if question.id in seen:
+                continue
+            seen.add(question.id)
+            merged.append(question)
+    return merged
 
 
 def list_languages() -> list[str]:

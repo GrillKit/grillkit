@@ -144,8 +144,7 @@ class InterviewEvaluatorService:
     async def evaluate_interview(
         provider: AIProvider,
         questions_answers: list[dict[str, Any]],
-        level: str,
-        category: str,
+        sources_text: str,
         locale: str = DEFAULT_LOCALE,
     ) -> InterviewEvaluation:
         """Provide a final evaluation of an entire interview session.
@@ -154,8 +153,7 @@ class InterviewEvaluatorService:
             provider: Configured AI provider instance.
             questions_answers: List of dicts with question_id, question_text,
                 answer_text, score, round for each answer.
-            level: Interview difficulty level (junior, middle, senior).
-            category: Question category (e.g., python).
+            sources_text: Human-readable list of languages, levels, and topics.
             locale: Language for the final evaluation narrative.
 
         Returns:
@@ -190,8 +188,7 @@ class InterviewEvaluatorService:
             Message(
                 role="user",
                 content=(
-                    f"Interview Level: {level}\n"
-                    f"Category: {category}\n\n"
+                    f"Sources:\n{sources_text}\n\n"
                     f"Questions and Answers:\n{summary_text}"
                 ),
             ),
