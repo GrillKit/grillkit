@@ -11,6 +11,12 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
 
 ## Screenshots & demo
 
+**Demo video** — full flow from setup to scored feedback
+
+<p align="center">
+  <img src="./assets/demo_cut.gif" alt="Demo video" width="900" />
+</p>
+
 **Dashboard** — recent sessions and quick start
 
 <p align="center">
@@ -29,11 +35,6 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
   <img src="./assets/interview-session.png" alt="Completed interview with evaluation" width="900" />
 </p>
 
-**Demo video** — full flow from setup to scored feedback
-
-<p align="center">
-  <img src="./assets/demo_cut.gif" alt="Demo video" width="900" />
-</p>
 
 ## Features
 
