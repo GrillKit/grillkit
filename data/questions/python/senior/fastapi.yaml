@@ -1,0 +1,156 @@
+category: "FastAPI Production"
+track: "python"
+level: "senior"
+
+description: "Senior FastAPI: deployment, observability, security hardening, and high-load patterns"
+
+questions:
+  - id: "fastapi-s-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "uvicorn", "gunicorn"]
+    question:
+      text:
+        en: "How do you deploy FastAPI in production with Uvicorn and Gunicorn workers?"
+        ru: "Как развернуть FastAPI в продакшене с Uvicorn и Gunicorn workers?"
+      code: |
+        gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4 --bind 0.0.0.0:8000
+    follow_ups:
+      en:
+        - "How do you choose the number of workers?"
+        - "What is the difference between Uvicorn alone vs Gunicorn+Uvicorn?"
+      ru:
+        - "Как выбрать количество workers?"
+        - "Чем Uvicorn отличается от Gunicorn+Uvicorn?"
+    expected_points:
+      - "UvicornWorker runs ASGI app in each Gunicorn process"
+      - "Workers ≈ 2×CPU cores + 1 rule of thumb"
+      - "Gunicorn manages process lifecycle and restarts"
+
+  - id: "fastapi-s-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "graceful-shutdown"]
+    question:
+      text:
+        en: "What is graceful shutdown for an ASGI app? How do lifespan and signal handling help?"
+        ru: "Что такое graceful shutdown для ASGI-приложения? Как помогают lifespan и обработка сигналов?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens to in-flight requests during shutdown?"
+        - "How do you drain background tasks?"
+      ru:
+        - "Что происходит с запросами in-flight при остановке?"
+        - "Как завершить background tasks?"
+    expected_points:
+      - "Stop accepting new connections; finish active requests"
+      - "lifespan shutdown closes pools and clients"
+      - "Kubernetes SIGTERM requires timeout-aware cleanup"
+
+  - id: "fastapi-s-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "rate-limiting"]
+    question:
+      text:
+        en: "How do you implement rate limiting in FastAPI at scale?"
+        ru: "Как реализовать rate limiting в FastAPI под нагрузкой?"
+      code: null
+    follow_ups:
+      en:
+        - "Compare in-memory vs Redis-backed rate limiters."
+        - "What algorithms: token bucket vs sliding window?"
+      ru:
+        - "Сравните in-memory и Redis rate limiters."
+        - "Какие алгоритмы: token bucket vs sliding window?"
+    expected_points:
+      - "Per-IP or per-user limits via middleware or dependency"
+      - "Redis for distributed rate limit state"
+      - "Return 429 with Retry-After header"
+
+  - id: "fastapi-s-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "observability"]
+    question:
+      text:
+        en: "How do you add observability (logs, metrics, traces) to a FastAPI service?"
+        ru: "Как добавить observability (логи, метрики, трейсы) в FastAPI-сервис?"
+      code: null
+    follow_ups:
+      en:
+        - "What is OpenTelemetry integration pattern?"
+        - "How do you correlate logs with request IDs?"
+      ru:
+        - "Как интегрировать OpenTelemetry?"
+        - "Как связать логи с request ID?"
+    expected_points:
+      - "Structured logging with request_id middleware"
+      - "Prometheus metrics via middleware or instrumentator"
+      - "OpenTelemetry traces spans per request and DB calls"
+
+  - id: "fastapi-s-005"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["fastapi", "security"]
+    question:
+      text:
+        en: "What security checklist applies to FastAPI APIs in production?"
+        ru: "Какой security checklist применим к FastAPI API в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "How do you prevent mass assignment via Pydantic?"
+        - "What headers should SecurityMiddleware set?"
+      ru:
+        - "Как предотвратить mass assignment через Pydantic?"
+        - "Какие headers должен выставлять SecurityMiddleware?"
+    expected_points:
+      - "HTTPS only, secure cookies, CORS restrictions"
+      - "Input validation via Pydantic; never trust client data"
+      - "Rate limiting, auth on all non-public routes"
+      - "Dependency scanning and secret management"
+
+  - id: "fastapi-s-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "multi-tenant"]
+    question:
+      text:
+        en: "How would you design multi-tenant authentication and data isolation in FastAPI?"
+        ru: "Как спроектировать multi-tenant аутентификацию и изоляцию данных в FastAPI?"
+      code: null
+    follow_ups:
+      en:
+        - "Compare schema-per-tenant vs row-level tenant_id."
+        - "How does tenant context flow through dependencies?"
+      ru:
+        - "Сравните schema-per-tenant и row-level tenant_id."
+        - "Как tenant context проходит через dependencies?"
+    expected_points:
+      - "Tenant ID from JWT claim or subdomain"
+      - "Dependency injects tenant-scoped DB session/filter"
+      - "Row-level security or separate schemas per tenant"
+
+  - id: "fastapi-s-007"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["fastapi", "performance"]
+    question:
+      text:
+        en: "What patterns improve FastAPI throughput under high load?"
+        ru: "Какие паттерны повышают пропускную способность FastAPI под нагрузкой?"
+      code: null
+    follow_ups:
+      en:
+        - "When does async not help?"
+        - "How do connection pools affect latency?"
+      ru:
+        - "Когда async не помогает?"
+        - "Как connection pools влияют на latency?"
+    expected_points:
+      - "Async I/O for concurrent requests; avoid blocking"
+      - "HTTP client and DB connection pooling"
+      - "Caching hot reads; CDN for static assets"
+      - "Horizontal scaling behind load balancer"

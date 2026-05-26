@@ -1,0 +1,185 @@
+category: "Redis Basics"
+track: "database"
+level: "junior"
+
+description: "Redis fundamentals for junior developers: data structures, TTL, and cache-aside pattern"
+
+questions:
+  - id: "redis-j-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["redis", "overview"]
+    question:
+      text:
+        en: "What is Redis and how does it differ from a relational database?"
+        ru: "Что такое Redis и чем он отличается от реляционной БД?"
+      code: null
+    follow_ups:
+      en:
+        - "Is Redis primarily in-memory?"
+        - "What happens when Redis runs out of memory?"
+      ru:
+        - "Redis primarily in-memory?"
+        - "Что происходит при нехватке памяти в Redis?"
+    expected_points:
+      - "Redis: in-memory key-value store with rich data structures"
+      - "Optimized for speed, caching, pub/sub, sessions"
+      - "Not a replacement for primary transactional RDBMS"
+
+  - id: "redis-j-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "strings", "hashes"]
+    question:
+      text:
+        en: "What Redis data structures would you use for a user session vs a user profile hash?"
+        ru: "Какие структуры Redis использовать для user session vs hash профиля?"
+      code: |
+        SET session:abc123 "{user_id: 1}" EX 3600
+        HSET user:1 name "Alice" email "a@example.com"
+    follow_ups:
+      en:
+        - "When use JSON string vs Redis Hash?"
+        - "What commands read hash fields?"
+      ru:
+        - "Когда JSON string, а когда Redis Hash?"
+        - "Какие команды читают поля hash?"
+    expected_points:
+      - "Strings: simple values, JSON blobs, counters (INCR)"
+      - "Hashes: field-value maps for objects"
+      - "HGET, HGETALL, HMSET for hash access"
+
+  - id: "redis-j-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "ttl"]
+    question:
+      text:
+        en: "What is TTL in Redis? How do EXPIRE and SET with EX option work?"
+        ru: "Что такое TTL в Redis? Как работают EXPIRE и SET с опцией EX?"
+      code: |
+        SET cache:article:42 "payload" EX 300
+        EXPIRE cache:article:42 300
+        TTL cache:article:42
+    follow_ups:
+      en:
+        - "What TTL value indicates a key has no expiry?"
+        - "Why set TTL on cache keys?"
+      ru:
+        - "Какое значение TTL означает отсутствие expiry?"
+        - "Зачем ставить TTL на cache keys?"
+    expected_points:
+      - "TTL limits key lifetime in seconds"
+      - "SET EX sets value with expiry atomically"
+      - "TTL -1 means no expire; -2 key missing"
+      - "Prevents unbounded memory growth"
+
+  - id: "redis-j-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "cache-aside"]
+    question:
+      text:
+        en: "Explain the cache-aside pattern with Redis. What happens on cache miss?"
+        ru: "Объясните паттерн cache-aside с Redis. Что происходит при cache miss?"
+      code: null
+    follow_ups:
+      en:
+        - "When do you invalidate or update the cache?"
+        - "What is cache stampede?"
+      ru:
+        - "Когда инвалидировать или обновлять кеш?"
+        - "Что такое cache stampede?"
+    expected_points:
+      - "Read: check cache; on miss load from DB and populate cache"
+      - "Write: update DB then invalidate or update cache"
+      - "Application manages cache logic (vs write-through)"
+
+  - id: "redis-j-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "lists", "sets"]
+    question:
+      text:
+        en: "What are Redis Lists and Sets used for? Give a practical example of each."
+        ru: "Для чего Redis Lists и Sets? Приведите практический пример каждого."
+      code: |
+        LPUSH queue:emails "msg1"
+        SADD tags:article:1 "python" "redis"
+    follow_ups:
+      en:
+        - "How do Sets differ from Lists?"
+        - "What is SISMEMBER used for?"
+      ru:
+        - "Чем Sets отличаются от Lists?"
+        - "Для чего SISMEMBER?"
+    expected_points:
+      - "Lists: ordered queues (LPUSH/BRPOP)"
+      - "Sets: unique unordered collections (tags, online users)"
+      - "Sets support intersection/union for tag queries"
+
+  - id: "redis-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "keys"]
+    question:
+      text:
+        en: "What are Redis key naming best practices? Why avoid KEYS * in production?"
+        ru: "Какие best practices именования ключей Redis? Почему избегать KEYS * в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "What is SCAN used for?"
+        - "How do colons help organize keys?"
+      ru:
+        - "Для чего SCAN?"
+        - "Как двоеточия помогают организовать ключи?"
+    expected_points:
+      - "Use namespaced keys: app:entity:id"
+      - "KEYS * blocks Redis; O(N) scan of all keys"
+      - "SCAN iterates keys incrementally without blocking"
+
+  - id: "redis-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "serialization"]
+    question:
+      text:
+        en: "How should you serialize Python objects stored in Redis?"
+        ru: "Как сериализовать Python-объекты для хранения в Redis?"
+      code: null
+    follow_ups:
+      en:
+        - "Compare JSON vs pickle for Redis values."
+        - "What security risk does pickle have?"
+      ru:
+        - "Сравните JSON и pickle для значений Redis."
+        - "Какой риск безопасности у pickle?"
+    expected_points:
+      - "JSON for simple dicts/lists; human-readable"
+      - "pickle preserves Python types but unsafe on untrusted data"
+      - "Consider msgpack for compact binary serialization"
+
+  - id: "redis-j-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["redis", "python"]
+    question:
+      text:
+        en: "How do you connect to Redis from Python? What is the difference between redis-py sync and redis.asyncio?"
+        ru: "Как подключиться к Redis из Python? Чем отличается redis-py sync от redis.asyncio?"
+      code: |
+        import redis
+        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+        r.set("key", "value")
+    follow_ups:
+      en:
+        - "Why use connection pooling?"
+        - "What does decode_responses=True do?"
+      ru:
+        - "Зачем connection pooling?"
+        - "Что делает decode_responses=True?"
+    expected_points:
+      - "redis-py is the standard client library"
+      - "redis.asyncio for async FastAPI/Django ASGI apps"
+      - "Connection pool reuses TCP connections"

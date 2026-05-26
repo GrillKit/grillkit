@@ -1,0 +1,204 @@
+category: "Django REST Framework"
+track: "python"
+level: "junior"
+
+description: "DRF basics for junior backend: serializers, views, viewsets, and API responses"
+
+questions:
+  - id: "drf-j-001"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "serializer"]
+    question:
+      text:
+        en: "What is a Serializer in Django REST Framework? How does it differ from a Django Form?"
+        ru: "Что такое Serializer в Django REST Framework? Чем он отличается от Django Form?"
+      code: |
+        from rest_framework import serializers
+
+        class ArticleSerializer(serializers.Serializer):
+            title = serializers.CharField(max_length=200)
+            body = serializers.CharField()
+    follow_ups:
+      en:
+        - "What methods validate and convert data to Python objects?"
+        - "When would you use ModelSerializer?"
+      ru:
+        - "Какие методы валидируют данные и преобразуют их в объекты Python?"
+        - "Когда использовать ModelSerializer?"
+    expected_points:
+      - "Serializer validates and converts between Python objects and JSON"
+      - "Similar to Form but oriented toward API representations"
+      - "is_valid(), validated_data, save() for create/update flows"
+
+  - id: "drf-j-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "modelserializer"]
+    question:
+      text:
+        en: "What is ModelSerializer? How does it relate to Django models?"
+        ru: "Что такое ModelSerializer? Как он связан с моделями Django?"
+      code: |
+        class ArticleSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Article
+                fields = ["id", "title", "published"]
+    follow_ups:
+      en:
+        - "How do you exclude sensitive fields from serialization?"
+        - "What is read_only vs write_only on a field?"
+      ru:
+        - "Как исключить чувствительные поля из сериализации?"
+        - "Что означают read_only и write_only у поля?"
+    expected_points:
+      - "ModelSerializer auto-generates fields from a Model"
+      - "Meta.model and Meta.fields control mapping"
+      - "Reduces boilerplate vs manual Serializer fields"
+
+  - id: "drf-j-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "apiview"]
+    question:
+      text:
+        en: "What is APIView in DRF? How do you handle GET and POST in one class?"
+        ru: "Что такое APIView в DRF? Как обработать GET и POST в одном классе?"
+      code: |
+        from rest_framework.views import APIView
+        from rest_framework.response import Response
+
+        class ArticleList(APIView):
+            def get(self, request):
+                return Response([])
+
+            def post(self, request):
+                return Response({"created": True}, status=201)
+    follow_ups:
+      en:
+        - "How does APIView differ from Django's View?"
+        - "What is Response compared to HttpResponse?"
+      ru:
+        - "Чем APIView отличается от View Django?"
+        - "Чем Response отличается от HttpResponse?"
+    expected_points:
+      - "APIView dispatches to get/post/put/delete by HTTP method"
+      - "Response handles JSON rendering and status codes"
+      - "Built-in content negotiation and parser classes"
+
+  - id: "drf-j-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "viewset", "router"]
+    question:
+      text:
+        en: "What is a ViewSet and DefaultRouter in DRF? What endpoints do they generate?"
+        ru: "Что такое ViewSet и DefaultRouter в DRF? Какие эндпоинты они создают?"
+      code: |
+        from rest_framework import viewsets
+        from rest_framework.routers import DefaultRouter
+
+        router = DefaultRouter()
+        router.register(r"articles", ArticleViewSet)
+    follow_ups:
+      en:
+        - "What is the difference between ModelViewSet and ViewSet?"
+        - "How do you add a custom action to a ViewSet?"
+      ru:
+        - "Чем ModelViewSet отличается от ViewSet?"
+        - "Как добавить кастомное действие в ViewSet?"
+    expected_points:
+      - "ViewSet groups list/create/retrieve/update/destroy logic"
+      - "Router maps URLs to ViewSet actions automatically"
+      - "ModelViewSet provides CRUD for a queryset + serializer"
+
+  - id: "drf-j-005"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["drf", "status-codes"]
+    question:
+      text:
+        en: "What HTTP status codes should a REST API return for successful GET, POST, and DELETE?"
+        ru: "Какие HTTP-коды должен возвращать REST API при успешных GET, POST и DELETE?"
+      code: null
+    follow_ups:
+      en:
+        - "When is 201 preferred over 200?"
+        - "What code indicates a validation error?"
+      ru:
+        - "Когда предпочтителен 201 вместо 200?"
+        - "Какой код означает ошибку валидации?"
+    expected_points:
+      - "GET success: 200 OK"
+      - "POST create: 201 Created with Location header optional"
+      - "DELETE success: 204 No Content or 200"
+      - "Client errors: 400 Bad Request, 404 Not Found"
+
+  - id: "drf-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "pagination"]
+    question:
+      text:
+        en: "Why is pagination important in REST APIs? How does DRF PageNumberPagination work?"
+        ru: "Зачем нужна пагинация в REST API? Как работает PageNumberPagination в DRF?"
+      code: null
+    follow_ups:
+      en:
+        - "What query parameters does page pagination typically use?"
+        - "Name another DRF pagination class."
+      ru:
+        - "Какие query-параметры обычно использует постраничная пагинация?"
+        - "Назовите другой класс пагинации DRF."
+    expected_points:
+      - "Pagination limits payload size and DB load"
+      - "PageNumberPagination uses ?page=N query param"
+      - "Response includes count, next, previous links"
+      - "Configure via REST_FRAMEWORK settings or per-view"
+
+  - id: "drf-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "generic-views"]
+    question:
+      text:
+        en: "What are generic views (ListAPIView, CreateAPIView) in DRF? When are they useful?"
+        ru: "Что такое generic views (ListAPIView, CreateAPIView) в DRF? Когда они полезны?"
+      code: |
+        from rest_framework.generics import ListCreateAPIView
+
+        class ArticleListCreate(ListCreateAPIView):
+            queryset = Article.objects.all()
+            serializer_class = ArticleSerializer
+    follow_ups:
+      en:
+        - "How do generic views reduce boilerplate vs APIView?"
+        - "What attributes must you usually set on a generic view?"
+      ru:
+        - "Как generic views уменьшают boilerplate по сравнению с APIView?"
+        - "Какие атрибуты обычно задают в generic view?"
+    expected_points:
+      - "Generic views encapsulate common CRUD patterns"
+      - "Require queryset and serializer_class (or override get_queryset)"
+      - "Good for standard endpoints without custom logic"
+
+  - id: "drf-j-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["drf", "renderers", "parsers"]
+    question:
+      text:
+        en: "What are renderers and parsers in DRF? How does JSON request parsing work?"
+        ru: "Что такое renderers и parsers в DRF? Как работает разбор JSON-запроса?"
+      code: null
+    follow_ups:
+      en:
+        - "How does content negotiation choose a renderer?"
+        - "What parser handles multipart form uploads?"
+      ru:
+        - "Как content negotiation выбирает renderer?"
+        - "Какой parser обрабатывает multipart form uploads?"
+    expected_points:
+      - "Parsers convert request body bytes to Python data"
+      - "Renderers convert response data to bytes (JSON, browsable API)"
+      - "JSONParser is default for application/json requests"

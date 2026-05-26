@@ -1,0 +1,200 @@
+category: "pytest"
+track: "python"
+level: "junior"
+
+description: "pytest essentials for junior developers: discovery, assertions, fixtures, and parametrization"
+
+questions:
+  - id: "pytest-j-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["pytest", "unittest"]
+    question:
+      text:
+        en: "How does pytest differ from the unittest module in the standard library?"
+        ru: "Чем pytest отличается от модуля unittest в стандартной библиотеке?"
+      code: null
+    follow_ups:
+      en:
+        - "Can pytest run unittest TestCase classes?"
+        - "Why do many teams prefer plain assert in pytest?"
+      ru:
+        - "Может ли pytest запускать классы unittest TestCase?"
+        - "Почему многие команды предпочитают обычный assert в pytest?"
+    expected_points:
+      - "pytest uses simple assert instead of many assertX methods"
+      - "Fixtures replace setUp/tearDown with more flexibility"
+      - "pytest can run unittest tests via compatibility layer"
+
+  - id: "pytest-j-002"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["pytest", "discovery"]
+    question:
+      text:
+        en: "How does pytest discover tests? What naming conventions does it use by default?"
+        ru: "Как pytest находит тесты? Какие соглашения об именах используются по умолчанию?"
+      code: null
+    follow_ups:
+      en:
+        - "What files and functions does pytest collect?"
+        - "How do you run tests in a single file or directory?"
+      ru:
+        - "Какие файлы и функции собирает pytest?"
+        - "Как запустить тесты в одном файле или каталоге?"
+    expected_points:
+      - "Files: test_*.py or *_test.py"
+      - "Functions: test_* ; Classes: Test* (no __init__)"
+      - "Run with pytest path/to/test_file.py"
+
+  - id: "pytest-j-003"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["pytest", "assert"]
+    question:
+      text:
+        en: "How does pytest improve plain assert statements? What happens on failure?"
+        ru: "Как pytest улучшает обычные assert? Что происходит при падении теста?"
+      code: |
+        def add(a, b):
+            return a + b
+
+        def test_add():
+            assert add(2, 3) == 5
+    follow_ups:
+      en:
+        - "What is assertion introspection?"
+        - "How do you see local variables on failure?"
+      ru:
+        - "Что такое assertion introspection?"
+        - "Как увидеть локальные переменные при падении?"
+    expected_points:
+      - "pytest rewrites assert to show left/right values on failure"
+      - "No need for self.assertEqual boilerplate"
+      - "Failures show line number and diff for comparisons"
+
+  - id: "pytest-j-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["pytest", "fixtures"]
+    question:
+      text:
+        en: "What is a pytest fixture? How do you declare and use one?"
+        ru: "Что такое фикстура pytest? Как её объявить и использовать?"
+      code: |
+        import pytest
+
+        @pytest.fixture
+        def sample_user():
+            return {"id": 1, "name": "Alice"}
+
+        def test_user_name(sample_user):
+            assert sample_user["name"] == "Alice"
+    follow_ups:
+      en:
+        - "What is the default scope of a fixture?"
+        - "How does pytest inject fixtures by parameter name?"
+      ru:
+        - "Какой scope у фикстуры по умолчанию?"
+        - "Как pytest подставляет фикстуры по имени параметра?"
+    expected_points:
+      - "@pytest.fixture decorates a setup function"
+      - "Tests request fixtures as function parameters"
+      - "Default scope is function (once per test)"
+
+  - id: "pytest-j-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["pytest", "parametrize"]
+    question:
+      text:
+        en: "What does @pytest.mark.parametrize do? Give an example testing multiple inputs."
+        ru: "Что делает @pytest.mark.parametrize? Приведите пример проверки нескольких входов."
+      code: |
+        import pytest
+
+        @pytest.mark.parametrize("a,b,expected", [(1, 2, 3), (0, 0, 0), (-1, 1, 0)])
+        def test_add(a, b, expected):
+            assert a + b == expected
+    follow_ups:
+      en:
+        - "How many test cases does parametrize generate?"
+        - "Can you combine parametrize with fixtures?"
+      ru:
+        - "Сколько тест-кейсов создаёт parametrize?"
+        - "Можно ли сочетать parametrize с фикстурами?"
+    expected_points:
+      - "Runs the same test function with multiple argument sets"
+      - "Each tuple becomes a separate test case in output"
+      - "Reduces duplicate test code"
+
+  - id: "pytest-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["pytest", "conftest"]
+    question:
+      text:
+        en: "What is conftest.py in pytest? How are fixtures shared across test modules?"
+        ru: "Что такое conftest.py в pytest? Как фикстуры разделяются между модулями тестов?"
+      code: null
+    follow_ups:
+      en:
+        - "Where can conftest.py be placed in the directory tree?"
+        - "Do you need to import fixtures from conftest?"
+      ru:
+        - "Где можно размещать conftest.py в дереве каталогов?"
+        - "Нужно ли импортировать фикстуры из conftest?"
+    expected_points:
+      - "conftest.py holds shared fixtures for a directory subtree"
+      - "pytest auto-discovers fixtures without explicit imports"
+      - "Nested conftest files apply to their package scope"
+
+  - id: "pytest-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["pytest", "raises"]
+    question:
+      text:
+        en: "How do you test that code raises an expected exception in pytest?"
+        ru: "Как в pytest проверить, что код выбрасывает ожидаемое исключение?"
+      code: |
+        import pytest
+
+        def divide(a, b):
+            return a / b
+
+        def test_divide_by_zero():
+            with pytest.raises(ZeroDivisionError):
+                divide(1, 0)
+    follow_ups:
+      en:
+        - "How do you match the exception message with pytest.raises?"
+        - "What is the difference between raises and try/except in tests?"
+      ru:
+        - "Как проверить текст сообщения исключения с pytest.raises?"
+        - "Чем raises отличается от try/except в тестах?"
+    expected_points:
+      - "pytest.raises(ExceptionType) as context manager"
+      - "Test fails if exception is not raised or wrong type"
+      - "match= parameter checks exception message regex"
+
+  - id: "pytest-j-008"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["pytest", "cli"]
+    question:
+      text:
+        en: "How do you run a subset of tests with pytest using -k and -m?"
+        ru: "Как запустить подмножество тестов в pytest с помощью -k и -m?"
+      code: null
+    follow_ups:
+      en:
+        - "How do you mark a test as slow or integration?"
+        - "What does pytest -x do?"
+      ru:
+        - "Как пометить тест как slow или integration?"
+        - "Что делает pytest -x?"
+    expected_points:
+      - "-k filters by substring expression on test names"
+      - "-m runs tests with given mark (e.g. @pytest.mark.slow)"
+      - "-x stops on first failure; -v verbose output"

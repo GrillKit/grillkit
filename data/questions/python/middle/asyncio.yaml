@@ -1,0 +1,202 @@
+category: "Asyncio Advanced"
+track: "python"
+level: "middle"
+
+description: "Intermediate asyncio: structured concurrency, queues, executors, cancellation, and antipatterns"
+
+questions:
+  - id: "asyncio-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "taskgroup"]
+    question:
+      text:
+        en: "What is asyncio.TaskGroup (Python 3.11+)? How does it improve structured concurrency?"
+        ru: "Что такое asyncio.TaskGroup (Python 3.11+)? Как он улучшает structured concurrency?"
+      code: |
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(fetch(url1))
+            tg.create_task(fetch(url2))
+    follow_ups:
+      en:
+        - "What happens if one task in TaskGroup fails?"
+        - "How does TaskGroup compare to gather?"
+      ru:
+        - "Что происходит при падении одной задачи в TaskGroup?"
+        - "Чем TaskGroup отличается от gather?"
+    expected_points:
+      - "TaskGroup cancels sibling tasks on first failure"
+      - "Structured concurrency: clear parent-child task lifetime"
+      - "Preferred over gather for related task groups"
+
+  - id: "asyncio-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "queue"]
+    question:
+      text:
+        en: "How does asyncio.Queue work? Give a producer-consumer example."
+        ru: "Как работает asyncio.Queue? Приведите пример producer-consumer."
+      code: |
+        queue = asyncio.Queue(maxsize=10)
+
+        async def producer():
+            await queue.put(item)
+
+        async def consumer():
+            item = await queue.get()
+            queue.task_done()
+    follow_ups:
+      en:
+        - "What is the difference between Queue and PriorityQueue?"
+        - "How do you wait until all items are processed?"
+      ru:
+        - "Чем Queue отличается от PriorityQueue?"
+        - "Как дождаться обработки всех элементов?"
+    expected_points:
+      - "Queue coordinates async producers and consumers"
+      - "put/get are awaitable; maxsize limits backpressure"
+      - "join() waits for task_done() count to match"
+
+  - id: "asyncio-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "locks"]
+    question:
+      text:
+        en: "What synchronization primitives does asyncio provide? When use Lock vs Semaphore?"
+        ru: "Какие примитивы синхронизации есть в asyncio? Когда Lock, а когда Semaphore?"
+      code: |
+        lock = asyncio.Lock()
+        sem = asyncio.Semaphore(5)
+
+        async with lock:
+            ...
+
+        async with sem:
+            ...
+    follow_ups:
+      en:
+        - "Why must you not use threading.Lock in async code?"
+        - "What is asyncio.Event used for?"
+      ru:
+        - "Почему нельзя использовать threading.Lock в async?"
+        - "Для чего asyncio.Event?"
+    expected_points:
+      - "Lock: exclusive access to shared async state"
+      - "Semaphore: limit concurrent access (pool of N)"
+      - "Use asyncio primitives, not threading locks, in coroutines"
+
+  - id: "asyncio-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "executor"]
+    question:
+      text:
+        en: "What is loop.run_in_executor()? When must you use it?"
+        ru: "Что такое loop.run_in_executor()? Когда его нужно использовать?"
+      code: |
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, blocking_io, arg)
+    follow_ups:
+      en:
+        - "What executor is used when None is passed?"
+        - "How does this differ from making the library async-native?"
+      ru:
+        - "Какой executor используется при None?"
+        - "Чем это отличается от нативной async-библиотеки?"
+    expected_points:
+      - "Runs blocking callable in a thread/process pool"
+      - "Default None uses ThreadPoolExecutor"
+      - "Bridge sync libraries (CPU/IO blocking) without freezing event loop"
+
+  - id: "asyncio-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "cancellation"]
+    question:
+      text:
+        en: "How does task cancellation work in asyncio? What is asyncio.shield()?"
+        ru: "Как работает отмена задач в asyncio? Что такое asyncio.shield()?"
+      code: |
+        task = asyncio.create_task(long_running())
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+    follow_ups:
+      en:
+        - "What should cleanup code do on CancelledError?"
+        - "When is shield appropriate?"
+      ru:
+        - "Что должен делать cleanup при CancelledError?"
+        - "Когда уместен shield?"
+    expected_points:
+      - "cancel() schedules CancelledError at next await"
+      - "Coroutines should re-raise CancelledError after cleanup"
+      - "shield protects inner task from external cancellation"
+
+  - id: "asyncio-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "timeout"]
+    question:
+      text:
+        en: "Compare asyncio.wait_for, asyncio.timeout, and manual cancellation for timeouts."
+        ru: "Сравните asyncio.wait_for, asyncio.timeout и ручную отмену для таймаутов."
+      code: null
+    follow_ups:
+      en:
+        - "Which approach is recommended in Python 3.11+?"
+        - "What happens to the underlying coroutine after timeout?"
+      ru:
+        - "Какой подход рекомендуется в Python 3.11+?"
+        - "Что происходит с корутиной после таймаута?"
+    expected_points:
+      - "wait_for wraps coroutine with timeout (legacy but common)"
+      - "asyncio.timeout context manager (3.11+) preferred style"
+      - "Timed-out tasks are cancelled; ensure resource cleanup"
+
+  - id: "asyncio-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "antipattern"]
+    question:
+      text:
+        en: "What are common asyncio antipatterns in production code?"
+        ru: "Какие типичные антипаттерны asyncio встречаются в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "Why is creating a new event loop per request bad?"
+        - "What is fire-and-forget without tracking tasks?"
+      ru:
+        - "Почему плохо создавать новый event loop на запрос?"
+        - "Что такое fire-and-forget без отслеживания задач?"
+    expected_points:
+      - "Blocking sync I/O inside async def"
+      - "Unbounded task creation without backpressure"
+      - "Mixing threads and asyncio without clear boundaries"
+      - "Not handling CancelledError during shutdown"
+
+  - id: "asyncio-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["asyncio", "integration"]
+    question:
+      text:
+        en: "How do async HTTP clients and DB drivers integrate with asyncio?"
+        ru: "Как async HTTP-клиенты и DB-драйверы интегрируются с asyncio?"
+      code: null
+    follow_ups:
+      en:
+        - "Name one async HTTP library and one async PostgreSQL driver."
+        - "Why share one ClientSession across requests?"
+      ru:
+        - "Назовите async HTTP-библиотеку и async PostgreSQL-драйвер."
+        - "Зачем переиспользовать один ClientSession?"
+    expected_points:
+      - "Libraries expose async methods that await I/O"
+      - "aiohttp/httpx for HTTP; asyncpg/aiosqlite for DB"
+      - "Reuse connections/sessions via app lifespan or pools"

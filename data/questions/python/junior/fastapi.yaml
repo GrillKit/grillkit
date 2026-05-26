@@ -1,0 +1,211 @@
+category: "FastAPI"
+track: "python"
+level: "junior"
+
+description: "FastAPI fundamentals for junior backend: routing, Pydantic, dependency injection basics, and API testing"
+
+questions:
+  - id: "fastapi-j-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["fastapi", "asgi", "wsgi"]
+    question:
+      text:
+        en: "What is the difference between WSGI and ASGI? Why does FastAPI use ASGI?"
+        ru: "В чём разница между WSGI и ASGI? Почему FastAPI использует ASGI?"
+      code: null
+    follow_ups:
+      en:
+        - "Can a WSGI app handle WebSockets natively?"
+        - "Name one ASGI server used with FastAPI in production."
+      ru:
+        - "Может ли WSGI-приложение нативно обрабатывать WebSockets?"
+        - "Назовите один ASGI-сервер для FastAPI в продакшене."
+    expected_points:
+      - "WSGI is synchronous request-response only"
+      - "ASGI supports async, WebSockets, and long-lived connections"
+      - "FastAPI is built on Starlette (ASGI) for high concurrency"
+
+  - id: "fastapi-j-002"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["fastapi", "routing"]
+    question:
+      text:
+        en: "How do you define HTTP routes in FastAPI? Explain path parameters vs query parameters."
+        ru: "Как объявить HTTP-маршруты в FastAPI? Объясните разницу между path- и query-параметрами."
+      code: |
+        from fastapi import FastAPI
+
+        app = FastAPI()
+
+        @app.get("/items/{item_id}")
+        async def read_item(item_id: int, q: str | None = None):
+            return {"item_id": item_id, "q": q}
+    follow_ups:
+      en:
+        - "How does FastAPI validate that item_id is an integer?"
+        - "What HTTP method decorator would you use for creating a resource?"
+      ru:
+        - "Как FastAPI проверяет, что item_id — целое число?"
+        - "Какой декоратор HTTP-метода использовать для создания ресурса?"
+    expected_points:
+      - "Routes use decorators like @app.get, @app.post"
+      - "Path parameters are in the URL path; query parameters after ?"
+      - "Type hints drive automatic validation and OpenAPI docs"
+
+  - id: "fastapi-j-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["fastapi", "pydantic", "validation"]
+    question:
+      text:
+        en: "How does Pydantic validate request bodies in FastAPI? What happens on validation failure?"
+        ru: "Как Pydantic валидирует тело запроса в FastAPI? Что происходит при ошибке валидации?"
+      code: |
+        from pydantic import BaseModel, Field
+
+        class ItemCreate(BaseModel):
+            name: str = Field(min_length=1, max_length=100)
+            price: float = Field(gt=0)
+    follow_ups:
+      en:
+        - "What HTTP status code does FastAPI return for invalid body?"
+        - "How do response models differ from request models?"
+      ru:
+        - "Какой HTTP-код возвращает FastAPI при невалидном теле?"
+        - "Чем response models отличаются от request models?"
+    expected_points:
+      - "Pydantic models parse JSON into typed Python objects"
+      - "Validation errors return 422 Unprocessable Entity with details"
+      - "response_model filters/validates outgoing data"
+
+  - id: "fastapi-j-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["fastapi", "depends"]
+    question:
+      text:
+        en: "What is FastAPI's Depends() used for? Give a simple example of dependency injection."
+        ru: "Для чего используется Depends() в FastAPI? Приведите простой пример внедрения зависимостей."
+      code: |
+        from fastapi import Depends, FastAPI
+
+        app = FastAPI()
+
+        def get_pagination(skip: int = 0, limit: int = 10):
+            return {"skip": skip, "limit": limit}
+
+        @app.get("/items")
+        async def list_items(pagination=Depends(get_pagination)):
+            return pagination
+    follow_ups:
+      en:
+        - "Can dependencies depend on other dependencies?"
+        - "What is the difference between a dependency and a global variable?"
+      ru:
+        - "Могут ли зависимости зависеть от других зависимостей?"
+        - "Чем зависимость отличается от глобальной переменной?"
+    expected_points:
+      - "Depends injects the return value of a callable into the endpoint"
+      - "Useful for shared logic: DB sessions, auth, pagination"
+      - "Dependencies are resolved per request and can be nested"
+
+  - id: "fastapi-j-005"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["fastapi", "openapi", "docs"]
+    question:
+      text:
+        en: "How does FastAPI generate API documentation? What URLs are available by default?"
+        ru: "Как FastAPI генерирует документацию API? Какие URL доступны по умолчанию?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the OpenAPI schema used for?"
+        - "How can you hide an endpoint from the docs?"
+      ru:
+        - "Для чего используется схема OpenAPI?"
+        - "Как скрыть эндпоинт из документации?"
+    expected_points:
+      - "OpenAPI schema is auto-generated from routes and type hints"
+      - "/docs serves Swagger UI, /redoc serves ReDoc"
+      - "Pydantic models define request/response schemas in the spec"
+
+  - id: "fastapi-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["fastapi", "testing", "testclient"]
+    question:
+      text:
+        en: "How do you test a FastAPI endpoint without running a real server? What is TestClient?"
+        ru: "Как протестировать эндпоинт FastAPI без запуска реального сервера? Что такое TestClient?"
+      code: |
+        from fastapi.testclient import TestClient
+        from main import app
+
+        client = TestClient(app)
+
+        def test_read_root():
+            response = client.get("/")
+            assert response.status_code == 200
+    follow_ups:
+      en:
+        - "Does TestClient work with async endpoints?"
+        - "How would you send JSON in a POST test?"
+      ru:
+        - "Работает ли TestClient с async-эндпоинтами?"
+        - "Как отправить JSON в POST-тесте?"
+    expected_points:
+      - "TestClient wraps the ASGI app in-process"
+      - "No network required; suitable for unit/integration tests"
+      - "Use client.post(..., json={...}) for JSON bodies"
+
+  - id: "fastapi-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["fastapi", "status-codes", "httpexception"]
+    question:
+      text:
+        en: "How do you return custom HTTP status codes and error responses in FastAPI?"
+        ru: "Как вернуть произвольные HTTP-коды и ответы об ошибках в FastAPI?"
+      code: |
+        from fastapi import HTTPException
+
+        @app.get("/items/{item_id}")
+        async def read_item(item_id: int):
+            if item_id < 1:
+                raise HTTPException(status_code=404, detail="Item not found")
+            return {"item_id": item_id}
+    follow_ups:
+      en:
+        - "What is the difference between raising HTTPException and returning a Response?"
+        - "How do you set a 201 Created status on POST?"
+      ru:
+        - "Чем отличается raise HTTPException от возврата Response?"
+        - "Как вернуть статус 201 Created при POST?"
+    expected_points:
+      - "HTTPException raises a structured error response"
+      - "Status codes can be set via decorator or status_code parameter"
+      - "Use JSONResponse or Response for full control over body and headers"
+
+  - id: "fastapi-j-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["fastapi", "async"]
+    question:
+      text:
+        en: "Should FastAPI path operation functions be async def or def? When does it matter?"
+        ru: "Должны ли функции-обработчики FastAPI быть async def или def? Когда это важно?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens if you call blocking I/O inside async def?"
+        - "When is def preferred over async def?"
+      ru:
+        - "Что происходит при блокирующем I/O внутри async def?"
+        - "Когда предпочтительнее def, а не async def?"
+    expected_points:
+      - "async def for I/O-bound work that supports await"
+      - "Blocking calls in async def block the event loop"
+      - "def runs in a thread pool; use for sync libraries without async support"

@@ -1,0 +1,177 @@
+category: "Schema Migrations"
+track: "database"
+level: "middle"
+
+description: "Schema migrations with Alembic and Django: zero-downtime strategies, rollback, and drift detection"
+
+questions:
+  - id: "db-mig-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["alembic", "sqlalchemy"]
+    question:
+      text:
+        en: "What is Alembic and how does it relate to SQLAlchemy?"
+        ru: "Что такое Alembic и как он связан с SQLAlchemy?"
+      code: |
+        alembic revision --autogenerate -m "add users table"
+        alembic upgrade head
+    follow_ups:
+      en:
+        - "What is stored in alembic_version?"
+        - "How does autogenerate detect changes?"
+      ru:
+        - "Что хранится в alembic_version?"
+        - "Как autogenerate обнаруживает изменения?"
+    expected_points:
+      - "Alembic: migration tool for SQLAlchemy projects"
+      - "Revision files with upgrade()/downgrade() functions"
+      - "Tracks applied revision in alembic_version table"
+
+  - id: "db-mig-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "migrations"]
+    question:
+      text:
+        en: "How do Django migrations work? What is the difference between makemigrations and migrate?"
+        ru: "Как работают миграции Django? В чём разница между makemigrations и migrate?"
+      code: null
+    follow_ups:
+      en:
+        - "What is squashing migrations?"
+        - "How do data migrations differ from schema migrations?"
+      ru:
+        - "Что такое squashing migrations?"
+        - "Чем data migrations отличаются от schema migrations?"
+    expected_points:
+      - "makemigrations creates migration files from model changes"
+      - "migrate applies migrations to database"
+      - "RunPython for data migrations; SeparateDatabaseAndState for complex ops"
+
+  - id: "db-mig-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["migrations", "rollback"]
+    question:
+      text:
+        en: "How do you roll back a failed migration safely?"
+        ru: "Как безопасно откатить неудачную миграцию?"
+      code: null
+    follow_ups:
+      en:
+        - "When is downgrade not reversible?"
+        - "What is a backup strategy before migrations?"
+      ru:
+        - "Когда downgrade необратим?"
+        - "Какая стратегия backup перед миграциями?"
+    expected_points:
+      - "Alembic downgrade -1; Django migrate app zero"
+      - "Destructive changes (drop column) may lose data"
+      - "Backup/snapshot before production migrations"
+
+  - id: "db-mig-m-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["migrations", "zero-downtime"]
+    question:
+      text:
+        en: "What is a zero-downtime migration strategy for adding a NOT NULL column?"
+        ru: "Как мигрировать без даунтайма при добавлении NOT NULL колонки?"
+      code: null
+    follow_ups:
+      en:
+        - "Why not add NOT NULL with DEFAULT in one step on large tables?"
+        - "What is expand-contract pattern?"
+      ru:
+        - "Почему нельзя добавить NOT NULL с DEFAULT одним шагом на больших таблицах?"
+        - "Что такое expand-contract pattern?"
+    expected_points:
+      - "Expand: add nullable column, backfill, add constraint"
+      - "Avoid long table locks on PostgreSQL"
+      - "Contract: remove old column in separate release"
+
+  - id: "db-mig-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["migrations", "ci"]
+    question:
+      text:
+        en: "How do you detect schema drift between environments in CI?"
+        ru: "Как обнаружить schema drift между окружениями в CI?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens if someone edits DB manually in staging?"
+        - "How does migrate --check help?"
+      ru:
+        - "Что если кто-то правил БД в staging вручную?"
+        - "Как помогает migrate --check?"
+    expected_points:
+      - "Apply migrations in CI on fresh DB before deploy"
+      - "Compare migration state vs models (django migrate --plan)"
+      - "Never edit production schema manually"
+
+  - id: "db-mig-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["alembic", "branching"]
+    question:
+      text:
+        en: "How do you handle parallel migration branches in Alembic?"
+        ru: "Как обрабатывать параллельные ветки миграций в Alembic?"
+      code: null
+    follow_ups:
+      en:
+        - "What is alembic merge?"
+        - "How do teams avoid migration conflicts?"
+      ru:
+        - "Что такое alembic merge?"
+        - "Как команды избегают конфликтов миграций?"
+    expected_points:
+      - "Multiple heads from parallel feature branches"
+      - "alembic merge creates merge revision"
+      - "Linearize before deploy; one head in production"
+
+  - id: "db-mig-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["migrations", "indexes"]
+    question:
+      text:
+        en: "How do you add an index to a large PostgreSQL table with minimal locking?"
+        ru: "Как добавить index на большую таблицу PostgreSQL с минимальной блокировкой?"
+      code: |
+        CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+    follow_ups:
+      en:
+        - "Why is regular CREATE INDEX problematic on big tables?"
+        - "Can CONCURRENTLY run inside a transaction?"
+      ru:
+        - "Почему обычный CREATE INDEX проблемен на больших таблицах?"
+        - "Можно ли CONCURRENTLY внутри транзакции?"
+    expected_points:
+      - "CREATE INDEX CONCURRENTLY avoids long exclusive locks"
+      - "Takes longer but allows reads/writes"
+      - "Cannot run inside transaction block"
+
+  - id: "db-mig-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["migrations", "django", "deployment"]
+    question:
+      text:
+        en: "When should migrations run in deployment: before or after new code?"
+        ru: "Когда запускать миграции при деплое: до или после нового кода?"
+      code: null
+    follow_ups:
+      en:
+        - "What is backward-compatible migration rule?"
+        - "How handle rename column across two deploys?"
+      ru:
+        - "Что такое правило backward-compatible migration?"
+        - "Как переименовать колонку за два деплоя?"
+    expected_points:
+      - "Backward-compatible migrations allow rolling deploys"
+      - "Add column before code uses it; remove column after code stops using"
+      - "Run migrations as separate deploy step with monitoring"

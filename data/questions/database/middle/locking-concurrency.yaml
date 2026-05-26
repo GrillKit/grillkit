@@ -1,0 +1,181 @@
+category: "Locking and Concurrency"
+track: "database"
+level: "middle"
+
+description: "Database locking, isolation levels, deadlocks, and optimistic vs pessimistic concurrency"
+
+questions:
+  - id: "db-lock-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["transactions", "isolation"]
+    question:
+      text:
+        en: "Explain the four standard transaction isolation levels. What anomaly does each prevent?"
+        ru: "Объясните четыре стандартных уровня изоляции транзакций. Какую аномалию предотвращает каждый?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the default in PostgreSQL vs MySQL InnoDB?"
+        - "What is phantom read?"
+      ru:
+        - "Какой default в PostgreSQL vs MySQL InnoDB?"
+        - "Что такое phantom read?"
+    expected_points:
+      - "READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE"
+      - "Dirty read, non-repeatable read, phantom read"
+      - "Higher isolation = more locking, less concurrency"
+
+  - id: "db-lock-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["locking", "select-for-update"]
+    question:
+      text:
+        en: "What does SELECT FOR UPDATE do? When would you use it?"
+        ru: "Что делает SELECT FOR UPDATE? Когда его использовать?"
+      code: |
+        BEGIN;
+        SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        COMMIT;
+    follow_ups:
+      en:
+        - "What is SELECT FOR UPDATE SKIP LOCKED?"
+        - "How does MVCC interact with row locks in PostgreSQL?"
+      ru:
+        - "Что такое SELECT FOR UPDATE SKIP LOCKED?"
+        - "Как MVCC взаимодействует с row locks в PostgreSQL?"
+    expected_points:
+      - "Locks selected rows until transaction ends"
+      - "Pessimistic locking for balance transfers, inventory"
+      - "Prevents concurrent updates from lost updates"
+
+  - id: "db-lock-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["deadlock"]
+    question:
+      text:
+        en: "What is a database deadlock? How do databases detect and resolve them?"
+        ru: "Что такое deadlock в БД? Как СУБД обнаруживает и разрешает их?"
+      code: null
+    follow_ups:
+      en:
+        - "How can application code prevent deadlocks?"
+        - "What error does PostgreSQL return on deadlock?"
+      ru:
+        - "Как код приложения предотвращает deadlocks?"
+        - "Какую ошибку возвращает PostgreSQL при deadlock?"
+    expected_points:
+      - "Circular wait: T1 locks A waits B, T2 locks B waits A"
+      - "DB detects cycle and aborts one transaction"
+      - "Consistent lock ordering prevents many deadlocks"
+
+  - id: "db-lock-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["optimistic-locking"]
+    question:
+      text:
+        en: "Compare optimistic and pessimistic locking. How is optimistic locking implemented with a version column?"
+        ru: "Сравните optimistic и pessimistic locking. Как optimistic locking реализуют через version column?"
+      code: |
+        UPDATE products
+        SET stock = stock - 1, version = version + 1
+        WHERE id = 42 AND version = 5;
+    follow_ups:
+      en:
+        - "When prefer optimistic over pessimistic?"
+        - "What should the app do when UPDATE affects 0 rows?"
+      ru:
+        - "Когда optimistic лучше pessimistic?"
+        - "Что делать приложению, если UPDATE затронул 0 строк?"
+    expected_points:
+      - "Optimistic: check version at write; no long-held locks"
+      - "Good for low contention; retry on conflict"
+      - "Pessimistic: lock rows upfront for high contention"
+
+  - id: "db-lock-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["mvcc", "postgresql"]
+    question:
+      text:
+        en: "How does MVCC in PostgreSQL affect readers and writers?"
+        ru: "Как MVCC в PostgreSQL влияет на readers и writers?"
+      code: null
+    follow_ups:
+      en:
+        - "Do readers block writers in PostgreSQL?"
+        - "What causes bloat requiring VACUUM?"
+      ru:
+        - "Блокируют ли readers writers в PostgreSQL?"
+        - "Что вызывает bloat и необходимость VACUUM?"
+    expected_points:
+      - "Readers see snapshot; writers create new row versions"
+      - "Readers generally do not block writers"
+      - "Old versions cleaned by VACUUM"
+
+  - id: "db-lock-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["locking", "table-level"]
+    question:
+      text:
+        en: "What is the difference between row-level and table-level locks?"
+        ru: "В чём разница между row-level и table-level locks?"
+      code: null
+    follow_ups:
+      en:
+        - "When does ALTER TABLE need exclusive lock?"
+        - "What is lock escalation?"
+      ru:
+        - "Когда ALTER TABLE требует exclusive lock?"
+        - "Что такое lock escalation?"
+    expected_points:
+      - "Row locks: fine-grained, better concurrency"
+      - "Table locks: DDL, full scans, some bulk operations"
+      - "Long migrations can block production traffic"
+
+  - id: "db-lock-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["transactions", "application"]
+    question:
+      text:
+        en: "What transaction boundaries should application code respect?"
+        ru: "Какие границы транзакций должен соблюдать код приложения?"
+      code: null
+    follow_ups:
+      en:
+        - "Why keep transactions short?"
+        - "What is long-running transaction risk?"
+      ru:
+        - "Зачем держать транзакции короткими?"
+        - "Какой риск у long-running transaction?"
+    expected_points:
+      - "Start transaction close to work; commit promptly"
+      - "Avoid user think time inside transactions"
+      - "Long transactions hold locks and prevent VACUUM cleanup"
+
+  - id: "db-lock-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["isolation", "django", "sqlalchemy"]
+    question:
+      text:
+        en: "How do Django and SQLAlchemy manage transactions by default?"
+        ru: "Как Django и SQLAlchemy управляют транзакциями по умолчанию?"
+      code: null
+    follow_ups:
+      en:
+        - "What is autocommit mode?"
+        - "How does @transaction.atomic work in Django?"
+      ru:
+        - "Что такое autocommit mode?"
+        - "Как работает @transaction.atomic в Django?"
+    expected_points:
+      - "Django: autocommit per query unless atomic() block"
+      - "SQLAlchemy: session.begin() context or autobegin"
+      - "Explicit transaction for multi-step consistency"

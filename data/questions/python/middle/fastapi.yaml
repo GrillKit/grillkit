@@ -1,0 +1,214 @@
+category: "FastAPI"
+track: "python"
+level: "middle"
+
+description: "Intermediate FastAPI: dependency injection with resources, middleware, auth patterns, and database integration"
+
+questions:
+  - id: "fastapi-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "depends", "yield"]
+    question:
+      text:
+        en: "How do FastAPI dependencies with yield work? Why are they useful for database sessions?"
+        ru: "Как работают зависимости FastAPI с yield? Зачем они нужны для сессий БД?"
+      code: |
+        async def get_db():
+            db = SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+    follow_ups:
+      en:
+        - "What runs after the response is sent?"
+        - "How does this compare to a try/finally in the endpoint?"
+      ru:
+        - "Что выполняется после отправки ответа?"
+        - "Чем это отличается от try/finally в эндпоинте?"
+    expected_points:
+      - "Code before yield runs on request entry; after yield on cleanup"
+      - "Ensures resources are closed even on errors"
+      - "Same pattern as context managers for DB connections"
+
+  - id: "fastapi-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "middleware", "cors"]
+    question:
+      text:
+        en: "What is ASGI middleware in FastAPI? How do you configure CORS?"
+        ru: "Что такое ASGI middleware в FastAPI? Как настроить CORS?"
+      code: |
+        from fastapi.middleware.cors import CORSMiddleware
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["https://example.com"],
+            allow_methods=["*"],
+        )
+    follow_ups:
+      en:
+        - "In what order does middleware wrap the application?"
+        - "What security risk does allow_origins=['*'] pose with credentials?"
+      ru:
+        - "В каком порядке middleware оборачивает приложение?"
+        - "Какой риск у allow_origins=['*'] с credentials?"
+    expected_points:
+      - "Middleware intercepts request before and response after the route"
+      - "CORSMiddleware adds Access-Control-* headers for browsers"
+      - "Restrict origins in production; wildcard unsafe with cookies"
+
+  - id: "fastapi-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "exceptions"]
+    question:
+      text:
+        en: "How do you register global exception handlers in FastAPI?"
+        ru: "Как зарегистрировать глобальные обработчики исключений в FastAPI?"
+      code: |
+        from fastapi import Request
+        from fastapi.responses import JSONResponse
+
+        @app.exception_handler(ValueError)
+        async def value_error_handler(request: Request, exc: ValueError):
+            return JSONResponse(status_code=400, content={"detail": str(exc)})
+    follow_ups:
+      en:
+        - "How does this differ from raising HTTPException in each route?"
+        - "Can you override the default validation error handler?"
+      ru:
+        - "Чем это отличается от HTTPException в каждом маршруте?"
+        - "Можно ли переопределить обработчик ошибок валидации?"
+    expected_points:
+      - "@app.exception_handler maps exception types to handlers"
+      - "Centralizes error response format across the API"
+      - "RequestValidationError has a built-in handler returning 422"
+
+  - id: "fastapi-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "background-tasks"]
+    question:
+      text:
+        en: "What are BackgroundTasks in FastAPI? When should you use them vs Celery?"
+        ru: "Что такое BackgroundTasks в FastAPI? Когда использовать их вместо Celery?"
+      code: |
+        from fastapi import BackgroundTasks
+
+        @app.post("/send-email")
+        async def send_email(background_tasks: BackgroundTasks):
+            background_tasks.add_task(send_notification, "user@example.com")
+    follow_ups:
+      en:
+        - "Do background tasks run after the response is returned?"
+        - "What happens to tasks if the process crashes?"
+      ru:
+        - "Выполняются ли background tasks после возврата ответа?"
+        - "Что происходит с задачами при падении процесса?"
+    expected_points:
+      - "BackgroundTasks run in the same process after response"
+      - "Good for quick non-critical work (email, logging)"
+      - "Celery for durable, distributed, retriable jobs"
+
+  - id: "fastapi-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "lifespan"]
+    question:
+      text:
+        en: "What is the lifespan context manager in FastAPI? What runs at startup and shutdown?"
+        ru: "Что такое lifespan context manager в FastAPI? Что выполняется при старте и остановке?"
+      code: |
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            await connect_pool()
+            yield
+            await disconnect_pool()
+
+        app = FastAPI(lifespan=lifespan)
+    follow_ups:
+      en:
+        - "How did startup/shutdown events differ in older FastAPI versions?"
+        - "What resources belong in lifespan vs Depends?"
+      ru:
+        - "Чем startup/shutdown events отличались в старых версиях FastAPI?"
+        - "Какие ресурсы относятся к lifespan, а какие к Depends?"
+    expected_points:
+      - "lifespan replaces on_event startup/shutdown"
+      - "Initialize shared resources once (DB pool, HTTP client)"
+      - "Cleanup runs on application shutdown"
+
+  - id: "fastapi-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "sqlalchemy", "asyncpg"]
+    question:
+      text:
+        en: "How do you integrate FastAPI with SQLAlchemy 2.0 and asyncpg?"
+        ru: "Как интегрировать FastAPI с SQLAlchemy 2.0 и asyncpg?"
+      code: null
+    follow_ups:
+      en:
+        - "Why use async session with async endpoints?"
+        - "What is the role of create_async_engine?"
+      ru:
+        - "Зачем async session с async-эндпоинтами?"
+        - "Какова роль create_async_engine?"
+    expected_points:
+      - "create_async_engine with postgresql+asyncpg:// URL"
+      - "AsyncSession per request via Depends + yield"
+      - "Avoid blocking sync ORM calls in async routes"
+
+  - id: "fastapi-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "oauth2", "security"]
+    question:
+      text:
+        en: "How does OAuth2PasswordBearer work in FastAPI? Outline the login and protected route flow."
+        ru: "Как работает OAuth2PasswordBearer в FastAPI? Опишите flow логина и защищённого маршрута."
+      code: null
+    follow_ups:
+      en:
+        - "Where should you store password hashes?"
+        - "What is the difference between authentication and authorization?"
+      ru:
+        - "Где хранить хеши паролей?"
+        - "В чём разница между authentication и authorization?"
+    expected_points:
+      - "Token endpoint validates credentials and returns JWT or opaque token"
+      - "OAuth2PasswordBearer extracts Bearer token from Authorization header"
+      - "Dependency validates token and loads current user"
+
+  - id: "fastapi-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["fastapi", "websockets"]
+    question:
+      text:
+        en: "How do WebSocket endpoints work in FastAPI?"
+        ru: "Как работают WebSocket-эндпоинты в FastAPI?"
+      code: |
+        from fastapi import WebSocket
+
+        @app.websocket("/ws")
+        async def websocket_endpoint(websocket: WebSocket):
+            await websocket.accept()
+            await websocket.send_text("hello")
+            await websocket.close()
+    follow_ups:
+      en:
+        - "Why do WebSockets require ASGI?"
+        - "How do you broadcast messages to multiple clients?"
+      ru:
+        - "Почему WebSockets требуют ASGI?"
+        - "Как рассылать сообщения нескольким клиентам?"
+    expected_points:
+      - "WebSocket is a long-lived bidirectional connection"
+      - "accept(), send_text/send_json, receive, close lifecycle"
+      - "Requires ASGI server; manage connection state externally for scale"

@@ -1,0 +1,185 @@
+category: "ClickHouse Analytics"
+track: "database"
+level: "senior"
+
+description: "ClickHouse for OLAP: MergeTree engine, partitioning, and analytics query patterns"
+
+questions:
+  - id: "ch-s-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "olap"]
+    question:
+      text:
+        en: "When should you choose ClickHouse over PostgreSQL?"
+        ru: "Когда выбирать ClickHouse вместо PostgreSQL?"
+      code: null
+    follow_ups:
+      en:
+        - "What workloads is ClickHouse optimized for?"
+        - "Is ClickHouse good for OLTP?"
+      ru:
+        - "Для каких нагрузок оптимизирован ClickHouse?"
+        - "Подходит ли ClickHouse для OLTP?"
+    expected_points:
+      - "ClickHouse: columnar OLAP for analytics at scale"
+      - "Excellent for append-heavy event/log analytics"
+      - "Not for frequent row updates or transactional workloads"
+
+  - id: "ch-s-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "mergetree"]
+    question:
+      text:
+        en: "What is the MergeTree engine family in ClickHouse?"
+        ru: "Что такое семейство движков MergeTree в ClickHouse?"
+      code: |
+        CREATE TABLE events (
+            event_date Date,
+            user_id UInt64,
+            event_type String
+        ) ENGINE = MergeTree()
+        PARTITION BY toYYYYMM(event_date)
+        ORDER BY (event_date, user_id);
+    follow_ups:
+      en:
+        - "What is ORDER BY used for in MergeTree?"
+        - "How does ReplacingMergeTree differ?"
+      ru:
+        - "Для чего ORDER BY в MergeTree?"
+        - "Чем ReplacingMergeTree отличается?"
+    expected_points:
+      - "MergeTree: primary table engine for analytics"
+      - "Data stored in parts merged in background"
+      - "ORDER BY defines primary key sparse index"
+
+  - id: "ch-s-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "partitioning"]
+    question:
+      text:
+        en: "How does partitioning work in ClickHouse? What are best practices?"
+        ru: "Как работает партиционирование в ClickHouse? Какие best practices?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens with too many small partitions?"
+        - "How do you drop old data efficiently?"
+      ru:
+        - "Что при слишком большом числе мелких партиций?"
+        - "Как эффективно удалять старые данные?"
+    expected_points:
+      - "PARTITION BY splits data (often by date)"
+      - "DROP PARTITION removes old data quickly"
+      - "Avoid high-cardinality partition keys"
+
+  - id: "ch-s-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "queries"]
+    question:
+      text:
+        en: "Why are aggregate queries fast in ClickHouse? What is vectorized execution?"
+        ru: "Почему агрегатные запросы быстры в ClickHouse? Что такое vectorized execution?"
+      code: |
+        SELECT event_type, count()
+        FROM events
+        WHERE event_date >= today() - 7
+        GROUP BY event_type;
+    follow_ups:
+      en:
+        - "How does columnar storage help SUM/COUNT?"
+        - "What is materialized view in ClickHouse?"
+      ru:
+        - "Как columnar storage помогает SUM/COUNT?"
+        - "Что такое materialized view в ClickHouse?"
+    expected_points:
+      - "Columnar storage reads only needed columns"
+      - "Vectorized CPU processing of batches"
+      - "Materialized views pre-aggregate on insert"
+
+  - id: "ch-s-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "ingestion"]
+    question:
+      text:
+        en: "What are best practices for ingesting high-volume events into ClickHouse?"
+        ru: "Какие best practices для загрузки большого потока событий в ClickHouse?"
+      code: null
+    follow_ups:
+      en:
+        - "Batch vs single-row inserts?"
+        - "How integrate with Kafka?"
+      ru:
+        - "Batch vs single-row inserts?"
+        - "Как интегрировать с Kafka?"
+    expected_points:
+      - "Batch inserts (thousands+ rows per insert)"
+      - "Async insert or buffer tables for spikes"
+      - "Kafka engine or ClickHouse Kafka connector"
+
+  - id: "ch-s-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "replication"]
+    question:
+      text:
+        en: "How does ClickHouse replication and sharding work at a high level?"
+        ru: "Как на высоком уровне работают replication и sharding в ClickHouse?"
+      code: null
+    follow_ups:
+      en:
+        - "What is ReplicatedMergeTree?"
+        - "What is Distributed table engine?"
+      ru:
+        - "Что такое ReplicatedMergeTree?"
+        - "Что такое Distributed table engine?"
+    expected_points:
+      - "ReplicatedMergeTree copies data across replicas via ZooKeeper/keeper"
+      - "Distributed engine queries across shards"
+      - "Shard key determines data locality"
+
+  - id: "ch-s-007"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["clickhouse", "postgresql", "architecture"]
+    question:
+      text:
+        en: "How would you design a pipeline from PostgreSQL OLTP to ClickHouse analytics?"
+        ru: "Как спроектировать pipeline из PostgreSQL OLTP в ClickHouse analytics?"
+      code: null
+    follow_ups:
+      en:
+        - "CDC vs nightly ETL trade-offs?"
+        - "How handle schema changes in the pipeline?"
+      ru:
+        - "Компромиссы CDC vs nightly ETL?"
+        - "Как обрабатывать изменения схемы в pipeline?"
+    expected_points:
+      - "OLTP stays in PostgreSQL; events exported to ClickHouse"
+      - "CDC (Debezium) or batch ETL for near-real-time"
+      - "Denormalize for analytics queries in ClickHouse"
+
+  - id: "ch-s-008"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["clickhouse", "deduplication"]
+    question:
+      text:
+        en: "How does ClickHouse handle duplicate rows? What is FINAL?"
+        ru: "Как ClickHouse обрабатывает дубликаты строк? Что такое FINAL?"
+      code: null
+    follow_ups:
+      en:
+        - "Why avoid SELECT FINAL in production queries?"
+        - "What engines support deduplication?"
+      ru:
+        - "Почему избегать SELECT FINAL в продакшене?"
+        - "Какие движки поддерживают deduplication?"
+    expected_points:
+      - "MergeTree merges parts asynchronously; duplicates possible"
+      - "ReplacingMergeTree keeps latest version by version column"
+      - "FINAL forces merge at query time; expensive"

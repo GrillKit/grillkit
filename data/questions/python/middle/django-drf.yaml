@@ -1,0 +1,210 @@
+category: "Django REST Framework"
+track: "python"
+level: "middle"
+
+description: "Intermediate DRF: permissions, throttling, filtering, nested serializers, and API testing"
+
+questions:
+  - id: "drf-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "permissions"]
+    question:
+      text:
+        en: "How do permission classes work in DRF? Compare IsAuthenticated and DjangoModelPermissions."
+        ru: "Как работают permission classes в DRF? Сравните IsAuthenticated и DjangoModelPermissions."
+      code: |
+        from rest_framework.permissions import IsAuthenticated
+
+        class ArticleViewSet(viewsets.ModelViewSet):
+            permission_classes = [IsAuthenticated]
+    follow_ups:
+      en:
+        - "How do you implement object-level permissions?"
+        - "What is AllowAny used for?"
+      ru:
+        - "Как реализовать object-level permissions?"
+        - "Для чего используется AllowAny?"
+    expected_points:
+      - "permission_classes checked before view logic runs"
+      - "IsAuthenticated requires logged-in user"
+      - "DjangoModelPermissions maps to Django model perms"
+
+  - id: "drf-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "throttling"]
+    question:
+      text:
+        en: "What is throttling in DRF? How do you rate-limit API clients?"
+        ru: "Что такое throttling в DRF? Как ограничить частоту запросов клиентов API?"
+      code: |
+        REST_FRAMEWORK = {
+            "DEFAULT_THROTTLE_CLASSES": [
+                "rest_framework.throttling.UserRateThrottle",
+            ],
+            "DEFAULT_THROTTLE_RATES": {"user": "100/hour"},
+        }
+    follow_ups:
+      en:
+        - "What HTTP status is returned when throttled?"
+        - "How does AnonRateThrottle differ from UserRateThrottle?"
+      ru:
+        - "Какой HTTP-код возвращается при throttling?"
+        - "Чем AnonRateThrottle отличается от UserRateThrottle?"
+    expected_points:
+      - "Throttling limits request rate per user or IP"
+      - "Returns 429 Too Many Requests when exceeded"
+      - "Configure rates in REST_FRAMEWORK settings"
+
+  - id: "drf-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "nested-serializers"]
+    question:
+      text:
+        en: "How do nested serializers represent related objects in DRF?"
+        ru: "Как nested serializers представляют связанные объекты в DRF?"
+      code: |
+        class CommentSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Comment
+                fields = ["id", "text"]
+
+        class ArticleSerializer(serializers.ModelSerializer):
+            comments = CommentSerializer(many=True, read_only=True)
+    follow_ups:
+      en:
+        - "What is the writable nested serializer challenge?"
+        - "When prefer PrimaryKeyRelatedField over nesting?"
+      ru:
+        - "В чём сложность writable nested serializers?"
+        - "Когда PrimaryKeyRelatedField лучше вложенности?"
+    expected_points:
+      - "Nested serializer embeds related object JSON inline"
+      - "read_only nested avoids complex create/update logic"
+      - "PrimaryKeyRelatedField sends IDs only; lighter payloads"
+
+  - id: "drf-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "filtering"]
+    question:
+      text:
+        en: "How do you filter querysets in DRF? What does django-filter integration provide?"
+        ru: "Как фильтровать queryset в DRF? Что даёт интеграция django-filter?"
+      code: |
+        from django_filters.rest_framework import DjangoFilterBackend
+
+        class ArticleViewSet(viewsets.ModelViewSet):
+            filter_backends = [DjangoFilterBackend]
+            filterset_fields = ["status", "author"]
+    follow_ups:
+      en:
+        - "What is SearchFilter used for?"
+        - "How do ordering query params work?"
+      ru:
+        - "Для чего SearchFilter?"
+        - "Как работают query-параметры ordering?"
+    expected_points:
+      - "filter_backends apply query param filters to queryset"
+      - "django-filter generates FilterSet from model fields"
+      - "SearchFilter and OrderingFilter are built-in backends"
+
+  - id: "drf-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "versioning"]
+    question:
+      text:
+        en: "What API versioning strategies does DRF support?"
+        ru: "Какие стратегии версионирования API поддерживает DRF?"
+      code: null
+    follow_ups:
+      en:
+        - "Compare URL path vs Accept header versioning."
+        - "Why version APIs at all?"
+      ru:
+        - "Сравните версионирование через URL path и Accept header."
+        - "Зачем вообще версионировать API?"
+    expected_points:
+      - "URL path: /api/v1/ vs /api/v2/"
+      - "Accept header or query param versioning"
+      - "Allows breaking changes without breaking old clients"
+
+  - id: "drf-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "testing"]
+    question:
+      text:
+        en: "How do you test DRF APIs with APIClient?"
+        ru: "Как тестировать DRF API с помощью APIClient?"
+      code: |
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get("/api/articles/")
+    follow_ups:
+      en:
+        - "What is the difference between APIClient and Django Client?"
+        - "How do you test permission denied responses?"
+      ru:
+        - "Чем APIClient отличается от Django Client?"
+        - "Как тестировать ответ permission denied?"
+    expected_points:
+      - "APIClient renders JSON and understands DRF responses"
+      - "force_authenticate bypasses login for tests"
+      - "Assert status_code and response.data"
+
+  - id: "drf-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "authentication"]
+    question:
+      text:
+        en: "What authentication classes does DRF provide? Compare SessionAuthentication and TokenAuthentication."
+        ru: "Какие authentication classes есть в DRF? Сравните SessionAuthentication и TokenAuthentication."
+      code: null
+    follow_ups:
+      en:
+        - "When is JWT typically added via third-party packages?"
+        - "How does authentication differ from permissions?"
+      ru:
+        - "Когда JWT добавляют через сторонние пакеты?"
+        - "Чем authentication отличается от permissions?"
+    expected_points:
+      - "Authentication identifies the user; permissions authorize actions"
+      - "SessionAuthentication uses Django sessions (browser-friendly)"
+      - "TokenAuthentication uses Authorization: Token <key> header"
+
+  - id: "drf-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["drf", "actions"]
+    question:
+      text:
+        en: "How do you add custom actions to a ViewSet with @action?"
+        ru: "Как добавить кастомное действие в ViewSet через @action?"
+      code: |
+        from rest_framework.decorators import action
+
+        class ArticleViewSet(viewsets.ModelViewSet):
+            @action(detail=True, methods=["post"])
+            def publish(self, request, pk=None):
+                article = self.get_object()
+                article.status = "published"
+                article.save()
+                return Response({"status": "published"})
+    follow_ups:
+      en:
+        - "What is the difference between detail=True and detail=False?"
+        - "What URL does a detail action generate?"
+      ru:
+        - "Чем detail=True отличается от detail=False?"
+        - "Какой URL генерирует detail action?"
+    expected_points:
+      - "@action adds non-CRUD endpoints to a ViewSet"
+      - "detail=True: /articles/{pk}/publish/ ; detail=False: collection action"
+      - "Router registers custom action URLs automatically"
