@@ -6,9 +6,11 @@ This module provides database connectivity, session management,
 and the declarative base for all SQLAlchemy models.
 """
 
+from alembic.config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
+from alembic import command
 from app.paths import DB_DIR, PROJECT_ROOT
 
 ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
@@ -27,10 +29,6 @@ class Base(DeclarativeBase):
 
 def run_migrations() -> None:
     """Apply Alembic migrations up to head."""
-    from alembic.config import Config
-
-    from alembic import command
-    import app.shared.infrastructure.models  # noqa: F401 - register models with Base
 
     alembic_cfg = Config(str(ALEMBIC_INI))
     command.upgrade(alembic_cfg, "head")
