@@ -10,8 +10,8 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
 from app.ai.base import AIProvider
-from app.interview.domain.progress import find_unanswered_for_question, require_active
 from app.interview.domain.interview import interview_view
+from app.interview.domain.progress import find_unanswered_for_question, require_active
 from app.interview.domain.timer import client_timeout_due, is_expired
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService

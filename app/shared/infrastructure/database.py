@@ -27,9 +27,9 @@ class Base(DeclarativeBase):
 
 def run_migrations() -> None:
     """Apply Alembic migrations up to head."""
-    from alembic import command
     from alembic.config import Config
 
+    from alembic import command
     import app.shared.infrastructure.models  # noqa: F401 - register models with Base
 
     alembic_cfg = Config(str(ALEMBIC_INI))
