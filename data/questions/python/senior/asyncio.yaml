@@ -1,0 +1,132 @@
+category: "Asyncio Production"
+track: "python"
+level: "senior"
+
+description: "Senior asyncio: debugging, legacy integration, backpressure, and production monitoring"
+
+questions:
+  - id: "asyncio-s-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["asyncio", "debugging"]
+    question:
+      text:
+        en: "How do you debug a hung or slow asyncio event loop in production?"
+        ru: "Как отладить зависший или медленный asyncio event loop в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "What does asyncio slow callback logging show?"
+        - "How can aiomonitor or similar tools help?"
+      ru:
+        - "Что показывает asyncio slow callback logging?"
+        - "Как помогают aiomonitor и подобные инструменты?"
+    expected_points:
+      - "Enable debug mode or slow callback duration warnings"
+      - "Inspect running tasks with asyncio.all_tasks()"
+      - "Profile with py-spy without stopping the process"
+
+  - id: "asyncio-s-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["asyncio", "legacy"]
+    question:
+      text:
+        en: "How do you integrate synchronous legacy code with an async FastAPI/Django ASGI app?"
+        ru: "Как интегрировать синхронный legacy-код с async FastAPI/Django ASGI приложением?"
+      code: null
+    follow_ups:
+      en:
+        - "When migrate to native async vs wrap with executor?"
+        - "What are the thread pool size trade-offs?"
+      ru:
+        - "Когда мигрировать на native async, а когда executor?"
+        - "Какие компромиссы у размера thread pool?"
+    expected_points:
+      - "run_in_executor for blocking calls short-term"
+      - "Limit thread pool size to avoid resource exhaustion"
+      - "Long-term: async-native drivers and libraries"
+
+  - id: "asyncio-s-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["asyncio", "backpressure"]
+    question:
+      text:
+        en: "What is backpressure in async systems? How do you implement it with asyncio.Queue?"
+        ru: "Что такое backpressure в async-системах? Как реализовать через asyncio.Queue?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens without backpressure under burst load?"
+        - "How do semaphores limit concurrency?"
+      ru:
+        - "Что происходит без backpressure при burst load?"
+        - "Как semaphores ограничивают concurrency?"
+    expected_points:
+      - "Backpressure slows producers when consumers lag"
+      - "Bounded Queue blocks put() when full"
+      - "Semaphore limits parallel in-flight work"
+
+  - id: "asyncio-s-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["asyncio", "monitoring"]
+    question:
+      text:
+        en: "What metrics and logs should you monitor for async Python services?"
+        ru: "Какие метрики и логи мониторить для async Python-сервисов?"
+      code: null
+    follow_ups:
+      en:
+        - "How detect event loop lag?"
+        - "What RED/USE metrics apply?"
+      ru:
+        - "Как обнаружить event loop lag?"
+        - "Какие метрики RED/USE применимы?"
+    expected_points:
+      - "Request latency, error rate, queue depth"
+      - "Active tasks count and loop blocking duration"
+      - "Connection pool utilization for HTTP/DB clients"
+
+  - id: "asyncio-s-005"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["asyncio", "shutdown"]
+    question:
+      text:
+        en: "How do you implement reliable shutdown for long-running asyncio services?"
+        ru: "Как реализовать надёжный shutdown для long-running asyncio-сервисов?"
+      code: null
+    follow_ups:
+      en:
+        - "How handle SIGTERM in Kubernetes?"
+        - "What is a shutdown timeout?"
+      ru:
+        - "Как обрабатывать SIGTERM в Kubernetes?"
+        - "Что такое shutdown timeout?"
+    expected_points:
+      - "Cancel tasks gracefully; await with timeout"
+      - "Close HTTP/DB clients in lifespan shutdown"
+      - "Stop accepting work; drain queues before exit"
+
+  - id: "asyncio-s-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["asyncio", "testing"]
+    question:
+      text:
+        en: "How do you test race conditions and timing-dependent asyncio code?"
+        ru: "Как тестировать race conditions и timing-dependent asyncio-код?"
+      code: null
+    follow_ups:
+      en:
+        - "What is asyncio test clock or freezegun for async?"
+        - "When use real sleeps in tests?"
+      ru:
+        - "Что такое test clock для asyncio?"
+        - "Когда использовать real sleeps в тестах?"
+    expected_points:
+      - "Control time with mocked loop time where possible"
+      - "Synchronize tasks with Events instead of sleep"
+      - "Stress tests with concurrent task fan-out"

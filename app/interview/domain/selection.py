@@ -11,24 +11,23 @@ from typing import Any, Protocol
 
 from app.questions import Question
 
-SELECTION_SPEC_VERSION = 1
-
-_LANGUAGE_LABELS: dict[str, str] = {
+_TRACK_LABELS: dict[str, str] = {
     "python": "Python",
     "database": "Database / SQL",
+    "system-design": "System Design",
 }
 
 
-def language_label(slug: str) -> str:
-    """Return a human-readable label for a question-bank language slug.
+def track_label(slug: str) -> str:
+    """Return a human-readable label for a question-bank track slug.
 
     Args:
-        slug: Language directory name under ``data/questions/``.
+        slug: Track directory name under ``data/questions/``.
 
     Returns:
         Display label for templates and UI.
     """
-    return _LANGUAGE_LABELS.get(slug, slug.replace("-", " ").replace("_", " ").title())
+    return _TRACK_LABELS.get(slug, slug.replace("-", " ").replace("_", " ").title())
 
 
 class InterviewSelectionHolder(Protocol):
@@ -39,44 +38,44 @@ class InterviewSelectionHolder(Protocol):
 
 
 @dataclass(frozen=True)
-class LanguageQuestionPools:
-    """Loaded question pools for one language source.
+class TrackQuestionPools:
+    """Loaded question pools for one track source.
 
     Attributes:
-        source: Language, level, and category selection from setup.
+        source: Track, level, and category selection from setup.
         full_pool: All questions across selected categories for the source.
         category_pools: Per-category question lists keyed by category slug.
     """
 
-    source: LanguageSelection
+    source: TrackSelection
     full_pool: list[Question]
     category_pools: dict[str, list[Question]]
 
 
 @dataclass(frozen=True)
-class LanguageSelection:
-    """One programming-language bank with level and topic categories.
+class TrackSelection:
+    """One question-bank track with level and topic categories.
 
     Attributes:
-        language: Question bank slug (e.g. ``python``).
+        track: Question bank slug (e.g. ``python``).
         level: Difficulty level (e.g. ``junior``).
         categories: YAML category slugs (e.g. ``basics``, ``oop``).
     """
 
-    language: str
+    track: str
     level: str
     categories: list[str]
 
 
 @dataclass(frozen=True)
 class InterviewSelection:
-    """Full interview question-bank selection (one or more languages).
+    """Full interview question-bank selection (one or more tracks).
 
     Attributes:
-        sources: Ordered language selections as chosen on the setup form.
+        sources: Ordered track selections as chosen on the setup form.
     """
 
-    sources: list[LanguageSelection]
+    sources: list[TrackSelection]
 
     @property
     def topic_count(self) -> int:
@@ -84,7 +83,7 @@ class InterviewSelection:
         return sum(len(source.categories) for source in self.sources)
 
     def is_multi(self) -> bool:
-        """Return True when more than one language or category is selected."""
+        """Return True when more than one track or category is selected."""
         if len(self.sources) > 1:
             return True
         if not self.sources:
@@ -118,13 +117,12 @@ def selection_to_spec(selection: InterviewSelection) -> str:
         selection: Interview selection.
 
     Returns:
-        JSON string with version and sources.
+        JSON string with a ``sources`` list.
     """
     payload = {
-        "version": SELECTION_SPEC_VERSION,
         "sources": [
             {
-                "language": source.language,
+                "track": source.track,
                 "level": source.level,
                 "categories": list(source.categories),
             }
@@ -187,20 +185,20 @@ def selection_from_payload(data: dict[str, Any]) -> InterviewSelection:
     if not isinstance(sources_raw, list) or not sources_raw:
         raise ValueError("Invalid selection_spec: missing sources")
 
-    sources: list[LanguageSelection] = []
+    sources: list[TrackSelection] = []
     for item in sources_raw:
         if not isinstance(item, dict):
             raise ValueError("Invalid selection_spec: source must be an object")
-        language = item.get("language")
+        track = item.get("track")
         level = item.get("level")
         categories = item.get("categories")
-        if not isinstance(language, str) or not isinstance(level, str):
-            raise ValueError("Invalid selection_spec: language and level required")
+        if not isinstance(track, str) or not isinstance(level, str):
+            raise ValueError("Invalid selection_spec: track and level required")
         if not isinstance(categories, list) or not categories:
             raise ValueError("Invalid selection_spec: categories required")
         sources.append(
-            LanguageSelection(
-                language=language,
+            TrackSelection(
+                track=track,
                 level=level,
                 categories=[str(c) for c in categories],
             )
@@ -215,11 +213,11 @@ def selection_sources_summary(selection: InterviewSelection) -> str:
         selection: Interview selection.
 
     Returns:
-        Bullet list of languages, levels, and categories.
+        Bullet list of tracks, levels, and categories.
     """
     lines: list[str] = []
     for source in selection.sources:
-        label = language_label(source.language)
+        label = track_label(source.track)
         topics = ", ".join(source.categories)
         lines.append(f"- {label} / {source.level}: {topics}")
     return "\n".join(lines)
@@ -237,7 +235,7 @@ def interview_display_title(selection: InterviewSelection) -> str:
     if selection.is_multi():
         return "Multi-topic Interview"
     source = selection.sources[0]
-    return f"{language_label(source.language)} Interview"
+    return f"{track_label(source.track)} Interview"
 
 
 def parse_selection_json(raw_json: str) -> InterviewSelection:
@@ -258,8 +256,7 @@ def parse_selection_json(raw_json: str) -> InterviewSelection:
         raise ValueError("Invalid selection JSON") from exc
     if not isinstance(data, dict):
         raise ValueError("Invalid selection JSON: expected object")
-    selection = selection_from_payload(data)
-    return selection
+    return selection_from_payload(data)
 
 
 def _allocate_proportional(sizes: list[int], total: int) -> list[int]:
@@ -291,18 +288,18 @@ def _allocate_proportional(sizes: list[int], total: int) -> list[int]:
 def plan_questions(
     selection: InterviewSelection,
     question_count: int,
-    language_pools: list[LanguageQuestionPools],
+    track_pools: list[TrackQuestionPools],
 ) -> list[Question]:
     """Build ordered question list from pre-loaded pools.
 
     Picks one random question per selected topic, then fills remaining slots
-    proportionally by language pool size. Questions are grouped by language
+    proportionally by track pool size. Questions are grouped by track
     (form order) with random order within each block.
 
     Args:
         selection: Validated interview selection.
         question_count: Target number of questions (>= topic count).
-        language_pools: Loaded pools in the same order as ``selection.sources``.
+        track_pools: Loaded pools in the same order as ``selection.sources``.
 
     Returns:
         Ordered list of Question instances.
@@ -310,27 +307,26 @@ def plan_questions(
     Raises:
         ValueError: If pools are empty or misaligned with the selection.
     """
-    if len(language_pools) != len(selection.sources):
-        raise ValueError("language_pools must match selection.sources")
+    if len(track_pools) != len(selection.sources):
+        raise ValueError("track_pools must match selection.sources")
 
     picked: list[Question] = []
     picked_ids: set[str] = set()
-    question_language: dict[str, str] = {}
-    pools_by_source: list[tuple[LanguageSelection, list[Question]]] = []
+    question_track: dict[str, str] = {}
+    pools_by_source: list[tuple[TrackSelection, list[Question]]] = []
 
-    for pools in language_pools:
+    for pools in track_pools:
         source = pools.source
         full_pool = pools.full_pool
         if not full_pool:
-            raise ValueError(f"No questions found for {source.language}/{source.level}")
+            raise ValueError(f"No questions found for {source.track}/{source.level}")
         pools_by_source.append((source, full_pool))
 
         for category in source.categories:
             category_pool = pools.category_pools.get(category, [])
             if not category_pool:
                 raise ValueError(
-                    f"No questions found for "
-                    f"{source.language}/{source.level}/{category}"
+                    f"No questions found for {source.track}/{source.level}/{category}"
                 )
             available = [q for q in category_pool if q.id not in picked_ids]
             if not available:
@@ -338,38 +334,40 @@ def plan_questions(
             question = random.choice(available)
             picked.append(question)
             picked_ids.add(question.id)
-            question_language[question.id] = source.language
+            question_track[question.id] = source.track
 
     extra = question_count - len(picked)
     if extra > 0:
-        remaining_by_lang: list[tuple[str, list[Question]]] = []
+        remaining_by_track: list[tuple[str, list[Question]]] = []
         for source, full_pool in pools_by_source:
             remaining_pool = [q for q in full_pool if q.id not in picked_ids]
             if remaining_pool:
-                remaining_by_lang.append((source.language, remaining_pool))
+                remaining_by_track.append((source.track, remaining_pool))
 
-        max_extra = sum(len(pool) for _, pool in remaining_by_lang)
+        max_extra = sum(len(pool) for _, pool in remaining_by_track)
         to_allocate = min(extra, max_extra)
-        if to_allocate > 0 and remaining_by_lang:
-            sizes = [len(pool) for _, pool in remaining_by_lang]
+        if to_allocate > 0 and remaining_by_track:
+            sizes = [len(pool) for _, pool in remaining_by_track]
             counts = _allocate_proportional(sizes, to_allocate)
-            for (lang, pool), count in zip(remaining_by_lang, counts, strict=True):
+            for (track_slug, pool), count in zip(
+                remaining_by_track, counts, strict=True
+            ):
                 if count <= 0:
                     continue
                 sampled = random.sample(pool, min(count, len(pool)))
                 picked.extend(sampled)
                 for question in sampled:
                     picked_ids.add(question.id)
-                    question_language[question.id] = lang
+                    question_track[question.id] = track_slug
 
-    by_language: dict[str, list[Question]] = {}
+    by_track: dict[str, list[Question]] = {}
     for question in picked:
-        lang_key = question_language[question.id]
-        by_language.setdefault(lang_key, []).append(question)
+        track_key = question_track[question.id]
+        by_track.setdefault(track_key, []).append(question)
 
     ordered: list[Question] = []
     for source in selection.sources:
-        block = by_language.get(source.language, [])
+        block = by_track.get(source.track, [])
         random.shuffle(block)
         ordered.extend(block)
 

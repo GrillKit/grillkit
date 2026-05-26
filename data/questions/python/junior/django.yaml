@@ -1,0 +1,197 @@
+category: "Django"
+track: "python"
+level: "junior"
+
+description: "Django fundamentals for junior developers: MVT, models, ORM, migrations, and admin"
+
+questions:
+  - id: "django-j-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["django", "mvt"]
+    question:
+      text:
+        en: "What is Django's MVT pattern? How do Model, View, and Template relate?"
+        ru: "Что такое паттерн MVT в Django? Как связаны Model, View и Template?"
+      code: null
+    follow_ups:
+      en:
+        - "How does MVT differ from classic MVC?"
+        - "Where does the URL dispatcher fit in?"
+      ru:
+        - "Чем MVT отличается от классического MVC?"
+        - "Где в цепочке находится URL dispatcher?"
+    expected_points:
+      - "Model: data layer and business logic tied to DB"
+      - "View: request handler that returns a response"
+      - "Template: presentation layer for HTML rendering"
+      - "urls.py maps URLs to views"
+
+  - id: "django-j-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "models", "orm"]
+    question:
+      text:
+        en: "How do you define a Django model? What is a migration and why is it needed?"
+        ru: "Как объявить модель Django? Что такое миграция и зачем она нужна?"
+      code: |
+        from django.db import models
+
+        class Article(models.Model):
+            title = models.CharField(max_length=200)
+            published = models.DateTimeField(auto_now_add=True)
+    follow_ups:
+      en:
+        - "What commands create and apply migrations?"
+        - "What happens if you edit models without migrating?"
+      ru:
+        - "Какие команды создают и применяют миграции?"
+        - "Что будет, если изменить модели без миграции?"
+    expected_points:
+      - "Models subclass models.Model with field types"
+      - "makemigrations generates migration files from model changes"
+      - "migrate applies schema changes to the database"
+
+  - id: "django-j-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "queryset"]
+    question:
+      text:
+        en: "What is a QuerySet in Django ORM? Explain filter(), get(), and all()."
+        ru: "Что такое QuerySet в Django ORM? Объясните filter(), get() и all()."
+      code: |
+        Article.objects.filter(published__year=2024)
+        Article.objects.get(pk=1)
+        Article.objects.all()
+    follow_ups:
+      en:
+        - "What exception does get() raise when no row matches?"
+        - "When is a QuerySet evaluated (lazy vs eager)?"
+      ru:
+        - "Какое исключение выбрасывает get() при отсутствии строки?"
+        - "Когда QuerySet выполняется (lazy vs eager)?"
+    expected_points:
+      - "QuerySet is a lazy, chainable representation of a DB query"
+      - "filter() returns zero or more rows; get() expects exactly one"
+      - "Evaluation happens on iteration, len(), list(), or print"
+
+  - id: "django-j-004"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["django", "admin"]
+    question:
+      text:
+        en: "What is Django Admin? How do you register a model in the admin site?"
+        ru: "Что такое Django Admin? Как зарегистрировать модель в админке?"
+      code: |
+        from django.contrib import admin
+        from .models import Article
+
+        @admin.register(Article)
+        class ArticleAdmin(admin.ModelAdmin):
+            list_display = ("title", "published")
+    follow_ups:
+      en:
+        - "How do you create a superuser for admin access?"
+        - "What is list_filter useful for?"
+      ru:
+        - "Как создать суперпользователя для доступа в админку?"
+        - "Для чего нужен list_filter?"
+    expected_points:
+      - "Admin is auto-generated CRUD UI for models"
+      - "Register via admin.site.register or @admin.register"
+      - "ModelAdmin customizes list display, filters, search"
+
+  - id: "django-j-005"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "urls", "views"]
+    question:
+      text:
+        en: "How does URL routing work in Django? What is the difference between FBV and CBV?"
+        ru: "Как работает маршрутизация URL в Django? В чём разница между FBV и CBV?"
+      code: |
+        # urls.py
+        from django.urls import path
+        from . import views
+
+        urlpatterns = [
+            path("articles/", views.article_list, name="article-list"),
+        ]
+    follow_ups:
+      en:
+        - "What is include() used for in urlpatterns?"
+        - "Name one advantage of class-based views."
+      ru:
+        - "Для чего используется include() в urlpatterns?"
+        - "Назовите одно преимущество class-based views."
+    expected_points:
+      - "urls.py maps path() patterns to view callables"
+      - "FBV: function receives request, returns HttpResponse"
+      - "CBV: classes with methods for GET/POST; reusable mixins"
+
+  - id: "django-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "settings", "security"]
+    question:
+      text:
+        en: "What is settings.py in Django? Why should DEBUG=False and SECRET_KEY be protected in production?"
+        ru: "Что такое settings.py в Django? Почему DEBUG=False и SECRET_KEY нужно защищать в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "How do environment variables typically override settings?"
+        - "What does ALLOWED_HOSTS protect against?"
+      ru:
+        - "Как обычно переопределяют настройки через переменные окружения?"
+        - "От чего защищает ALLOWED_HOSTS?"
+    expected_points:
+      - "settings.py centralizes DB, apps, middleware, security options"
+      - "DEBUG=True exposes stack traces and is unsafe in production"
+      - "SECRET_KEY signs sessions/cookies; leakage enables forgery"
+
+  - id: "django-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "apps"]
+    question:
+      text:
+        en: "What is a Django app vs a Django project? How do you add a new app?"
+        ru: "Чем отличается Django app от Django project? Как добавить новое приложение?"
+      code: null
+    follow_ups:
+      en:
+        - "What goes in INSTALLED_APPS?"
+        - "Why split code into multiple apps?"
+      ru:
+        - "Что указывают в INSTALLED_APPS?"
+        - "Зачем делить код на несколько приложений?"
+    expected_points:
+      - "Project: whole site configuration (settings, root urls)"
+      - "App: reusable module (models, views, migrations)"
+      - "startapp creates app; add to INSTALLED_APPS and include urls"
+
+  - id: "django-j-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["django", "middleware"]
+    question:
+      text:
+        en: "What is Django middleware? Name two built-in middleware classes and their purpose."
+        ru: "Что такое middleware в Django? Назовите два встроенных middleware и их назначение."
+      code: null
+    follow_ups:
+      en:
+        - "In what order does middleware process request vs response?"
+        - "When would you write custom middleware?"
+      ru:
+        - "В каком порядке middleware обрабатывает request и response?"
+        - "Когда писать собственный middleware?"
+    expected_points:
+      - "Middleware hooks into request/response pipeline"
+      - "SecurityMiddleware sets security headers"
+      - "SessionMiddleware enables session support"
+      - "Order in MIDDLEWARE setting matters"

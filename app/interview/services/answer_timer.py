@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from app.interview.domain.session import interview_view
+from app.interview.domain.interview import interview_view
 from app.interview.domain.timer import (
     TIME_EXPIRED_ANSWER_TEXT,
     remaining_seconds,
@@ -68,7 +68,7 @@ class RoundTimerService:
             question_id: Question ID from the answer row.
             round_num: Follow-up round (0 = initial).
             order: Display order of the answer.
-            locale: Language for timeout feedback.
+            locale: Locale for timeout feedback.
 
         Returns:
             Feedback event for the client.

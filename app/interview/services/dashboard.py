@@ -12,7 +12,7 @@ from app.interview.domain.selection import (
     InterviewSelection,
     get_interview_selection,
     interview_display_title,
-    language_label,
+    track_label,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.models import Interview
@@ -127,7 +127,7 @@ class DashboardBuilder:
 
     @staticmethod
     def selection_summary_lines(selection: InterviewSelection) -> list[str]:
-        """Build display lines for each language source in a selection.
+        """Build display lines for each track source in a selection.
 
         Args:
             selection: Interview selection.
@@ -137,7 +137,7 @@ class DashboardBuilder:
         """
         lines: list[str] = []
         for source in selection.sources:
-            label = language_label(source.language)
+            label = track_label(source.track)
             topics = ", ".join(
                 cat.replace("-", " ").replace("_", " ").title()
                 for cat in source.categories

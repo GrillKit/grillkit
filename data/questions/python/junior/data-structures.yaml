@@ -1,5 +1,5 @@
 category: "Data Structures"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Fundamental Python data structures and their usage"
@@ -9,9 +9,10 @@ questions:
     type: "knowledge"
     difficulty: 1
     tags: ["list", "tuple"]
-    question:      text:
+    question:
+      text:
         en: "What is the difference between a list and a tuple in Python?"
-        ru: "В чём разница между списком (list) �� кортежем (tuple) в Python?"
+        ru: "В чём разница между списком (list) и кортежем (tuple) в Python?"
       code: null
     follow_ups:
       en:
@@ -172,7 +173,7 @@ questions:
     question:
       text:
         en: "How would you implement a stack (LIFO) and a queue (FIFO) in Python?"
-        ru: "К��к реализовать стек (LIFO) и очередь (FIFO) в Python?"
+        ru: "Как реализовать стек (LIFO) и очередь (FIFO) в Python?"
       code: null
     follow_ups:
       en:
@@ -188,3 +189,54 @@ questions:
       - "Queue: use deque with append() (enqueue) and popleft() (dequeue) — both O(1)"
       - "list.pop(0) is O(n) — don't use list for queues"
       - "queue.Queue is thread-safe; deque is not"
+
+  - id: "ds-009"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["tuple", "list", "complexity"]
+    question:
+      text:
+        en: "What data types exist in Python and into which groups can they be divided? How does a tuple differ from a list? What is the time complexity of appending an element to a list (e.g., `append` method)?"
+        ru: "Какие типы данных существуют в Python и на какие группы их можно разделить? Чем отличается кортеж (tuple) от списка (list)? Какова временная сложность добавления элемента в список (например, метод `append`)?"
+      code: null
+    follow_ups:
+      en:
+        - "What are mutable vs immutable data types in Python?"
+        - "How does list.append() achieve O(1) amortized time complexity?"
+        - "What happens when a list needs to grow beyond its allocated capacity?"
+      ru:
+        - "Какие изменяемые и неизменяемые типы данных существуют в Python?"
+        - "Как list.append() достигает O(1) амортизированной временной сложности?"
+        - "Что происходит, когда список должен вырасти за пределы выделенной ёмкости?"
+    expected_points:
+      - "Built-in types: numeric (int, float, complex), sequences (list, tuple, range, str, bytes), mappings (dict), sets (set, frozenset), booleans, None"
+      - "Mutable: list, dict, set; Immutable: tuple, str, int, float, frozenset"
+      - "Tuple is immutable, list is mutable; tuple uses (), list uses []"
+      - "list.append() has O(1) amortized time complexity due to dynamic array resizing"
+
+  - id: "ds-010"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["dict", "hash-table", "hashing"]
+    question:
+      text:
+        en: "How are dictionaries (`dict`) implemented and what objects can serve as keys? What is a hash table and is it possible for different objects to have the same hash?"
+        ru: "Как устроены словари (dict) и какие объекты могут служить ключами? Что представляет собой хэш-таблица и возможно ли, чтобы разные объекты имели одинаковый хэш?"
+      code: null
+    follow_ups:
+      en:
+        - "Why must dictionary keys be hashable?"
+        - "What happens when two keys have the same hash (collision)?"
+        - "How does Python handle hash collisions in dictionaries?"
+        - "Can a list be used as a dictionary key? Why or why not?"
+      ru:
+        - "Почему ключи словаря должны быть хешируемыми?"
+        - "Что происходит, когда два ключа имеют одинаковый хэш (коллизия)?"
+        - "Как Python обрабатывает коллизии хэшей в словарях?"
+        - "Можно ли использовать список как ключ словаря? Почему да или нет?"
+    expected_points:
+      - "Dictionaries are implemented as hash tables (open addressing with probing)"
+      - "Keys must be hashable (have __hash__ method) and immutable (or effectively immutable)"
+      - "Hash collisions are possible; Python handles them with probing (linear or quadratic)"
+      - "Different objects can have the same hash (collision), but equal objects must have same hash"
+      - "Lists cannot be keys because they're mutable and not hashable"

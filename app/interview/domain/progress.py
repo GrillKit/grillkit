@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pure helpers for navigating unanswered questions within an interview."""
 
-from app.interview.domain.session import AnswerView, InterviewView
+from app.interview.domain.interview import AnswerView, InterviewView
 from app.shared.domain.exceptions import (
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,

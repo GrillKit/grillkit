@@ -4,15 +4,15 @@
 
 from app.interview.domain.selection import (
     InterviewSelection,
-    LanguageQuestionPools,
-    language_label,
+    TrackQuestionPools,
     plan_questions,
+    track_label,
 )
 from app.questions import (
     Question,
     list_categories,
-    list_languages,
     list_levels,
+    list_tracks,
     load_categories,
     load_category,
 )
@@ -29,34 +29,34 @@ def validate_selection(selection: InterviewSelection) -> None:
         ValueError: If selection is empty or references unknown bank paths.
     """
     if not selection.sources:
-        raise ValueError("Select at least one language and topic")
+        raise ValueError("Select at least one track and topic")
 
-    languages = set(list_languages())
+    tracks = set(list_tracks())
     for source in selection.sources:
-        if source.language not in languages:
-            raise ValueError(f"Unknown language: {source.language}")
-        levels = set(list_levels(source.language))
+        if source.track not in tracks:
+            raise ValueError(f"Unknown track: {source.track}")
+        levels = set(list_levels(source.track))
         if source.level not in levels:
             raise ValueError(
-                f"Unknown level '{source.level}' for language '{source.language}'"
+                f"Unknown level '{source.level}' for track '{source.track}'"
             )
         if not source.categories:
             raise ValueError(
-                f"Select at least one topic for {language_label(source.language)}"
+                f"Select at least one topic for {track_label(source.track)}"
             )
-        available = set(list_categories(source.language, source.level))
+        available = set(list_categories(source.track, source.level))
         for category in source.categories:
             if category not in available:
                 raise ValueError(
-                    f"Unknown topic '{category}' for {source.language}/{source.level}"
+                    f"Unknown topic '{category}' for {source.track}/{source.level}"
                 )
 
 
-def load_language_pools(
+def load_track_pools(
     selection: InterviewSelection,
     locale: str,
-) -> list[LanguageQuestionPools]:
-    """Load YAML question pools for each language source in a selection.
+) -> list[TrackQuestionPools]:
+    """Load YAML question pools for each track source in a selection.
 
     Args:
         selection: Validated interview selection.
@@ -69,19 +69,19 @@ def load_language_pools(
         ValueError: If a pool is empty or a category has no questions.
     """
     locale = normalize_locale(locale)
-    pools: list[LanguageQuestionPools] = []
+    pools: list[TrackQuestionPools] = []
     for source in selection.sources:
         full_pool = load_categories(
-            source.language, source.level, source.categories, locale=locale
+            source.track, source.level, source.categories, locale=locale
         )
         category_pools: dict[str, list[Question]] = {}
         for category in source.categories:
             category_pool = load_category(
-                source.language, source.level, category, locale=locale
+                source.track, source.level, category, locale=locale
             )
             category_pools[category] = category_pool
         pools.append(
-            LanguageQuestionPools(
+            TrackQuestionPools(
                 source=source,
                 full_pool=full_pool,
                 category_pools=category_pools,
@@ -109,5 +109,5 @@ def build_question_plan(
         ValueError: If validation fails or pools are empty.
     """
     validate_selection(selection)
-    language_pools = load_language_pools(selection, locale)
-    return plan_questions(selection, question_count, language_pools)
+    track_pools = load_track_pools(selection, locale)
+    return plan_questions(selection, question_count, track_pools)

@@ -1,0 +1,184 @@
+category: "Redis Advanced"
+track: "database"
+level: "middle"
+
+description: "Intermediate Redis: pub/sub, pipelines, transactions, persistence, and eviction policies"
+
+questions:
+  - id: "redis-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "pubsub"]
+    question:
+      text:
+        en: "How does Redis Pub/Sub work? What are its delivery guarantees?"
+        ru: "Как работает Redis Pub/Sub? Какие гарантии доставки?"
+      code: |
+        PUBLISH channel:orders '{"id": 1}'
+        SUBSCRIBE channel:orders
+    follow_ups:
+      en:
+        - "What happens if no subscriber is listening?"
+        - "When use Redis Streams instead of Pub/Sub?"
+      ru:
+        - "Что если нет подписчиков?"
+        - "Когда Redis Streams вместо Pub/Sub?"
+    expected_points:
+      - "Fire-and-forget: no persistence of messages"
+      - "Subscribers only receive messages while connected"
+      - "Streams provide consumer groups and persistence"
+
+  - id: "redis-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "pipeline"]
+    question:
+      text:
+        en: "What is a Redis pipeline? Why use it?"
+        ru: "Что такое pipeline в Redis? Зачем его использовать?"
+      code: null
+    follow_ups:
+      en:
+        - "How does pipeline differ from MULTI/EXEC transaction?"
+        - "Does pipeline guarantee atomicity?"
+      ru:
+        - "Чем pipeline отличается от MULTI/EXEC?"
+        - "Гарантирует ли pipeline атомарность?"
+    expected_points:
+      - "Pipeline batches commands; one round-trip"
+      - "Reduces latency for many commands"
+      - "Not atomic unless wrapped in MULTI/EXEC"
+
+  - id: "redis-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "transactions"]
+    question:
+      text:
+        en: "How do Redis transactions (MULTI/EXEC) work? What is WATCH?"
+        ru: "Как работают транзакции Redis (MULTI/EXEC)? Что такое WATCH?"
+      code: |
+        WATCH balance:1
+        MULTI
+        DECRBY balance:1 100
+        EXEC
+    follow_ups:
+      en:
+        - "What happens if watched key changes before EXEC?"
+        - "How compare to RDBMS ACID transactions?"
+      ru:
+        - "Что если watched key изменился до EXEC?"
+        - "Как сравнить с ACID-транзакциями RDBMS?"
+    expected_points:
+      - "MULTI queues commands; EXEC runs atomically"
+      - "WATCH implements optimistic locking on keys"
+      - "Not full ACID; no rollback of partial EXEC"
+
+  - id: "redis-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "persistence"]
+    question:
+      text:
+        en: "Compare RDB snapshots and AOF persistence in Redis."
+        ru: "Сравните RDB snapshots и AOF persistence в Redis."
+      code: null
+    follow_ups:
+      en:
+        - "What is AOF rewrite?"
+        - "When might you use both RDB and AOF?"
+      ru:
+        - "Что такое AOF rewrite?"
+        - "Когда использовать и RDB, и AOF?"
+    expected_points:
+      - "RDB: point-in-time snapshots; compact; may lose recent data"
+      - "AOF: append log of every write; more durable; larger files"
+      - "Hybrid mode balances recovery and durability"
+
+  - id: "redis-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "eviction"]
+    question:
+      text:
+        en: "What happens when Redis reaches maxmemory? Explain eviction policies."
+        ru: "Что происходит при достижении maxmemory в Redis? Объясните eviction policies."
+      code: |
+        maxmemory 256mb
+        maxmemory-policy allkeys-lru
+    follow_ups:
+      en:
+        - "What is the difference between volatile-lru and allkeys-lru?"
+        - "What policy avoids eviction (noeviction)?"
+      ru:
+        - "Чем volatile-lru отличается от allkeys-lru?"
+        - "Какая policy не вытесняет ключи (noeviction)?"
+    expected_points:
+      - "maxmemory caps RAM usage"
+      - "LRU/LFU policies evict keys when full"
+      - "noeviction returns errors on write when full"
+
+  - id: "redis-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "cluster"]
+    question:
+      text:
+        en: "How does Redis Cluster shard data across nodes?"
+        ru: "Как Redis Cluster шардирует данные между узлами?"
+      code: null
+    follow_ups:
+      en:
+        - "What is hash slot?"
+        - "How does Redis Sentinel differ from Cluster?"
+      ru:
+        - "Что такое hash slot?"
+        - "Чем Redis Sentinel отличается от Cluster?"
+    expected_points:
+      - "16384 hash slots partitioned across masters"
+      - "CRC16 key hash determines slot"
+      - "Sentinel: HA for single master; Cluster: sharding + HA"
+
+  - id: "redis-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "streams"]
+    question:
+      text:
+        en: "What are Redis Streams? How do consumer groups work?"
+        ru: "Что такое Redis Streams? Как работают consumer groups?"
+      code: |
+        XADD events * user_id 1 action login
+        XREADGROUP GROUP workers consumer1 STREAMS events >
+    follow_ups:
+      en:
+        - "How is XACK used?"
+        - "When prefer Streams over Pub/Sub?"
+      ru:
+        - "Для чего XACK?"
+        - "Когда Streams лучше Pub/Sub?"
+    expected_points:
+      - "Streams: append-only log with IDs"
+      - "Consumer groups distribute messages among workers"
+      - "Pending entries and XACK for at-least-once processing"
+
+  - id: "redis-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["redis", "celery", "broker"]
+    question:
+      text:
+        en: "How is Redis used as a Celery broker and result backend?"
+        ru: "Как Redis используется как Celery broker и result backend?"
+      code: null
+    follow_ups:
+      en:
+        - "What durability risks exist if Redis loses data?"
+        - "Compare Redis vs RabbitMQ as Celery broker."
+      ru:
+        - "Какие риски durability если Redis потеряет данные?"
+        - "Сравните Redis и RabbitMQ как Celery broker."
+    expected_points:
+      - "Broker holds task queue messages"
+      - "Result backend stores task return values"
+      - "Configure persistence if task loss is unacceptable"

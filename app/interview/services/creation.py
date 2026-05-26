@@ -35,8 +35,8 @@ class InterviewCreationService:
         least one question per topic, then persists the session atomically.
 
         Args:
-            selection: Language/level/topic selection from setup.
-            locale: Language for AI feedback and follow-ups (default: "en").
+            selection: Track/level/topic selection from setup.
+            locale: Locale for AI feedback and follow-ups (default: "en").
             question_count: Number of questions for this session (default: 5).
             question_time_limit_seconds: Per-round time limit, or None to disable.
 

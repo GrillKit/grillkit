@@ -43,6 +43,8 @@ COPY --from=builder --chown=root:root /app/app /app/app
 COPY --from=builder --chown=root:root /app/data/questions /app/data/questions
 COPY --from=builder --chown=root:root /app/templates /app/templates
 COPY --from=builder --chown=root:root /app/static /app/static
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

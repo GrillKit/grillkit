@@ -1,0 +1,102 @@
+category: "System Design"
+track: "python"
+level: "senior"
+
+description: "System design topics with Python ecosystem focus: consensus, data pipelines, ADRs, chaos engineering"
+
+questions:
+  - id: "psd-001"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["consensus", "raft", "paxos"]
+    question:
+      text:
+        en: "How do consensus algorithms like Raft and Paxos work? When would you need them in a Python system?"
+        ru: "Как работают алгоритмы консенсуса, такие как Raft и Paxos? Когда они могут понадобиться в Python-системе?"
+      code: null
+    follow_ups:
+      en:
+        - "What problem does consensus solve (leader election, log replication)?"
+        - "How does Raft simplify Paxos (terms, leader, log matching)?"
+        - "What Python libraries implement Raft (e.g., pysyncobj)?"
+      ru:
+        - "Какую проблему решает консенсус (выбор лидера, репликация лога)?"
+        - "Как Raft упрощает Paxos (термы, лидер, соответствие логов)?"
+        - "Какие Python-библиотеки реализуют Raft (например, pysyncobj)?"
+    expected_points:
+      - "Consensus ensures multiple nodes agree on a value despite failures"
+      - "Raft: leader election, log replication, safety via committed entries"
+      - "Paxos: more complex, multiple phases (prepare/promise/accept)"
+      - "Needed for: distributed locks, configuration stores, replicated state machines"
+
+  - id: "psd-002"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["data-pipelines", "etl", "data-warehouse"]
+    question:
+      text:
+        en: "How do you design and orchestrate data pipelines in a Python ecosystem?"
+        ru: "Как проектировать и оркестрировать пайплайны данных в экосистеме Python?"
+      code: null
+    follow_ups:
+      en:
+        - "How does Airflow compare to Prefect and Dagster?"
+        - "What is the difference between ETL and ELT?"
+        - "How do you handle data quality checks and lineage tracking?"
+      ru:
+        - "Как Airflow сравнивается с Prefect и Dagster?"
+        - "В чём разница между ETL и ELT?"
+        - "Как проводить проверки качества данных и отслеживать происхождение (lineage)?"
+    expected_points:
+      - "Airflow: DAG-based scheduler with operators and sensors"
+      - "Prefect: modern workflow engine with retries, caching, notifications"
+      - "Dagster: asset-based orchestration with lineage and type system"
+      - "dbt: SQL-first transformation tool for analytics engineering"
+
+  - id: "psd-003"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["architectural-decisions", "ADR"]
+    question:
+      text:
+        en: "What is an Architectural Decision Record (ADR)? How do you use them in a Python project?"
+        ru: "Что такое Architectural Decision Record (ADR)? Как использовать их в Python-проекте?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the structure of an ADR (Title, Context, Decision, Consequences)?"
+        - "When should you write an ADR vs just documenting in code?"
+        - "How do you keep ADRs discoverable and up to date?"
+      ru:
+        - "Какова структура ADR (Заголовок, Контекст, Решение, Последствия)?"
+        - "Когда следует писать ADR, а не просто документировать в коде?"
+        - "Как поддерживать ADR в актуальном состоянии и делать их обнаруживаемыми?"
+    expected_points:
+      - "ADR captures significant architectural decisions with rationale"
+      - "Context: problem, constraints, options considered"
+      - "Decision: what was chosen and why"
+      - "Consequences: trade-offs, impacts, and future considerations"
+
+  - id: "psd-004"
+    type: "knowledge"
+    difficulty: 5
+    tags: ["chaos-engineering", "resilience-testing"]
+    question:
+      text:
+        en: "What is chaos engineering? How do you apply it to Python microservices?"
+        ru: "Что такое chaos engineering? Как применять его к Python-микросервисам?"
+      code: null
+    follow_ups:
+      en:
+        - "What tools exist for chaos engineering in Python (chaostoolkit, Gremlin)?"
+        - "What experiments would you run first (network latency, pod failure, resource exhaustion)?"
+        - "How do you measure resilience and set steady-state hypotheses?"
+      ru:
+        - "Какие инструменты существуют для chaos engineering в Python (chaostoolkit, Gremlin)?"
+        - "Какие эксперименты проводить в первую очередь (сетевая задержка, отказ подов, истощение ресурсов)?"
+        - "Как измерять отказоустойчивость и устанавливать гипотезы steady-state?"
+    expected_points:
+      - "Chaos engineering: proactively inject failures to test system resilience"
+      - "Start with blast-radius-controlled experiments in staging"
+      - "Chaostoolkit: Python-based chaos engineering framework"
+      - "Steady state: define normal behavior metrics to validate against"

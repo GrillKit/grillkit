@@ -1,5 +1,5 @@
 category: "Packaging and Distribution"
-language: "python"
+track: "python"
 level: "middle"
 
 description: "Python packaging: pyproject.toml, setuptools, wheels, dependency management, and publishing"

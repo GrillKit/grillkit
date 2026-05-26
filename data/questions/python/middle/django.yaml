@@ -1,0 +1,204 @@
+category: "Django"
+track: "python"
+level: "middle"
+
+description: "Intermediate Django: ORM optimization, caching, auth, signals, and middleware"
+
+questions:
+  - id: "django-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "select-related", "prefetch"]
+    question:
+      text:
+        en: "What is the N+1 query problem in Django? How do select_related and prefetch_related help?"
+        ru: "Что такое проблема N+1 запросов в Django? Как помогают select_related и prefetch_related?"
+      code: |
+        Article.objects.select_related("author").all()
+        Article.objects.prefetch_related("tags").all()
+    follow_ups:
+      en:
+        - "When use select_related vs prefetch_related?"
+        - "How do you detect N+1 in development?"
+      ru:
+        - "Когда select_related, а когда prefetch_related?"
+        - "Как обнаружить N+1 при разработке?"
+    expected_points:
+      - "N+1: one query per related object in a loop"
+      - "select_related: SQL JOIN for ForeignKey/OneToOne"
+      - "prefetch_related: separate query for ManyToMany/reverse FK"
+
+  - id: "django-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "queryset", "manager"]
+    question:
+      text:
+        en: "How do custom managers and QuerySets work in Django?"
+        ru: "Как работают кастомные managers и QuerySets в Django?"
+      code: |
+        class PublishedQuerySet(models.QuerySet):
+            def published(self):
+                return self.filter(status="published")
+
+        class Article(models.Model):
+            objects = PublishedQuerySet.as_manager()
+    follow_ups:
+      en:
+        - "What is the difference between Manager and QuerySet methods?"
+        - "How do you chain custom queryset methods?"
+      ru:
+        - "Чем методы Manager отличаются от методов QuerySet?"
+        - "Как чейнить кастомные методы queryset?"
+    expected_points:
+      - "Custom QuerySet adds chainable filters"
+      - "Manager is the interface on Model.objects"
+      - "as_manager() connects custom QuerySet to default manager"
+
+  - id: "django-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "signals"]
+    question:
+      text:
+        en: "What are Django signals? When should you use them and when avoid them?"
+        ru: "Что такое сигналы Django? Когда их использовать, а когда избегать?"
+      code: |
+        from django.db.models.signals import post_save
+        from django.dispatch import receiver
+
+        @receiver(post_save, sender=User)
+        def create_profile(sender, instance, created, **kwargs):
+            if created:
+                Profile.objects.create(user=instance)
+    follow_ups:
+      en:
+        - "What is the difference between pre_save and post_save?"
+        - "Why can signals make debugging harder?"
+      ru:
+        - "Чем pre_save отличается от post_save?"
+        - "Почему сигналы усложняют отладку?"
+    expected_points:
+      - "Signals decouple side effects from model save/delete"
+      - "Use sparingly; implicit flow is hard to trace"
+      - "Prefer explicit service layer for complex logic"
+
+  - id: "django-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "caching"]
+    question:
+      text:
+        en: "How does Django's caching framework work? Compare per-view vs low-level cache API."
+        ru: "Как работает кеширование в Django? Сравните per-view и low-level cache API."
+      code: |
+        from django.views.decorators.cache import cache_page
+        from django.core.cache import cache
+
+        @cache_page(60 * 15)
+        def my_view(request):
+            ...
+
+        cache.set("key", value, timeout=300)
+    follow_ups:
+      en:
+        - "What backends can Django cache use (Redis, Memcached)?"
+        - "How do you invalidate cached pages?"
+      ru:
+        - "Какие backends поддерживает cache Django?"
+        - "Как инвалидировать закешированные страницы?"
+    expected_points:
+      - "cache_page decorator caches full view response"
+      - "cache.get/set for fine-grained key-value caching"
+      - "Configure CACHES in settings; Redis common in production"
+
+  - id: "django-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "auth", "permissions"]
+    question:
+      text:
+        en: "How do Django permissions and groups work? How do you check permissions in a view?"
+        ru: "Как работают permissions и groups в Django? Как проверить права во view?"
+      code: |
+        if request.user.has_perm("app.change_article"):
+            ...
+    follow_ups:
+      en:
+        - "What is the difference between is_staff and is_superuser?"
+        - "How do model permissions get created?"
+      ru:
+        - "Чем is_staff отличается от is_superuser?"
+        - "Как создаются model permissions?"
+    expected_points:
+      - "Default add/change/delete/view perms per model"
+      - "Groups bundle permissions for roles"
+      - "@permission_required decorator or user.has_perm()"
+
+  - id: "django-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "csrf"]
+    question:
+      text:
+        en: "What is CSRF protection in Django? How does the CSRF token work for forms and AJAX?"
+        ru: "Что такое CSRF-защита в Django? Как работает CSRF-токен для форм и AJAX?"
+      code: null
+    follow_ups:
+      en:
+        - "Why are API-only projects sometimes exempt from CSRF?"
+        - "What middleware enforces CSRF?"
+      ru:
+        - "Почему API-only проекты иногда без CSRF?"
+        - "Какой middleware обеспечивает CSRF?"
+    expected_points:
+      - "CSRF prevents cross-site forged state-changing requests"
+      - "CsrfViewMiddleware validates token on POST/PUT/DELETE"
+      - "Template {% csrf_token %} or X-CSRFToken header for AJAX"
+
+  - id: "django-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "transactions"]
+    question:
+      text:
+        en: "How do database transactions work in Django? What does atomic() do?"
+        ru: "Как работают транзакции БД в Django? Что делает atomic()?"
+      code: |
+        from django.db import transaction
+
+        with transaction.atomic():
+            account.debit(100)
+            other.credit(100)
+    follow_ups:
+      en:
+        - "What happens if an exception occurs inside atomic()?"
+        - "How does ATOMIC_REQUESTS setting work?"
+      ru:
+        - "Что происходит при исключении внутри atomic()?"
+        - "Как работает настройка ATOMIC_REQUESTS?"
+    expected_points:
+      - "atomic() wraps operations in a single DB transaction"
+      - "Rollback on unhandled exception"
+      - "Nested atomic uses savepoints where supported"
+
+  - id: "django-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["django", "middleware"]
+    question:
+      text:
+        en: "Explain the Django middleware request/response chain. How do you write custom middleware?"
+        ru: "Объясните цепочку request/response middleware в Django. Как написать свой middleware?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between process_request and process_response?"
+        - "When would middleware return a response early?"
+      ru:
+        - "Чем process_request отличается от process_response?"
+        - "Когда middleware возвращает ответ досрочно?"
+    expected_points:
+      - "Middleware classes process request top-down, response bottom-up"
+      - "__init__(get_response) and __call__ pattern in modern Django"
+      - "Use for auth checks, logging, request ID injection"

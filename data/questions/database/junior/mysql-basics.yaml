@@ -1,5 +1,5 @@
 category: "MySQL Basics"
-language: "database"
+track: "database"
 level: "junior"
 
 description: "MySQL-specific features: storage engines, SHOW/EXPLAIN, MySQL-specific syntax"

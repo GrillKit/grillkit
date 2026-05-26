@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from app.interview.domain.session import interview_view
+from app.interview.domain.interview import interview_view
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_timer import RoundTimerService
 from app.interview.services.evaluator.service import (

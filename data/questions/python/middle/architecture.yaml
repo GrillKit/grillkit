@@ -1,5 +1,5 @@
 category: "Architecture"
-language: "python"
+track: "python"
 level: "middle"
 
 description: "Software architecture patterns: SOLID, clean architecture, CQRS, event sourcing, repository pattern, DI"

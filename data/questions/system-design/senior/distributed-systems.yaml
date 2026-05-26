@@ -1,35 +1,11 @@
 category: "Distributed Systems"
-language: "python"
+track: "system-design"
 level: "senior"
 
-description: "Distributed systems: consensus, transactions, observability, service mesh, and resilience patterns"
+description: "Distributed systems: transactions, observability, service mesh, and resilience patterns"
 
 questions:
   - id: "dsys-001"
-    type: "knowledge"
-    difficulty: 5
-    tags: ["consensus", "raft", "paxos"]
-    question:
-      text:
-        en: "How do consensus algorithms like Raft and Paxos work? When would you need them in a Python system?"
-        ru: "Как работают алгоритмы консенсуса, такие как Raft и Paxos? Когда они могут понадобиться в Python-системе?"
-      code: null
-    follow_ups:
-      en:
-        - "What problem does consensus solve (leader election, log replication)?"
-        - "How does Raft simplify Paxos (terms, leader, log matching)?"
-        - "What Python libraries implement Raft (e.g., pysyncobj)?"
-      ru:
-        - "Какую проблему решает консенсус (выбор лидера, репликация лога)?"
-        - "Как Raft упрощает Paxos (термы, лидер, соответствие логов)?"
-        - "Какие Python-библиотеки реализуют Raft (например, pysyncobj)?"
-    expected_points:
-      - "Consensus ensures multiple nodes agree on a value despite failures"
-      - "Raft: leader election, log replication, safety via committed entries"
-      - "Paxos: more complex, multiple phases (prepare/promise/accept)"
-      - "Needed for: distributed locks, configuration stores, replicated state machines"
-
-  - id: "dsys-002"
     type: "knowledge"
     difficulty: 5
     tags: ["distributed-transactions", "saga"]
@@ -53,7 +29,7 @@ questions:
       - "Choreography: each service publishes events triggering next step"
       - "Orchestration: central coordinator manages the saga flow"
 
-  - id: "dsys-003"
+  - id: "dsys-002"
     type: "knowledge"
     difficulty: 5
     tags: ["observability", "tracing", "monitoring"]
@@ -75,9 +51,9 @@ questions:
       - "Logs: unstructured or structured event records"
       - "Metrics: time-series data (counters, gauges, histograms)"
       - "Traces: end-to-end request flow across services (spans, trace IDs)"
-      - "OpenTelemetry is the standard for instrumentation in Python"
+      - "OpenTelemetry is the standard for instrumentation and vendor-neutral APIs"
 
-  - id: "dsys-004"
+  - id: "dsys-003"
     type: "knowledge"
     difficulty: 5
     tags: ["circuit-breaker", "resilience"]
@@ -90,18 +66,18 @@ questions:
       en:
         - "How does the circuit breaker pattern work (closed/open/half-open)?"
         - "What is exponential backoff with jitter and why is it important?"
-        - "How do you implement bulkhead isolation in Python (thread pools, semaphores)?"
+        - "How do you implement bulkhead isolation (thread pools, semaphores, connection limits)?"
       ru:
         - "Как работает паттерн circuit breaker (closed/open/half-open)?"
         - "Что такое экспоненциальная задержка с джиттером и почему это важно?"
-        - "Как реализовать изоляцию bulkhead в Python (пулы потоков, семафоры)?"
+        - "Как реализовать изоляцию bulkhead (пулы потоков, семафоры, лимиты соединений)?"
     expected_points:
       - "Circuit breaker: prevent cascading failures by failing fast"
       - "Bulkhead: isolate resources to limit blast radius"
       - "Retry with backoff: retry with increasing delays + jitter"
-      - "Python libraries: pybreaker, tenacity, aioretry"
+      - "Libraries and middleware often provide circuit breaker and retry helpers"
 
-  - id: "dsys-005"
+  - id: "dsys-004"
     type: "knowledge"
     difficulty: 5
     tags: ["service-mesh", "envoy", "istio"]
@@ -114,18 +90,18 @@ questions:
       en:
         - "What problems does a service mesh solve (mTLS, traffic management, observability)?"
         - "How does Envoy proxy work as a sidecar in Istio?"
-        - "When is a service mesh overkill for a Python application?"
+        - "When is a service mesh overkill for a small team or simple deployment?"
       ru:
         - "Какие проблемы решает service mesh (mTLS, управление трафиком, наблюдаемость)?"
         - "Как Envoy proxy работает как sidecar в Istio?"
-        - "Когда service mesh избыточен для Python-приложения?"
+        - "Когда service mesh избыточен для небольшой команды или простого развёртывания?"
     expected_points:
       - "Service mesh: dedicated infrastructure layer for service-to-service communication"
       - "Sidecar proxy (Envoy) intercepts all network traffic"
       - "Control plane (Istio) manages configuration, certificates, routing"
       - "Provides mTLS, traffic splitting, circuit breaking, telemetry"
 
-  - id: "dsys-006"
+  - id: "dsys-005"
     type: "knowledge"
     difficulty: 5
     tags: ["idempotency", "deduplication"]
@@ -149,7 +125,7 @@ questions:
       - "At-least-once delivery requires idempotent consumers"
       - "Deduplication: maintain a dedup window (cache) for message IDs"
 
-  - id: "dsys-007"
+  - id: "dsys-006"
     type: "knowledge"
     difficulty: 5
     tags: ["eventual-consistency", "conflict-resolution"]

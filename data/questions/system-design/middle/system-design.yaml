@@ -1,5 +1,5 @@
 category: "System Design"
-language: "python"
+track: "system-design"
 level: "middle"
 
 description: "System design concepts: scaling, databases, caching, CAP theorem, microservices"
@@ -172,3 +172,77 @@ questions:
       - "Leaky bucket: process requests at constant rate, queue overflow drops"
       - "Sliding window: track requests in a time window for precise control"
       - "Use Redis for distributed rate limiting across instances"
+
+  - id: "sd-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["caching", "performance", "optimization"]
+    question:
+      text:
+        en: "For which tasks and for which types of requests (e.g., read, frequent repeated computations) is caching applied?"
+        ru: "Для решения каких задач и для каких типов запросов (например, чтение, частые повторяющиеся вычисления) применяется кеширование?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the trade-offs of caching at different levels (application, database, CDN)?"
+        - "How do you determine what data to cache?"
+        - "What are cache invalidation strategies?"
+      ru:
+        - "Каковы компромиссы кеширования на разных уровнях (приложение, база данных, CDN)?"
+        - "Как определить, какие данные кешировать?"
+        - "Какие стратегии инвалидации кеша существуют?"
+    expected_points:
+      - "Caching improves performance for read-heavy workloads"
+      - "Useful for expensive computations, database queries, API responses"
+      - "Cache static content, user sessions, query results"
+      - "Consider TTL, cache size, and invalidation strategy"
+
+  - id: "sd-009"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["message-queues", "rabbitmq", "kafka", "async"]
+    question:
+      text:
+        en: "What typical problems do message queues (e.g., RabbitMQ, Kafka) help solve?"
+        ru: "Какие типичные проблемы помогают решить очереди сообщений (например, RabbitMQ, Kafka)?"
+      code: null
+    follow_ups:
+      en:
+        - "How do message queues decouple system components?"
+        - "What is the difference between message queues and event streaming?"
+        - "How do message queues handle load spikes?"
+      ru:
+        - "Как очереди сообщений развязывают компоненты системы?"
+        - "В чём разница между очередями сообщений и потоком событий?"
+        - "Как очереди сообщений обрабатывают пиковые нагрузки?"
+    expected_points:
+      - "Decouple producers and consumers (asynchronous communication)"
+      - "Buffer load spikes (rate limiting and load leveling)"
+      - "Enable event-driven architecture and microservices communication"
+      - "Provide reliability and guaranteed delivery"
+      - "Support publish-subscribe patterns and fan-out"
+
+  - id: "sd-010"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["DDD", "domain-driven-design", "patterns"]
+    question:
+      text:
+        en: "What is Domain-Driven Design (DDD)? What is the usefulness of the Repository and Unit of Work patterns?"
+        ru: "Что такое предметно-ориентированное проектирование (Domain-Driven Design, DDD)? В чём полезность паттернов «Repository» и «Unit of Work»?"
+      code: null
+    follow_ups:
+      en:
+        - "What are bounded contexts and ubiquitous language in DDD?"
+        - "How do Repository and Unit of Work patterns decouple domain from infrastructure?"
+        - "What is the difference between anemic domain model and rich domain model?"
+      ru:
+        - "Что такое ограниченные контексты (bounded contexts) и вездесущий язык (ubiquitous language) в DDD?"
+        - "Как паттерны Repository и Unit of Work развязывают домен и инфраструктуру?"
+        - "В чём разница между анемичной доменной моделью и богатой доменной моделью?"
+    expected_points:
+      - "DDD: software design approach focused on core domain and business logic"
+      - "Repository pattern: abstraction over data access, provides collection-like interface"
+      - "Unit of Work pattern: tracks changes and coordinates transactional writes"
+      - "Together they isolate domain logic from persistence concerns"
+      - "Enable testability and maintainability of complex business domains"

@@ -1,0 +1,182 @@
+category: "Django Production"
+track: "python"
+level: "senior"
+
+description: "Senior Django: performance at scale, Celery, multi-database, and production hardening"
+
+questions:
+  - id: "django-s-001"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "performance", "orm"]
+    question:
+      text:
+        en: "How do you optimize Django ORM queries under high load?"
+        ru: "Как оптимизировать запросы Django ORM под высокой нагрузкой?"
+      code: null
+    follow_ups:
+      en:
+        - "What tools profile Django queries (django-debug-toolbar, silk)?"
+        - "When denormalize vs optimize queries?"
+      ru:
+        - "Какие инструменты профилируют запросы Django?"
+        - "Когда денормализовать, а когда оптимизировать запросы?"
+    expected_points:
+      - "select_related, prefetch_related, only/defer"
+      - "Database indexes aligned with filter/sort columns"
+      - "Query count budgets per request; cache expensive aggregates"
+
+  - id: "django-s-002"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "connection-pooling"]
+    question:
+      text:
+        en: "How does connection pooling work with Django and PostgreSQL?"
+        ru: "Как работает connection pooling с Django и PostgreSQL?"
+      code: null
+    follow_ups:
+      en:
+        - "What is PgBouncer transaction vs session pooling?"
+        - "How does CONN_MAX_AGE affect connections?"
+      ru:
+        - "Чем transaction pooling отличается от session pooling в PgBouncer?"
+        - "Как CONN_MAX_AGE влияет на соединения?"
+    expected_points:
+      - "Django opens connections per request by default"
+      - "CONN_MAX_AGE reuses connections across requests"
+      - "PgBouncer pools at infrastructure layer for many workers"
+
+  - id: "django-s-003"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "read-replicas"]
+    question:
+      text:
+        en: "How do you route reads to replicas in a Django application?"
+        ru: "Как направлять чтение на реплики в Django-приложении?"
+      code: null
+    follow_ups:
+      en:
+        - "What is replication lag and how handle it?"
+        - "How does django-db-router help?"
+      ru:
+        - "Что такое replication lag и как с ним работать?"
+        - "Как помогает django-db-router?"
+    expected_points:
+      - "Multiple DATABASES entries for primary and replicas"
+      - "Database router sends reads to replica, writes to primary"
+      - "Sticky sessions or tolerate eventual consistency on reads"
+
+  - id: "django-s-004"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "celery"]
+    question:
+      text:
+        en: "How does Celery integrate with Django? Describe broker, workers, and result backend."
+        ru: "Как Celery интегрируется с Django? Опишите broker, workers и result backend."
+      code: |
+        # tasks.py
+        from celery import shared_task
+
+        @shared_task
+        def send_welcome_email(user_id):
+            ...
+    follow_ups:
+      en:
+        - "What brokers are commonly used (Redis, RabbitMQ)?"
+        - "How do you retry failed tasks?"
+      ru:
+        - "Какие brokers обычно используют (Redis, RabbitMQ)?"
+        - "Как повторять упавшие задачи?"
+    expected_points:
+      - "Celery workers consume tasks from message broker"
+      - "shared_task autodiscovers tasks from Django apps"
+      - "Result backend stores task outcomes; retries via autoretry_for"
+
+  - id: "django-s-005"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "celery", "architecture"]
+    question:
+      text:
+        en: "When should you use Celery vs Django BackgroundTasks or synchronous code?"
+        ru: "Когда использовать Celery, а когда BackgroundTasks Django или синхронный код?"
+      code: null
+    follow_ups:
+      en:
+        - "How do you monitor Celery task queues?"
+        - "What is task idempotency and why it matters?"
+      ru:
+        - "Как мониторить очереди Celery?"
+        - "Что такое idempotency задач и зачем она нужна?"
+    expected_points:
+      - "Celery for durable, distributed, long-running jobs"
+      - "Separate worker processes from web workers"
+      - "Idempotent tasks safe for retries; use task locks if needed"
+
+  - id: "django-s-006"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "multi-db"]
+    question:
+      text:
+        en: "How does Django multi-database routing work?"
+        ru: "Как работает multi-database routing в Django?"
+      code: null
+    follow_ups:
+      en:
+        - "Can migrations run independently per database?"
+        - "How do you pin a queryset to a specific DB?"
+      ru:
+        - "Можно ли запускать migrations отдельно для каждой БД?"
+        - "Как привязать queryset к конкретной БД?"
+    expected_points:
+      - "DATABASE_ROUTERS list determines read/write DB"
+      - "Model Meta can specify default database"
+      - "using('alias') forces queryset database"
+
+  - id: "django-s-007"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "security"]
+    question:
+      text:
+        en: "What production security hardening steps are essential for Django?"
+        ru: "Какие шаги security hardening обязательны для Django в продакшене?"
+      code: null
+    follow_ups:
+      en:
+        - "How do you manage SECRET_KEY rotation?"
+        - "What is django-axes or similar used for?"
+      ru:
+        - "Как ротировать SECRET_KEY?"
+        - "Для чего django-axes или аналоги?"
+    expected_points:
+      - "DEBUG=False, ALLOWED_HOSTS, HTTPS, HSTS"
+      - "Secure session/CSRF cookie flags"
+      - "Custom user model early; password validators"
+      - "Rate limiting login; keep Django and deps updated"
+
+  - id: "django-s-008"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["django", "custom-user"]
+    question:
+      text:
+        en: "Why define a custom User model at project start? What are the migration implications?"
+        ru: "Зачем определять кастомную User model в начале проекта? Какие последствия для миграций?"
+      code: |
+        AUTH_USER_MODEL = "accounts.User"
+    follow_ups:
+      en:
+        - "What happens if you switch User model late?"
+        - "How do foreign keys reference the user model?"
+      ru:
+        - "Что будет, если сменить User model поздно?"
+        - "Как ForeignKey ссылается на user model?"
+    expected_points:
+      - "Hard to change AUTH_USER_MODEL after first migration"
+      - "Use settings.AUTH_USER_MODEL or get_user_model()"
+      - "Subclass AbstractUser or AbstractBaseUser for email login etc."

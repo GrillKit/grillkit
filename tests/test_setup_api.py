@@ -10,21 +10,21 @@ from app.platform.services.config import ProviderConfig
 class TestSetupOptions:
     """Tests for GET /setup/options."""
 
-    def test_lists_languages(self, client):
-        """Options without params returns available programming languages."""
+    def test_lists_tracks(self, client):
+        """Options without params returns available question-bank tracks."""
         with patch(
-            "app.interview.api.setup.list_languages",
+            "app.interview.api.setup.list_tracks",
             return_value=["database", "python"],
         ):
             response = client.get("/setup/options")
         assert response.status_code == 200
-        assert response.json() == {"languages": ["database", "python"]}
+        assert response.json() == {"tracks": ["database", "python"]}
 
-    def test_lists_levels_for_language(self, client):
-        """Options with language returns levels for that language."""
+    def test_lists_levels_for_track(self, client):
+        """Options with track returns levels for that track."""
         with (
             patch(
-                "app.interview.api.setup.list_languages",
+                "app.interview.api.setup.list_tracks",
                 return_value=["python"],
             ),
             patch(
@@ -32,15 +32,15 @@ class TestSetupOptions:
                 return_value=["junior", "middle"],
             ),
         ):
-            response = client.get("/setup/options", params={"language": "python"})
+            response = client.get("/setup/options", params={"track": "python"})
         assert response.status_code == 200
         assert response.json() == {"levels": ["junior", "middle"]}
 
-    def test_lists_categories_for_language_and_level(self, client):
-        """Options with language and level returns topic categories."""
+    def test_lists_categories_for_track_and_level(self, client):
+        """Options with track and level returns topic categories."""
         with (
             patch(
-                "app.interview.api.setup.list_languages",
+                "app.interview.api.setup.list_tracks",
                 return_value=["python"],
             ),
             patch(
@@ -54,18 +54,18 @@ class TestSetupOptions:
         ):
             response = client.get(
                 "/setup/options",
-                params={"language": "python", "level": "junior"},
+                params={"track": "python", "level": "junior"},
             )
         assert response.status_code == 200
         assert response.json() == {"categories": ["basics", "oop"]}
 
-    def test_unknown_language_returns_404(self, client):
-        """Unknown language slug returns 404."""
+    def test_unknown_track_returns_404(self, client):
+        """Unknown track slug returns 404."""
         with patch(
-            "app.interview.api.setup.list_languages",
+            "app.interview.api.setup.list_tracks",
             return_value=["python"],
         ):
-            response = client.get("/setup/options", params={"language": "java"})
+            response = client.get("/setup/options", params={"track": "java"})
         assert response.status_code == 404
 
 
@@ -90,7 +90,7 @@ class TestSetupConfigRedirect:
                 "/setup",
                 data={
                     "selection_json": (
-                        '{"version":1,"sources":[{"language":"python",'
+                        '{"sources":[{"track":"python",'
                         '"level":"junior","categories":["basics"]}]}'
                     ),
                     "question_count": "5",
@@ -114,7 +114,7 @@ class TestSetupConfigRedirect:
                 return_value=mock_config,
             ),
             patch(
-                "app.interview.api.setup.list_languages",
+                "app.interview.api.setup.list_tracks",
                 return_value=["python"],
             ),
             patch(
@@ -161,7 +161,7 @@ class TestSetupConfigRedirect:
                 "/setup",
                 data={
                     "selection_json": (
-                        '{"version":1,"sources":[{"language":"python",'
+                        '{"sources":[{"track":"python",'
                         '"level":"junior","categories":["basics"]}]}'
                     ),
                     "question_count": "5",
@@ -185,7 +185,7 @@ class TestSetupConfigRedirect:
             locale="en",
         )
         selection = (
-            '{"version":1,"sources":[{"language":"python","level":"junior",'
+            '{"sources":[{"track":"python","level":"junior",'
             '"categories":["basics","oop"]}]}'
         )
         with (
@@ -194,7 +194,7 @@ class TestSetupConfigRedirect:
                 return_value=mock_config,
             ),
             patch(
-                "app.interview.api.setup.list_languages",
+                "app.interview.api.setup.list_tracks",
                 return_value=["python"],
             ),
             patch(

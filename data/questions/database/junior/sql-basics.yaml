@@ -1,5 +1,5 @@
 category: "SQL Basics"
-language: "database"
+track: "database"
 level: "junior"
 
 description: "Fundamental SQL: SELECT, INSERT, UPDATE, DELETE, WHERE, JOIN basics, aggregations"
@@ -142,3 +142,103 @@ questions:
       - "LIMIT restricts number of rows returned"
       - "DISTINCT removes duplicate rows from results"
       - "GROUP BY is more flexible — can use with aggregates"
+
+  - id: "sqlb-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["JOIN", "SQL", "relationships"]
+    question:
+      text:
+        en: "What are JOINs in SQL? What types of JOINs exist?"
+        ru: "Что такое соединения (JOIN) в SQL? Какие виды соединений существуют?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between INNER JOIN and OUTER JOIN?"
+        - "How does a self-join work?"
+        - "What is a cross join and when would you use it?"
+      ru:
+        - "В чём разница между INNER JOIN и OUTER JOIN?"
+        - "Как работает self-join?"
+        - "Что такое cross join и когда его использовать?"
+    expected_points:
+      - "JOIN combines rows from two or more tables based on related column"
+      - "Types: INNER, LEFT (OUTER), RIGHT (OUTER), FULL OUTER, CROSS"
+      - "INNER JOIN: only matching rows, OUTER JOIN: all rows from one/both tables"
+      - "Self-join: table joined with itself using aliases"
+
+  - id: "sqlb-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["DDL", "DML", "DCL", "TCL", "SQL"]
+    question:
+      text:
+        en: "What is the difference between DDL, DML, DCL and TCL? Which commands belong to each group? How does `DELETE` differ from `TRUNCATE`?"
+        ru: "В чём различие между DDL, DML, DCL и TCL? Какие команды входят в каждую из этих групп? Чем отличается `DELETE` от `TRUNCATE`?"
+      code: null
+    follow_ups:
+      en:
+        - "What are examples of DDL, DML, DCL and TCL commands?"
+        - "Why is TRUNCATE faster than DELETE?"
+        - "Can you rollback a TRUNCATE operation?"
+      ru:
+        - "Какие примеры команд DDL, DML, DCL и TCL?"
+        - "Почему TRUNCATE быстрее DELETE?"
+        - "Можно ли откатить операцию TRUNCATE?"
+    expected_points:
+      - "DDL: Data Definition Language (CREATE, ALTER, DROP, TRUNCATE)"
+      - "DML: Data Manipulation Language (SELECT, INSERT, UPDATE, DELETE)"
+      - "DCL: Data Control Language (GRANT, REVOKE)"
+      - "TCL: Transaction Control Language (COMMIT, ROLLBACK, SAVEPOINT)"
+      - "DELETE: logs each row deletion, can have WHERE, can be rolled back"
+      - "TRUNCATE: removes all rows without logging each, faster, auto-commits"
+
+  - id: "sqlb-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["constraints", "SQL", "integrity"]
+    question:
+      text:
+        en: "What are constraints in SQL? List the main types of constraints."
+        ru: "Что такое ограничения (constraints) в SQL? Назовите основные типы ограничений."
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between PRIMARY KEY and UNIQUE constraint?"
+        - "How does a FOREIGN KEY constraint work?"
+        - "What does the CHECK constraint do?"
+      ru:
+        - "В чём разница между PRIMARY KEY и UNIQUE constraint?"
+        - "Как работает ограничение FOREIGN KEY?"
+        - "Что делает ограничение CHECK?"
+    expected_points:
+      - "Constraints enforce rules on table data"
+      - "Types: NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, CHECK, DEFAULT"
+      - "PRIMARY KEY: unique + not null identifier for each row"
+      - "FOREIGN KEY: ensures referential integrity between tables"
+      - "CHECK: validates data against a condition"
+
+  - id: "sqlb-009"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["SQL-injection", "security", "database"]
+    question:
+      text:
+        en: "What are SQL injections and what are the ways to protect against them?"
+        ru: "Что такое SQL-инъекции и какие существуют способы защиты от них?"
+      code: null
+    follow_ups:
+      en:
+        - "How does parameterized query prevent SQL injection?"
+        - "What is the difference between prepared statements and stored procedures?"
+        - "What are other database security best practices?"
+      ru:
+        - "Как параметризованный запрос предотвращает SQL-инъекции?"
+        - "В чём разница между подготовленными выражениями и хранимыми процедурами?"
+        - "Какие ещё есть лучшие практики безопасности баз данных?"
+    expected_points:
+      - "SQL injection: attacker injects malicious SQL code through user input"
+      - "Prevention: use parameterized queries/prepared statements"
+      - "Never concatenate user input into SQL queries"
+      - "Use ORM with parameter binding, validate and sanitize input"
+      - "Apply principle of least privilege for database users"

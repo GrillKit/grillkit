@@ -4,6 +4,7 @@
 
 import pytest
 
+from app.interview.domain.interview import AnswerView, InterviewView
 from app.interview.domain.lifecycle import (
     MAX_SCORE_PER_ROUND,
     build_per_question_score_breakdown,
@@ -15,7 +16,6 @@ from app.interview.domain.progress import (
     find_unanswered_for_question,
     require_active,
 )
-from app.interview.domain.session import AnswerView, InterviewView
 from app.shared.domain.exceptions import (
     InterviewNotActiveError,
     InterviewNotFoundError,

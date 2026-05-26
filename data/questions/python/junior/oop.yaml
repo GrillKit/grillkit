@@ -1,5 +1,5 @@
 category: "Object-Oriented Programming"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Python OOP: classes, inheritance, encapsulation, and special methods"
@@ -210,3 +210,53 @@ questions:
       - "ABC classes cannot be instantiated directly"
       - "@abstractmethod forces subclasses to implement the method"
       - "Use ABCs to define interfaces and enforce contracts"
+
+  - id: "oop-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["OOP", "MRO", "super"]
+    question:
+      text:
+        en: "What is object-oriented programming and what are its main principles? What is MRO (Method Resolution Order) and what is `super()` used for?"
+        ru: "Что такое объектно-ориентированное программирование и назовите его основные принципы. Что такое MRO (порядок разрешения методов) и для чего используется `super()`?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the four main principles of OOP?"
+        - "How does Python's MRO differ from other languages?"
+        - "What happens when you call super() in a class hierarchy?"
+      ru:
+        - "Какие четыре основных принципа ООП?"
+        - "Чем MRO в Python отличается от других языков?"
+        - "Что происходит при вызове super() в иерархии классов?"
+    expected_points:
+      - "OOP principles: Encapsulation, Abstraction, Inheritance, Polymorphism"
+      - "MRO: Method Resolution Order - determines method lookup in inheritance hierarchy"
+      - "Python uses C3 linearization algorithm for MRO"
+      - "super() delegates method calls to parent classes following MRO"
+      - "super() is essential for cooperative multiple inheritance"
+
+  - id: "oop-009"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["classmethod", "staticmethod", "abstract", "slots"]
+    question:
+      text:
+        en: "How do class methods (`@classmethod`) differ from static methods (`@staticmethod`)? What methods are called abstract? What is `__slots__` and why is it needed?"
+        ru: "Чем отличаются методы класса (`@classmethod`) от статических методов (`@staticmethod`)? Какие методы называют абстрактными? Что такое `__slots__` и зачем он нужен?"
+      code: null
+    follow_ups:
+      en:
+        - "When would you use @classmethod vs @staticmethod?"
+        - "What is an abstract method and how is it defined?"
+        - "What are the trade-offs of using __slots__?"
+      ru:
+        - "Когда использовать @classmethod vs @staticmethod?"
+        - "Что такое абстрактный метод и как он определяется?"
+        - "Какие компромиссы при использовании __slots__?"
+    expected_points:
+      - "@classmethod: receives class as first argument (cls), can access/modify class state"
+      - "@staticmethod: no implicit first argument, behaves like regular function but belongs to class"
+      - "Abstract methods: defined in abstract base classes with @abstractmethod, must be implemented by subclasses"
+      - "__slots__: restricts instance attributes to predefined set, saves memory by eliminating __dict__"
+      - "Use __slots__ for many instances of same class with fixed attributes"

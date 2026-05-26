@@ -1,5 +1,5 @@
 category: "Basics"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Core Python fundamentals: types, variables, operators, and language essentials"
@@ -171,3 +171,167 @@ questions:
       - "Dunder methods are special methods with double underscores (e.g., __init__, __str__)"
       - "They allow objects to implement operator overloading and protocol interfaces"
       - "Examples: __len__ (len()), __eq__ (==), __enter__/__exit__ (context manager)"
+
+  - id: "bas-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["interpreter", "compiler", "execution"]
+    
+    question:
+      text:
+        en: "What is the difference between an interpreter and a compiler? How is Python code executed and what processes occur when it runs?"
+        ru: "В чём разница между интерпретатором и компилятором? Как выполняется Python-код и какие процессы происходят при его запуске?"
+      code: |
+        # Python is interpreted, but has compilation steps
+        
+        # 1. Source code (.py file)
+        # 2. Python compiler generates bytecode (.pyc)
+        # 3. Python Virtual Machine (PVM) executes bytecode
+        # 4. Result
+        
+        # Check bytecode
+        import dis
+        
+        def add(a, b):
+            return a + b
+        
+        print(dis.dis(add))
+    
+    follow_ups:
+      en:
+        - "What is Python bytecode and .pyc files?"
+        - "How does the Python Virtual Machine (PVM) work?"
+        - "What is JIT compilation and does Python use it?"
+      ru:
+        - "Что такое Python байткод и .pyc файлы?"
+        - "Как работает Python Virtual Machine (PVM)?"
+        - "Что такое JIT компиляция и использует ли её Python?"
+    
+    expected_points:
+      - "Interpreter: executes code line by line"
+      - "Compiler: translates entire program to machine code before execution"
+      - "Python: interpreted language with compilation to bytecode"
+      - "CPython: reference implementation, compiles to bytecode"
+      - "Execution steps: source → bytecode → PVM execution"
+      - "Bytecode: platform-independent intermediate code"
+      - ".pyc files: cached bytecode for faster startup"
+      - "PVM: executes bytecode instructions"
+
+  - id: "bas-009"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["memory", "garbage-collection", "management"]
+    
+    question:
+      text:
+        en: "How does Python manage memory allocation and deallocation? How does the garbage collector work?"
+        ru: "Каким образом Python управляет выделением и освобождением памяти? Как работает сборщик мусора (garbage collector)?"
+      code: |
+        import gc
+        import sys
+        
+        # Reference counting
+        a = []  # ref count = 1
+        b = a   # ref count = 2
+        del b   # ref count = 1
+        
+        # Circular reference
+        class Node:
+            def __init__(self):
+                self.parent = None
+                self.children = []
+        
+        parent = Node()
+        child = Node()
+        parent.children.append(child)
+        child.parent = parent  # Circular reference
+        
+        # Force garbage collection
+        gc.collect()
+        
+        # Check GC thresholds
+        print(gc.get_threshold())
+    
+    follow_ups:
+      en:
+        - "What is reference counting and what are its limitations?"
+        - "How does Python handle circular references?"
+        - "What are generations in Python's garbage collector?"
+      ru:
+        - "Что такое подсчёт ссылок и каковы его ограничения?"
+        - "Как Python обрабатывает циклические ссылки?"
+        - "Что такое поколения в сборщике мусора Python?"
+    
+    expected_points:
+      - "Python uses automatic memory management"
+      - "Reference counting: tracks references to objects"
+      - "Garbage collector: handles circular references"
+      - "Generational GC: objects in 3 generations (0, 1, 2)"
+      - "Young objects collected more frequently"
+      - "gc module for manual control and debugging"
+      - "Memory pools for small object allocation"
+      - "del statement decreases reference count"
+      - "Circular references require GC intervention"
+
+  - id: "bas-010"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["magic-methods", "dunder", "protocols"]
+    
+    question:
+      text:
+        en: "What are magic (dunder) methods? Which of them are called when an instance of a class is created? Which magic methods does a context manager implement (the with protocol) and why is it used?"
+        ru: "Что такое магические (dunder) методы? Какие из них вызываются при создании экземпляра класса? Какие магические методы реализует контекстный менеджер (протокол with) и для чего он нужен?"
+      code: |
+        # Magic methods for instance creation
+        class Example:
+            def __new__(cls, *args, **kwargs):
+                print("__new__ called")
+                instance = super().__new__(cls)
+                return instance
+            
+            def __init__(self, value):
+                print("__init__ called")
+                self.value = value
+        
+        # Context manager protocol
+        class FileManager:
+            def __init__(self, filename, mode):
+                self.filename = filename
+                self.mode = mode
+                self.file = None
+            
+            def __enter__(self):
+                print("Opening file")
+                self.file = open(self.filename, self.mode)
+                return self.file
+            
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                print("Closing file")
+                if self.file:
+                    self.file.close()
+                # Return True to suppress exceptions
+        
+        # Using context manager
+        with FileManager("test.txt", "w") as f:
+            f.write("Hello")
+    
+    follow_ups:
+      en:
+        - "What is the difference between __new__ and __init__?"
+        - "How does __enter__/__exit__ handle exceptions?"
+        - "What other protocols use magic methods?"
+      ru:
+        - "В чём разница между __new__ и __init__?"
+        - "Как __enter__/__exit__ обрабатывают исключения?"
+        - "Какие ещё протоколы используют магические методы?"
+    
+    expected_points:
+      - "Magic methods: special methods with double underscores"
+      - "Instance creation: __new__ (creates instance), __init__ (initializes)"
+      - "Context manager: __enter__ (setup), __exit__ (cleanup)"
+      - "with statement ensures proper resource management"
+      - "__exit__ can suppress exceptions by returning True"
+      - "Other protocols: iteration (__iter__, __next__), comparison (__eq__, __lt__)"
+      - "Operator overloading with magic methods"
+      - "Protocol-based programming in Python"

@@ -1,5 +1,5 @@
 category: "Exceptions"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Python exception handling: try/except/finally, raising exceptions, and exception hierarchy"

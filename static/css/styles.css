@@ -1078,18 +1078,18 @@ textarea.form-control {
     }
 }
 
-.setup-language-block {
+.setup-track-block {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
     padding: 0.75rem 1rem;
 }
 
-.setup-language-legend {
+.setup-track-legend {
     font-weight: 600;
 }
 
-.setup-language-toggle {
+.setup-track-toggle {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;

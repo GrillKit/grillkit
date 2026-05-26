@@ -1,5 +1,5 @@
 category: "Advanced SQL"
-language: "database"
+track: "database"
 level: "middle"
 
 description: "Advanced SQL: subqueries, CTEs, window functions, transactions, and query optimization"
@@ -172,3 +172,177 @@ questions:
       - "Materialized view: cached result set stored on disk"
       - "Views always return current data; materialized need refresh"
       - "Use materialized views for expensive aggregations that rarely change"
+
+  - id: "sqla-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["indexes", "performance", "clustered", "non-clustered"]
+    question:
+      text:
+        en: "What are indexes and how do they affect query performance? How do clustered and non-clustered indexes differ? What types of indexes exist and which index is used by default in PostgreSQL?"
+        ru: "Что такое индексы и как они влияют на производительность запросов? Чем отличаются кластеризованные и некластеризованные индексы? Какие типы индексов бывают и какой индекс используется в PostgreSQL по умолчанию?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the trade-off between read performance and write performance with indexes?"
+        - "When should you not create an index?"
+        - "What are composite indexes and how do they work?"
+      ru:
+        - "Какой компромисс между производительностью чтения и записи при использовании индексов?"
+        - "Когда не стоит создавать индекс?"
+        - "Что такое составные индексы и как они работают?"
+    expected_points:
+      - "Indexes speed up SELECT queries but slow down INSERT/UPDATE/DELETE"
+      - "Clustered index determines physical order of data (1 per table)"
+      - "Non-clustered index is separate structure with pointers to data"
+      - "PostgreSQL default: B-tree index"
+      - "Other index types: Hash, GiST, GIN, BRIN (for specific use cases)"
+
+  - id: "sqla-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["selectivity", "query-planner", "EXPLAIN"]
+    question:
+      text:
+        en: "What is column selectivity and how does it affect the query planner? What are `EXPLAIN` and `EXPLAIN ANALYZE`?"
+        ru: "Что такое селективность колонки и как она влияет на планировщик запросов? Что такое `EXPLAIN` и `EXPLAIN ANALYZE`?"
+      code: null
+    follow_ups:
+      en:
+        - "How does the query planner use statistics to choose indexes?"
+        - "What is cardinality estimation and why is it important?"
+        - "How do you update statistics for the query planner?"
+      ru:
+        - "Как планировщик запросов использует статистику для выбора индексов?"
+        - "Что такое оценка кардинальности и почему она важна?"
+        - "Как обновить статистику для планировщика запросов?"
+    expected_points:
+      - "Selectivity: proportion of distinct values in a column"
+      - "High selectivity = many unique values, good for indexing"
+      - "Low selectivity = few unique values, poor for indexing"
+      - "EXPLAIN shows query plan without execution"
+      - "EXPLAIN ANALYZE executes query and shows actual performance"
+
+  - id: "sqla-009"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["subquery", "CTE", "SQL"]
+    question:
+      text:
+        en: "What is a subquery and what types of subqueries exist? What is a Common Table Expression (CTE)?"
+        ru: "Что такое подзапрос и какие типы подзапросов существуют? Что такое обобщённое табличное выражение (CTE)?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between correlated and non-correlated subqueries?"
+        - "When should you use CTE vs subquery?"
+        - "How do recursive CTEs work?"
+      ru:
+        - "В чём разница между коррелированными и некоррелированными подзапросами?"
+        - "Когда использовать CTE, а когда подзапрос?"
+        - "Как работают рекурсивные CTE?"
+    expected_points:
+      - "Subquery: query nested inside another query"
+      - "Types: scalar (returns single value), row (returns one row), table (returns multiple rows)"
+      - "CTE: named temporary result set defined with WITH clause"
+      - "CTEs improve readability and can be referenced multiple times"
+      - "Recursive CTEs can query hierarchical data"
+
+  - id: "sqla-010"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["SQL-order", "aggregate-functions", "window-functions"]
+    question:
+      text:
+        en: "In what order is an SQL query logically executed? What are aggregate functions and how do they differ from window functions?"
+        ru: "В каком порядке логически выполняется SQL-запрос? Что такое агрегатные функции и чем они отличаются от оконных функций?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the logical order of SQL clauses?"
+        - "How do GROUP BY and HAVING affect query execution?"
+        - "When would you use window functions instead of GROUP BY?"
+      ru:
+        - "Каков логический порядок предложений SQL?"
+        - "Как GROUP BY и HAVING влияют на выполнение запроса?"
+        - "Когда использовать оконные функции вместо GROUP BY?"
+    expected_points:
+      - "Logical order: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT"
+      - "Aggregate functions: operate on groups of rows, reduce multiple rows to single value (SUM, AVG, COUNT)"
+      - "Window functions: operate on window of rows, preserve individual rows (ROW_NUMBER, RANK, SUM OVER)"
+      - "Aggregate functions collapse rows, window functions keep rows"
+
+  - id: "sqla-011"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["cursor", "database", "SQL"]
+    question:
+      text:
+        en: "What is a cursor in databases and for what purposes is it used?"
+        ru: "Что такое курсор (cursor) в базах данных и для каких целей он используется?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the performance implications of using cursors?"
+        - "When should you avoid using cursors?"
+        - "What are server-side vs client-side cursors?"
+      ru:
+        - "Какие последствия для производительности при использовании курсоров?"
+        - "Когда следует избегать использования курсоров?"
+        - "Что такое серверные и клиентские курсоры?"
+    expected_points:
+      - "Cursor: database object to iterate over result set row by row"
+      - "Used for row-by-row processing when set-based operations aren't possible"
+      - "Types: forward-only, scrollable, static, dynamic, keyset-driven"
+      - "Performance: cursors are slower than set-based operations"
+      - "Use sparingly; prefer set-based operations when possible"
+
+  - id: "sqla-012"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["optimization", "N+1", "SQLAlchemy"]
+    question:
+      text:
+        en: "How are slow queries typically optimized? What is the essence of the N+1 problem and how is it solved with SQLAlchemy?"
+        ru: "Как обычно оптимизируют медленные запросы? В чём суть проблемы N+1 и как её решают с помощью SQLAlchemy?"
+      code: null
+    follow_ups:
+      en:
+        - "What tools can you use to identify slow queries?"
+        - "How do you use indexes to optimize queries?"
+        - "What is eager loading vs lazy loading?"
+      ru:
+        - "Какие инструменты можно использовать для выявления медленных запросов?"
+        - "Как использовать индексы для оптимизации запросов?"
+        - "Что такое eager loading vs lazy loading?"
+    expected_points:
+      - "Optimization steps: identify slow queries, analyze execution plan, add indexes, rewrite queries"
+      - "N+1 problem: 1 query to get N items, then N queries to get related data"
+      - "Solution: eager loading with JOINs or batch loading"
+      - "SQLAlchemy: use joinedload(), subqueryload(), or selectinload()"
+      - "Use database profiling tools and EXPLAIN ANALYZE"
+
+  - id: "sqla-013"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["transaction", "ACID", "isolation", "nested"]
+    question:
+      text:
+        en: "What is a transaction and a nested transaction? What does the acronym ACID stand for? What transaction isolation levels exist?"
+        ru: "Что такое транзакция и вложенная транзакция? Что означает аббревиатура ACID? Какие уровни изоляции транзакций существуют?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the ACID properties and why are they important?"
+        - "What is the difference between savepoints and nested transactions?"
+        - "How do different isolation levels affect performance?"
+      ru:
+        - "Что такое свойства ACID и почему они важны?"
+        - "В чём разница между точками сохранения и вложенными транзакциями?"
+        - "Как разные уровни изоляции влияют на производительность?"
+    expected_points:
+      - "Transaction: logical unit of work that succeeds or fails as a whole"
+      - "Nested transaction: transaction within another transaction (savepoints)"
+      - "ACID: Atomicity, Consistency, Isolation, Durability"
+      - "Isolation levels: READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE"
+      - "Higher isolation = better consistency but worse performance"

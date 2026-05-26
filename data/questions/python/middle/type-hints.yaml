@@ -1,5 +1,5 @@
 category: "Type Hints"
-language: "python"
+track: "python"
 level: "middle"
 
 description: "Advanced Python type hints: generics, protocols, overloads, and static type checking"

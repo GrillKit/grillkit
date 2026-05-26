@@ -54,7 +54,7 @@ class InterviewEvaluatorService:
             question_text: The question text.
             answer_text: The user's answer.
             question_code: Optional code snippet from the question.
-            locale: Language for AI feedback and follow-up questions.
+            locale: Locale for AI feedback and follow-up questions.
 
         Returns:
             AnswerEvaluation with score, feedback, and follow-up decision.
@@ -104,7 +104,7 @@ class InterviewEvaluatorService:
             follow_up_question: The follow-up question text.
             follow_up_answer: The user's follow-up answer.
             question_code: Optional code snippet from the question.
-            locale: Language for AI feedback and follow-up questions.
+            locale: Locale for AI feedback and follow-up questions.
 
         Returns:
             FollowUpEvaluation with score and further follow-up decision.
@@ -153,8 +153,8 @@ class InterviewEvaluatorService:
             provider: Configured AI provider instance.
             questions_answers: List of dicts with question_id, question_text,
                 answer_text, score, round for each answer.
-            sources_text: Human-readable list of languages, levels, and topics.
-            locale: Language for the final evaluation narrative.
+            sources_text: Human-readable list of tracks, levels, and topics.
+            locale: Locale for the final evaluation narrative.
 
         Returns:
             InterviewEvaluation with overall feedback and recommendations.

@@ -5,7 +5,7 @@
 from collections import defaultdict
 from typing import Any
 
-from app.interview.domain.session import AnswerView, InterviewView
+from app.interview.domain.interview import AnswerView, InterviewView
 
 MAX_SCORE_PER_ROUND = 5
 

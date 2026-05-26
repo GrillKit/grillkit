@@ -1,0 +1,179 @@
+category: "SQLite Basics"
+track: "database"
+level: "junior"
+
+description: "SQLite fundamentals: use cases, WAL mode, concurrency limits, and comparison with PostgreSQL"
+
+questions:
+  - id: "sqlite-j-001"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["sqlite", "embedded"]
+    question:
+      text:
+        en: "When is SQLite a good choice vs PostgreSQL or MySQL?"
+        ru: "Когда SQLite — хороший выбор, а когда PostgreSQL или MySQL?"
+      code: null
+    follow_ups:
+      en:
+        - "What types of apps commonly ship SQLite?"
+        - "Why is SQLite not ideal for high concurrent writes?"
+      ru:
+        - "Какие приложения часто используют SQLite?"
+        - "Почему SQLite не подходит для высокой конкурентной записи?"
+    expected_points:
+      - "SQLite: embedded, serverless, single file, zero config"
+      - "Good for mobile, desktop, tests, small services, prototypes"
+      - "PostgreSQL for multi-user concurrent production workloads"
+
+  - id: "sqlite-j-002"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "wal"]
+    question:
+      text:
+        en: "What is WAL (Write-Ahead Logging) mode in SQLite? What benefits does it provide?"
+        ru: "Что такое WAL (Write-Ahead Logging) в SQLite? Какие преимущества даёт?"
+      code: |
+        PRAGMA journal_mode=WAL;
+    follow_ups:
+      en:
+        - "How does WAL improve read concurrency?"
+        - "What are -wal and -shm sidecar files?"
+      ru:
+        - "Как WAL улучшает concurrent reads?"
+        - "Что такое sidecar-файлы -wal и -shm?"
+    expected_points:
+      - "WAL allows readers while writer appends to log"
+      - "Better concurrency than default rollback journal"
+      - "Checkpoint merges WAL back into main DB file"
+
+  - id: "sqlite-j-003"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "concurrency"]
+    question:
+      text:
+        en: "What are SQLite's concurrency limitations?"
+        ru: "Какие ограничения concurrency у SQLite?"
+      code: null
+    follow_ups:
+      en:
+        - "What happens when two processes write simultaneously?"
+        - "What is SQLITE_BUSY?"
+      ru:
+        - "Что происходит при одновременной записи двумя процессами?"
+        - "Что такое SQLITE_BUSY?"
+    expected_points:
+      - "Single writer at a time (database-level lock)"
+      - "Multiple readers possible with WAL"
+      - "Network file systems can cause locking issues"
+
+  - id: "sqlite-j-004"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "types"]
+    question:
+      text:
+        en: "How does SQLite type affinity work? How is it different from PostgreSQL strict typing?"
+        ru: "Как работает type affinity в SQLite? Чем отличается от строгой типизации PostgreSQL?"
+      code: null
+    follow_ups:
+      en:
+        - "What storage classes exist in SQLite?"
+        - "Why can type coercion surprise developers?"
+      ru:
+        - "Какие storage classes есть в SQLite?"
+        - "Почему приведение типов может удивить разработчика?"
+    expected_points:
+      - "SQLite uses dynamic typing with type affinity per column"
+      - "Values stored as NULL, INTEGER, REAL, TEXT, BLOB"
+      - "PostgreSQL enforces declared column types strictly"
+
+  - id: "sqlite-j-005"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["sqlite", "python"]
+    question:
+      text:
+        en: "How do you use SQLite from Python? Compare sqlite3 stdlib and aiosqlite."
+        ru: "Как использовать SQLite из Python? Сравните sqlite3 stdlib и aiosqlite."
+      code: |
+        import sqlite3
+        conn = sqlite3.connect("app.db")
+        conn.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)")
+    follow_ups:
+      en:
+        - "What is row_factory useful for?"
+        - "When choose in-memory SQLite for tests?"
+      ru:
+        - "Для чего row_factory?"
+        - "Когда выбирают in-memory SQLite для тестов?"
+    expected_points:
+      - "sqlite3 in stdlib for sync access"
+      - "aiosqlite wraps sqlite3 for async/await"
+      - ":memory: database for fast isolated tests"
+
+  - id: "sqlite-j-006"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "constraints"]
+    question:
+      text:
+        en: "What constraints and indexes does SQLite support?"
+        ru: "Какие constraints и indexes поддерживает SQLite?"
+      code: null
+    follow_ups:
+      en:
+        - "Does SQLite support FOREIGN KEY enforcement?"
+        - "What is a partial index?"
+      ru:
+        - "Поддерживает ли SQLite FOREIGN KEY?"
+        - "Что такое partial index?"
+    expected_points:
+      - "PRIMARY KEY, UNIQUE, NOT NULL, CHECK, FOREIGN KEY"
+      - "PRAGMA foreign_keys=ON required for FK enforcement"
+      - "B-tree indexes; partial indexes with WHERE clause"
+
+  - id: "sqlite-j-007"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "backup"]
+    question:
+      text:
+        en: "How do you backup a SQLite database safely while the app is running?"
+        ru: "Как безопасно сделать backup SQLite при работающем приложении?"
+      code: |
+        .backup main backup.db
+    follow_ups:
+      en:
+        - "Why is copying the .db file directly risky during writes?"
+        - "What is the online backup API?"
+      ru:
+        - "Почему копирование .db файла напрямую рискованно?"
+        - "Что такое online backup API?"
+    expected_points:
+      - "Use SQLite backup API or .backup command"
+      - "Plain file copy may capture inconsistent state without WAL checkpoint"
+      - "Stop writes or use backup API for consistency"
+
+  - id: "sqlite-j-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["sqlite", "limits"]
+    question:
+      text:
+        en: "What practical size and deployment limits should you know for SQLite?"
+        ru: "Какие практические лимиты размера и деплоя нужно знать для SQLite?"
+      code: null
+    follow_ups:
+      en:
+        - "Can SQLite run on NFS or cloud network drives?"
+        - "What is the max database size theoretically?"
+      ru:
+        - "Можно ли SQLite на NFS или сетевых дисках?"
+        - "Каков теоретический max размер БД?"
+    expected_points:
+      - "Avoid network filesystems for write-heavy SQLite"
+      - "Terabyte-scale possible but not typical web backend"
+      - "Replication not built-in; use PostgreSQL for HA"

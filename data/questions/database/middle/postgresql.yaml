@@ -1,5 +1,5 @@
 category: "PostgreSQL"
-language: "database"
+track: "database"
 level: "middle"
 
 description: "PostgreSQL-specific features: MVCC, advanced data types, extensions, configuration"
@@ -129,3 +129,28 @@ questions:
       - "Logical replication: row-level changes via publication/subscription"
       - "Synchronous: write confirmed on primary and replica (slower)"
       - "pg_ctl promote or trigger file to activate standby"
+
+  - id: "pg-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["VACUUM", "maintenance", "PostgreSQL"]
+    question:
+      text:
+        en: "What does the `VACUUM` command do in PostgreSQL?"
+        ru: "Что делает команда `VACUUM` в PostgreSQL?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between VACUUM and VACUUM FULL?"
+        - "How does autovacuum work?"
+        - "What is transaction ID wraparound and how does VACUUM help?"
+      ru:
+        - "В чём разница между VACUUM и VACUUM FULL?"
+        - "Как работает autovacuum?"
+        - "Что такое переполнение transaction ID и как VACUUM помогает?"
+    expected_points:
+      - "VACUUM: cleans up dead tuples (deleted/updated rows) marked by MVCC"
+      - "Reclaims storage space for reuse but doesn't return it to OS"
+      - "VACUUM FULL: rewrites table completely, returns space to OS (exclusive lock)"
+      - "Prevents transaction ID wraparound by freezing old tuples"
+      - "Autovacuum automatically runs VACUUM based on table activity"

@@ -1,8 +1,8 @@
 category: "Advanced Architecture"
-language: "python"
+track: "system-design"
 level: "senior"
 
-description: "Deep architecture: event-driven, real-time systems, data pipelines, architectural decision records"
+description: "Deep architecture: event-driven systems, event sourcing, stream processing, and migration patterns"
 
 questions:
   - id: "aad-001"
@@ -66,90 +66,18 @@ questions:
       en:
         - "What is the difference between stream processing and batch processing?"
         - "How do you handle late-arriving data and watermarks?"
-        - "What Python libraries exist for stream processing (faust, quix, bytewax)?"
+        - "When would you embed stream processing in the app vs use a dedicated cluster?"
       ru:
         - "В чём разница между потоковой и пакетной обработкой?"
         - "Как обрабатывать данные, поступающие с опозданием, и водяные знаки (watermarks)?"
-        - "Какие Python-библиотеки существуют для потоковой обработки (faust, quix, bytewax)?"
+        - "Когда встраивать потоковую обработку в приложение, а когда использовать отдельный кластер?"
     expected_points:
       - "Kafka Streams: lightweight, embeddable, exactly-once semantics"
       - "Flink: full-featured, exactly-once, event time processing"
       - "ksqlDB: SQL-based stream processing on Kafka topics"
-      - "Python: Bytewax, Quix — native stream processing for Python"
+      - "Choose based on throughput, state size, and operational complexity"
 
   - id: "aad-004"
-    type: "knowledge"
-    difficulty: 5
-    tags: ["data-pipelines", "etl", "data-warehouse"]
-    question:
-      text:
-        en: "How do you design and orchestrate data pipelines in a Python ecosystem?"
-        ru: "Как проектировать и оркестрировать пайплайны данных в экосистеме Python?"
-      code: null
-    follow_ups:
-      en:
-        - "How does Airflow compare to Prefect and Dagster?"
-        - "What is the difference between ETL and ELT?"
-        - "How do you handle data quality checks and lineage tracking?"
-      ru:
-        - "Как Airflow сравнивается с Prefect и Dagster?"
-        - "В чём разница между ETL и ELT?"
-        - "Как проводить проверки качества данных и отслеживать происхождение (lineage)?"
-    expected_points:
-      - "Airflow: DAG-based scheduler with operators and sensors"
-      - "Prefect: modern workflow engine with retries, caching, notifications"
-      - "Dagster: asset-based orchestration with lineage and type system"
-      - "dbt: SQL-first transformation tool for analytics engineering"
-
-  - id: "aad-005"
-    type: "knowledge"
-    difficulty: 5
-    tags: ["architectural-decisions", "ADR"]
-    question:
-      text:
-        en: "What is an Architectural Decision Record (ADR)? How do you use them in a Python project?"
-        ru: "Что такое Architectural Decision Record (ADR)? Как использовать их в Python-проекте?"
-      code: null
-    follow_ups:
-      en:
-        - "What is the structure of an ADR (Title, Context, Decision, Consequences)?"
-        - "When should you write an ADR vs just documenting in code?"
-        - "How do you keep ADRs discoverable and up to date?"
-      ru:
-        - "Какова структура ADR (Заголовок, Контекст, Решение, Последствия)?"
-        - "Когда следует писать ADR, а не просто документировать в коде?"
-        - "Как поддерживать ADR в актуальном состоянии и делать их обнаруживаемыми?"
-    expected_points:
-      - "ADR captures significant architectural decisions with rationale"
-      - "Context: problem, constraints, options considered"
-      - "Decision: what was chosen and why"
-      - "Consequences: trade-offs, impacts, and future considerations"
-
-  - id: "aad-006"
-    type: "knowledge"
-    difficulty: 5
-    tags: ["chaos-engineering", "resilience-testing"]
-    question:
-      text:
-        en: "What is chaos engineering? How do you apply it to Python microservices?"
-        ru: "Что такое chaos engineering? Как применять его к Python-микросервисам?"
-      code: null
-    follow_ups:
-      en:
-        - "What tools exist for chaos engineering in Python (chaostoolkit, Gremlin)?"
-        - "What experiments would you run first (network latency, pod failure, resource exhaustion)?"
-        - "How do you measure resilience and set steady-state hypotheses?"
-      ru:
-        - "Какие инструменты существуют для chaos engineering в Python (chaostoolkit, Gremlin)?"
-        - "Какие эксперименты проводить в первую очередь (сетевая задержка, отказ подов, истощение ресурсов)?"
-        - "Как измерять отказоустойчивость и устанавливать гипотезы steady-state?"
-    expected_points:
-      - "Chaos engineering: proactively inject failures to test system resilience"
-      - "Start with blast-radius-controlled experiments in staging"
-      - "Chaostoolkit: Python-based chaos engineering framework"
-      - "Steady state: define normal behavior metrics to validate against"
-
-  - id: "aad-007"
     type: "knowledge"
     difficulty: 5
     tags: ["migration-strategies", "strangler-fig"]

@@ -23,7 +23,7 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
   <img src="./assets/dashboard.png" alt="GrillKit dashboard" width="900" />
 </p>
 
-**Interview setup** — languages, levels, topics, and session options
+**Interview setup** — question-bank tracks, levels, topics, and session options
 
 <p align="center">
   <img src="./assets/interview-setup.png" alt="Interview setup" width="900" />
@@ -38,11 +38,11 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
 
 ## Features
 
-- **Interviews** — multi-language setup, several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
+- **Interviews** — multi-track setup (Python, Database, System Design, …), several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
 - **Timer** — optional per-round time limit; expired rounds score 0 and the session moves on
 - **Voice** — offline Whisper dictation for answers; optional Piper TTS to read questions aloud
-- **Question banks** — Python and Database/SQL, junior / middle / senior (`data/questions/`)
-- **Setup** — model catalog on `/config`, interview language, Whisper/Piper downloads from the UI
+- **Question banks** — Python, Database/SQL, and System Design (`data/questions/{track}/`), junior / middle / senior
+- **Setup** — model catalog on `/config`, interview locale (AI feedback language), Whisper/Piper downloads from the UI
 - **Dashboard** — recent interview history on the home page
 - **Persistence** — SQLite (`data/db/grillkit.db`); Docker Compose on port 8000 with `./data` volume
 
@@ -89,8 +89,8 @@ PUID=$(id -u) PGID=$(id -g) docker compose up --build
 
 ### First-time flow
 
-1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set language; test connection, then save.
-2. **New interview** (`/setup`) — enable one or more programming languages (level per language), select multiple topics, set total question count (at least one per selected topic; interview language is read-only from config).
+1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save.
+2. **New interview** (`/setup`) — enable one or more question-bank tracks (level per track), select multiple topics, set total question count (at least one per selected topic; interview locale is read-only from config).
 3. **Interview** (`/interview/{id}`) — page loads history; answers and completion go over WebSocket.
 
 Without saved provider config, `/setup` redirects to `/config`.
@@ -118,9 +118,9 @@ Any **OpenAI-compatible** HTTP API works (single adapter in code):
 
 On `/config`, use **Add model to catalog** to save OpenAI-compatible providers (base URL, model name, optional API key). Entries are stored in [`data/llm_models.json`](data/llm_models.json) (gitignored). Select an interview model from the list, run **Test Connection**, then save.
 
-Application settings and interview language (`locale`) live in `data/config.json` (gitignored). Do not commit secrets.
+Application settings and interview **locale** (AI feedback and dictation language) live in `data/config.json` (gitignored). Do not commit secrets.
 
-After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the interview language from `locale`. The app loads the model into memory when the download finishes or on the next startup.
+After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the locale snapshot from config. The app loads the model into memory when the download finishes or on the next startup.
 
 **Read questions aloud** (`question_voice_enabled`) requests synthesized audio for question text only (never code blocks). Download the Piper voice on `/config` after enabling the option (~60 MB per voice from Hugging Face).
 
@@ -142,10 +142,10 @@ data/
 ├── whisper-models/          # Offline Whisper models per size (gitignored content)
 ├── piper-voices/            # Piper ONNX voices for question TTS (gitignored content)
 ├── tts-cache/               # Cached question WAVs per locale (gitignored content)
-└── questions/               # YAML banks: {language}/{level}/{category}.yaml
+└── questions/               # YAML banks: {track}/{level}/{category}.yaml
 ```
 
-There are no database migrations yet. After a schema change, remove `data/db/grillkit.db` and restart the app to recreate tables.
+Schema and `selection_spec` data migrations run automatically on startup via **Alembic** (`uv run alembic upgrade head`). For a clean dev DB, remove `data/db/grillkit.db` and restart the app.
 
 ## Project layout
 

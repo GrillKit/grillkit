@@ -1,0 +1,209 @@
+category: "pytest"
+track: "python"
+level: "middle"
+
+description: "Intermediate pytest: fixture scopes, mocking, async tests, plugins, and coverage"
+
+questions:
+  - id: "pytest-m-001"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "fixtures", "scope"]
+    question:
+      text:
+        en: "What fixture scopes exist in pytest? When use session vs function scope?"
+        ru: "Какие scope у фикстур в pytest? Когда использовать session vs function?"
+      code: |
+        @pytest.fixture(scope="session")
+        def db_engine():
+            engine = create_engine()
+            yield engine
+            engine.dispose()
+    follow_ups:
+      en:
+        - "What is module scope useful for?"
+        - "Can a function-scoped fixture depend on a session-scoped one?"
+      ru:
+        - "Для чего полезен module scope?"
+        - "Может ли function-scoped фикстура зависеть от session-scoped?"
+    expected_points:
+      - "Scopes: function, class, module, package, session"
+      - "function: default, fresh setup per test"
+      - "session: expensive one-time setup (DB engine, app instance)"
+
+  - id: "pytest-m-002"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "autouse"]
+    question:
+      text:
+        en: "What does autouse=True on a fixture do?"
+        ru: "Что делает autouse=True у фикстуры?"
+      code: |
+        @pytest.fixture(autouse=True)
+        def reset_cache():
+            cache.clear()
+            yield
+    follow_ups:
+      en:
+        - "When is autouse helpful vs explicit fixture parameters?"
+        - "What are the downsides of autouse fixtures?"
+      ru:
+        - "Когда autouse полезен, а когда явные параметры?"
+        - "Какие минусы у autouse-фикстур?"
+    expected_points:
+      - "autouse fixtures run automatically for every test in scope"
+      - "Good for global setup/teardown (cache, env vars)"
+      - "Can hide dependencies; use sparingly for clarity"
+
+  - id: "pytest-m-003"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "monkeypatch"]
+    question:
+      text:
+        en: "What is the monkeypatch fixture in pytest? Give examples of what it can patch."
+        ru: "Что такое фикстура monkeypatch в pytest? Приведите примеры того, что можно патчить."
+      code: |
+        def test_env(monkeypatch):
+            monkeypatch.setenv("API_KEY", "test")
+            monkeypatch.setattr("myapp.client.timeout", 1)
+    follow_ups:
+      en:
+        - "How does monkeypatch undo changes after the test?"
+        - "When prefer monkeypatch over unittest.mock.patch?"
+      ru:
+        - "Как monkeypatch откатывает изменения после теста?"
+        - "Когда monkeypatch лучше unittest.mock.patch?"
+    expected_points:
+      - "monkeypatch temporarily modifies env, attributes, dicts, sys.path"
+      - "Automatic teardown after test completes"
+      - "Convenient for simple patches without context managers"
+
+  - id: "pytest-m-004"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "capsys", "caplog"]
+    question:
+      text:
+        en: "How do capsys and caplog fixtures help test output and logging?"
+        ru: "Как фикстуры capsys и caplog помогают тестировать вывод и логирование?"
+      code: |
+        def test_print(capsys):
+            print("hello")
+            captured = capsys.readouterr()
+            assert "hello" in captured.out
+
+        def test_log(caplog):
+            logger.info("event")
+            assert "event" in caplog.text
+    follow_ups:
+      en:
+        - "What is capfd used for?"
+        - "How do you assert on log level with caplog?"
+      ru:
+        - "Для чего capfd?"
+        - "Как проверить уровень лога через caplog?"
+    expected_points:
+      - "capsys captures stdout/stderr"
+      - "caplog captures logging module output"
+      - "Avoid testing print in production code; prefer structured logs"
+
+  - id: "pytest-m-005"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "pytest-asyncio"]
+    question:
+      text:
+        en: "How do you test async code with pytest-asyncio?"
+        ru: "Как тестировать async-код с pytest-asyncio?"
+      code: |
+        import pytest
+
+        @pytest.mark.asyncio
+        async def test_fetch():
+            result = await fetch_data()
+            assert result["ok"]
+    follow_ups:
+      en:
+        - "What asyncio_mode options exist in pytest config?"
+        - "Can async fixtures be shared with sync tests?"
+      ru:
+        - "Какие asyncio_mode есть в конфиге pytest?"
+        - "Можно ли делиться async-фикстурами с sync-тестами?"
+    expected_points:
+      - "@pytest.mark.asyncio marks async test functions"
+      - "pytest-asyncio runs coroutines on an event loop"
+      - "Configure asyncio_mode=auto in pyproject.toml for less boilerplate"
+
+  - id: "pytest-m-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "mock"]
+    question:
+      text:
+        en: "How do unittest.mock and pytest-mock differ? What is the mocker fixture?"
+        ru: "Чем отличаются unittest.mock и pytest-mock? Что такое фикстура mocker?"
+      code: |
+        def test_api_call(mocker):
+            mock_get = mocker.patch("requests.get")
+            mock_get.return_value.json.return_value = {"id": 1}
+    follow_ups:
+      en:
+        - "What is MagicMock vs Mock?"
+        - "How do you assert a mock was called with specific args?"
+      ru:
+        - "Чем MagicMock отличается от Mock?"
+        - "Как проверить вызов mock с конкретными аргументами?"
+    expected_points:
+      - "mocker fixture from pytest-mock wraps unittest.mock with auto cleanup"
+      - "patch replaces object during test scope"
+      - "assert_called_once_with verifies call arguments"
+
+  - id: "pytest-m-007"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "plugins", "coverage"]
+    question:
+      text:
+        en: "How do pytest plugins extend functionality? How is coverage typically integrated?"
+        ru: "Как плагины pytest расширяют функциональность? Как обычно интегрируют coverage?"
+      code: null
+    follow_ups:
+      en:
+        - "Name one popular pytest plugin besides pytest-asyncio."
+        - "What does pytest-cov add to the CLI?"
+      ru:
+        - "Назовите популярный плагин pytest кроме pytest-asyncio."
+        - "Что pytest-cov добавляет в CLI?"
+    expected_points:
+      - "Plugins register hooks, fixtures, markers via entry points"
+      - "pytest-cov runs coverage.py during test run"
+      - "pytest-django integrates Django database and settings"
+
+  - id: "pytest-m-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["pytest", "factory-boy"]
+    question:
+      text:
+        en: "Why use factory_boy with pytest instead of creating model instances manually?"
+        ru: "Зачем использовать factory_boy с pytest вместо ручного создания моделей?"
+      code: |
+        import factory
+
+        class UserFactory(factory.django.DjangoModelFactory):
+            class Meta:
+                model = User
+            username = factory.Sequence(lambda n: f"user{n}")
+    follow_ups:
+      en:
+        - "How do factories reduce test boilerplate?"
+        - "What is the difference between Factory and fixture?"
+      ru:
+        - "Как factories уменьшают boilerplate в тестах?"
+        - "Чем Factory отличается от fixture?"
+    expected_points:
+      - "Factories generate valid model instances with sensible defaults"
+      - "Sequences and SubFactory handle related objects"
+      - "Combine with pytest fixtures for reusable test data"
