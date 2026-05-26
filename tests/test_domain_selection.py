@@ -6,8 +6,8 @@ import pytest
 
 from app.interview.domain.selection import (
     InterviewSelection,
-    LanguageQuestionPools,
-    LanguageSelection,
+    TrackQuestionPools,
+    TrackSelection,
     parse_selection_spec,
     plan_questions,
     selection_to_spec,
@@ -37,8 +37,8 @@ class TestValidateQuestionCount:
         """question_count must be at least the number of selected topics."""
         selection = InterviewSelection(
             sources=[
-                LanguageSelection(
-                    language="python",
+                TrackSelection(
+                    track="python",
                     level="junior",
                     categories=["basics", "oop"],
                 )
@@ -55,15 +55,15 @@ class TestPlanQuestions:
         """Plan includes at least one question per selected topic."""
         selection = InterviewSelection(
             sources=[
-                LanguageSelection(
-                    language="python",
+                TrackSelection(
+                    track="python",
                     level="junior",
                     categories=["basics", "oop"],
                 )
             ]
         )
         pools = [
-            LanguageQuestionPools(
+            TrackQuestionPools(
                 source=selection.sources[0],
                 full_pool=[_question("basics-1"), _question("oop-1")],
                 category_pools={
@@ -78,17 +78,17 @@ class TestPlanQuestions:
         ids = {q.id for q in plan}
         assert ids == {"basics-1", "oop-1"}
 
-    def test_orders_by_language_blocks(self, monkeypatch):
-        """Questions are grouped by language in source order."""
+    def test_orders_by_track_blocks(self, monkeypatch):
+        """Questions are grouped by track in source order."""
         selection = InterviewSelection(
             sources=[
-                LanguageSelection(
-                    language="python",
+                TrackSelection(
+                    track="python",
                     level="junior",
                     categories=["basics"],
                 ),
-                LanguageSelection(
-                    language="database",
+                TrackSelection(
+                    track="database",
                     level="junior",
                     categories=["sql"],
                 ),
@@ -97,12 +97,12 @@ class TestPlanQuestions:
         py_pool = [_question("py-1", "py"), _question("py-2", "py")]
         db_pool = [_question("db-1", "db"), _question("db-2", "db")]
         pools = [
-            LanguageQuestionPools(
+            TrackQuestionPools(
                 source=selection.sources[0],
                 full_pool=py_pool,
                 category_pools={"basics": py_pool},
             ),
-            LanguageQuestionPools(
+            TrackQuestionPools(
                 source=selection.sources[1],
                 full_pool=db_pool,
                 category_pools={"sql": db_pool},
@@ -126,8 +126,8 @@ class TestSelectionSpec:
         """selection_to_spec and parse_selection_spec preserve data."""
         selection = InterviewSelection(
             sources=[
-                LanguageSelection(
-                    language="python",
+                TrackSelection(
+                    track="python",
                     level="junior",
                     categories=["basics"],
                 )
@@ -135,5 +135,7 @@ class TestSelectionSpec:
         )
         raw = selection_to_spec(selection)
         parsed = parse_selection_spec(raw)
-        assert parsed.sources[0].language == "python"
+        assert parsed.sources[0].track == "python"
         assert parsed.sources[0].categories == ["basics"]
+        assert '"track":"python"' in raw
+        assert '"language"' not in raw

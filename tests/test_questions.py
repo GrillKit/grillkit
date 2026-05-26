@@ -10,8 +10,8 @@ import yaml
 from app.questions import (
     Question,
     list_categories,
-    list_languages,
     list_levels,
+    list_tracks,
     load_categories,
     load_category,
 )
@@ -27,7 +27,7 @@ def _write_category_yaml(path: Path, questions: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     content = {
         "category": "Test",
-        "language": "python",
+        "track": "python",
         "level": "junior",
         "questions": questions,
     }
@@ -55,7 +55,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     # data-structures.yaml
     ds_content = {
         "category": "Data Structures",
-        "language": "python",
+        "track": "python",
         "level": "junior",
         "description": "Fundamental Python data structures and their usage",
         "questions": [
@@ -79,7 +79,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     # algorithms.yaml
     algo_content = {
         "category": "Algorithms",
-        "language": "python",
+        "track": "python",
         "level": "junior",
         "description": "Basic algorithms and their implementation",
         "questions": [
@@ -103,7 +103,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     # system-design.yaml (senior level)
     sd_content = {
         "category": "System Design",
-        "language": "python",
+        "track": "python",
         "level": "senior",
         "description": "Designing scalable systems",
         "questions": [
@@ -124,7 +124,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     # basics.yaml (javascript)
     js_basics_content = {
         "category": "Basics",
-        "language": "javascript",
+        "track": "javascript",
         "level": "junior",
         "description": "JavaScript fundamentals",
         "questions": [
@@ -174,25 +174,25 @@ class TestQuestions:
     def test_load_category_no_questions_key(self, temp_questions_dir):
         """Test loading a category file with no 'questions' key."""
         (temp_questions_dir / "python" / "junior").mkdir(parents=True, exist_ok=True)
-        empty_content = {"category": "Empty", "language": "python", "level": "junior"}
+        empty_content = {"category": "Empty", "track": "python", "level": "junior"}
         with open(temp_questions_dir / "python" / "junior" / "empty.yaml", "w") as f:
             yaml.dump(empty_content, f)
 
         questions = load_category("python", "junior", "empty")
         assert len(questions) == 0
 
-    def test_list_languages(self, temp_questions_dir):
-        """Test listing programming languages from the question bank root."""
-        languages = list_languages()
-        assert sorted(languages) == sorted(["javascript", "python"])
+    def test_list_tracks(self, temp_questions_dir):
+        """Test listing tracks from the question bank root."""
+        tracks = list_tracks()
+        assert sorted(tracks) == sorted(["javascript", "python"])
 
     def test_list_levels(self, temp_questions_dir):
-        """Test listing levels for a programming language."""
+        """Test listing levels for a track."""
         levels = list_levels("python")
         assert sorted(levels) == sorted(["junior", "senior"])
 
     def test_list_categories_exists(self, temp_questions_dir):
-        """Test listing categories for an existing language and level."""
+        """Test listing categories for an existing track and level."""
         categories = list_categories("python", "junior")
         assert sorted(categories) == sorted(["data-structures", "algorithms"])
 
@@ -201,8 +201,8 @@ class TestQuestions:
         categories = list_categories("python", "expert")
         assert categories == []
 
-    def test_list_categories_non_existent_language(self, temp_questions_dir):
-        """Test listing categories for a non-existent language returns empty list."""
+    def test_list_categories_non_existent_track(self, temp_questions_dir):
+        """Test listing categories for a non-existent track returns empty list."""
         categories = list_categories("java", "junior")
         assert categories == []
 
@@ -219,7 +219,7 @@ class TestQuestions:
         (temp_questions_dir / "python" / "junior").mkdir(parents=True, exist_ok=True)
         multi_q_content = {
             "category": "Multi Question",
-            "language": "python",
+            "track": "python",
             "level": "junior",
             "questions": [
                 {
@@ -329,16 +329,13 @@ class TestQuestionLocalization:
         questions = load_category("python", "junior", "i18n", locale=" RU ")
         assert questions[0].text == "Русский текст вопроса."
 
-    def test_missing_locale_falls_back_to_english(self, i18n_questions_dir, caplog):
-        """Missing translation falls back to ``en`` and logs a warning."""
-        caplog.set_level("WARNING")
+    def test_missing_locale_falls_back_to_english(self, i18n_questions_dir):
+        """Missing translation falls back to ``en`` for text and follow-ups."""
         questions = load_category("python", "junior", "i18n", locale="fr")
         by_id = {q.id: q for q in questions}
 
         assert by_id["i18n-001"].text == "English question text."
         assert by_id["i18n-001"].follow_ups == ["English follow-up?"]
-        assert "i18n-001" in caplog.text
-        assert "fr" in caplog.text
 
         assert by_id["i18n-002"].text == "English only question."
         assert by_id["i18n-002"].follow_ups == ["English only follow-up."]

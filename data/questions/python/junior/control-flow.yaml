@@ -1,5 +1,5 @@
 category: "Control Flow"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Python control flow constructs: conditionals, loops, iterators, and context managers"
@@ -178,3 +178,28 @@ questions:
       - "Stops at the shortest iterable by default"
       - "zip_longest from itertools fills missing values"
       - "Python 3.10+: strict=True raises ValueError on length mismatch"
+
+  - id: "cf-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["iterator", "iterable", "generator"]
+    question:
+      text:
+        en: "What are the differences between an iterator (iterator), an iterable (iterable) and a generator (generator)? What methods does a generator have (besides `__next__` and `send`)?"
+        ru: "Чем отличаются итератор (iterator), итерируемый объект (iterable) и генератор (generator)? Какие методы есть у генератора (кроме `__next__` и `send`)?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the iterator protocol in Python?"
+        - "How does a generator function differ from a regular function?"
+        - "What are generator methods: close(), throw(), and __iter__()?"
+      ru:
+        - "Что такое протокол итератора в Python?"
+        - "Чем функция-генератор отличается от обычной функции?"
+        - "Какие методы генератора: close(), throw(), и __iter__()?"
+    expected_points:
+      - "Iterable: object with __iter__() returning an iterator"
+      - "Iterator: object with __next__() and __iter__() (returns self)"
+      - "Generator: special iterator created by generator function (yield) or expression"
+      - "Generator methods: close() (raises GeneratorExit), throw() (raises exception at yield), __iter__() (returns self)"
+      - "Generators are lazy, memory-efficient for large sequences"

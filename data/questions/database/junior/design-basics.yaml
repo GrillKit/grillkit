@@ -1,5 +1,5 @@
 category: "Database Design Basics"
-language: "database"
+track: "database"
 level: "junior"
 
 description: "Fundamental database design: normalization, primary/foreign keys, indexes, ER diagrams"
@@ -130,3 +130,28 @@ questions:
       - "String: CHAR(n), VARCHAR(n), TEXT"
       - "Date/Time: DATE, TIME, TIMESTAMP, TIMESTAMPTZ"
       - "Choose narrow types to save space and improve performance"
+
+  - id: "ddb-006"
+    type: "knowledge"
+    difficulty: 1
+    tags: ["database", "DBMS", "relational", "relationships"]
+    question:
+      text:
+        en: "What is a database (DB) and a database management system (DBMS)? Which databases are called relational? How are relationships between tables established and what types of relationships exist?"
+        ru: "Что такое база данных (БД) и система управления базами данных (СУБД)? Какие базы данных называют реляционными? Как устанавливаются связи между таблицами и какие типы связей бывают?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between a database and a DBMS?"
+        - "What are the characteristics of a relational database?"
+        - "How do primary and foreign keys establish relationships?"
+      ru:
+        - "В чём разница между базой данных и СУБД?"
+        - "Каковы характеристики реляционной базы данных?"
+        - "Как первичные и внешние ключи устанавливают связи?"
+    expected_points:
+      - "Database: organized collection of structured data"
+      - "DBMS: software to manage databases (create, read, update, delete)"
+      - "Relational databases: data organized in tables with rows and columns"
+      - "Relationships: one-to-one, one-to-many, many-to-many"
+      - "Primary keys and foreign keys establish referential integrity"

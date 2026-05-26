@@ -16,33 +16,33 @@
 <div class="card">
     <div class="card-header">
         <h1 class="card-title">Interview Setup</h1>
-        <p class="card-subtitle">Choose languages, levels, and topics for your session</p>
+        <p class="card-subtitle">Choose question banks, levels, and topics for your session</p>
     </div>
 
     <form method="post" action="/setup" class="form" id="setup-form">
         <input type="hidden" name="selection_json" id="selection_json" value="">
 
         <div class="form-group">
-            <p class="form-label form-label-required">Programming languages &amp; topics</p>
-            <p class="form-hint">Enable one or more languages, pick a level per language, then select topics.</p>
+            <p class="form-label form-label-required">Question banks &amp; topics</p>
+            <p class="form-hint">Enable one or more tracks, pick a level per track, then select topics.</p>
 
-            {% if not language_sections %}
+            {% if not track_sections %}
             <p class="form-hint">No question banks found.</p>
             {% endif %}
 
-            <div class="setup-language-sections" id="language-sections">
-                {% for section in language_sections %}
-                <fieldset class="setup-language-block" data-language="{{ section.slug }}">
-                    <legend class="setup-language-legend">
-                        <label class="setup-language-toggle">
-                            <input type="checkbox" class="language-enable" data-language="{{ section.slug }}">
+            <div class="setup-track-sections" id="track-sections">
+                {% for section in track_sections %}
+                <fieldset class="setup-track-block" data-track="{{ section.slug }}">
+                    <legend class="setup-track-legend">
+                        <label class="setup-track-toggle">
+                            <input type="checkbox" class="track-enable" data-track="{{ section.slug }}">
                             {{ section.label }}
                         </label>
                     </legend>
-                    <div class="setup-language-body" hidden>
+                    <div class="setup-track-body" hidden>
                         <div class="form-group">
                             <label class="form-label form-label-required" for="level-{{ section.slug }}">Difficulty level</label>
-                            <select id="level-{{ section.slug }}" class="form-control language-level" data-language="{{ section.slug }}">
+                            <select id="level-{{ section.slug }}" class="form-control track-level" data-track="{{ section.slug }}">
                                 {% for lvl in section.levels %}
                                 <option value="{{ lvl }}"{% if lvl == section.default_level %} selected{% endif %}>{{ lvl | capitalize }}</option>
                                 {% endfor %}
@@ -50,10 +50,10 @@
                         </div>
                         <div class="form-group">
                             <p class="form-label form-label-required">Topics</p>
-                            <div class="setup-topic-list" data-language="{{ section.slug }}">
+                            <div class="setup-topic-list" data-track="{{ section.slug }}">
                                 {% for cat in section.categories %}
                                 <label class="setup-topic-item">
-                                    <input type="checkbox" class="topic-checkbox" value="{{ cat }}" data-language="{{ section.slug }}">
+                                    <input type="checkbox" class="topic-checkbox" value="{{ cat }}" data-track="{{ section.slug }}">
                                     {{ cat | replace('-', ' ') | title }}
                                 </label>
                                 {% endfor %}
@@ -141,23 +141,23 @@
 
     function buildSelection() {
         const sources = [];
-        document.querySelectorAll(".setup-language-block").forEach(function (block) {
-            const language = block.dataset.language;
-            const enabled = block.querySelector(".language-enable");
+        document.querySelectorAll(".setup-track-block").forEach(function (block) {
+            const track = block.dataset.track;
+            const enabled = block.querySelector(".track-enable");
             if (!enabled || !enabled.checked) {
                 return;
             }
-            const levelSelect = block.querySelector(".language-level");
+            const levelSelect = block.querySelector(".track-level");
             const level = levelSelect ? levelSelect.value : "";
             const categories = [];
             block.querySelectorAll(".topic-checkbox:checked").forEach(function (cb) {
                 categories.push(cb.value);
             });
             if (categories.length > 0) {
-                sources.push({ language: language, level: level, categories: categories });
+                sources.push({ track: track, level: level, categories: categories });
             }
         });
-        return { version: 1, sources: sources };
+        return { sources: sources };
     }
 
     function canSubmit() {
@@ -179,14 +179,14 @@
     }
 
     async function loadTopics(block) {
-        const language = block.dataset.language;
-        const levelSelect = block.querySelector(".language-level");
+        const track = block.dataset.track;
+        const levelSelect = block.querySelector(".track-level");
         const topicList = block.querySelector(".setup-topic-list");
         if (!levelSelect || !topicList) {
             return;
         }
         const level = levelSelect.value;
-        const url = "/setup/options?language=" + encodeURIComponent(language)
+        const url = "/setup/options?track=" + encodeURIComponent(track)
             + "&level=" + encodeURIComponent(level);
         const response = await fetch(url);
         if (!response.ok) {
@@ -206,7 +206,7 @@
             input.type = "checkbox";
             input.className = "topic-checkbox";
             input.value = cat;
-            input.dataset.language = language;
+            input.dataset.track = track;
             if (checked.has(cat)) {
                 input.checked = true;
             }
@@ -218,10 +218,10 @@
         syncSubmitState();
     }
 
-    document.querySelectorAll(".setup-language-block").forEach(function (block) {
-        const enable = block.querySelector(".language-enable");
-        const body = block.querySelector(".setup-language-body");
-        const levelSelect = block.querySelector(".language-level");
+    document.querySelectorAll(".setup-track-block").forEach(function (block) {
+        const enable = block.querySelector(".track-enable");
+        const body = block.querySelector(".setup-track-body");
+        const levelSelect = block.querySelector(".track-level");
 
         if (enable && body) {
             enable.addEventListener("change", function () {

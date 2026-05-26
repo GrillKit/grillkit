@@ -1,6 +1,15 @@
 # GrillKit Architecture
 
-GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Jinja2** templates, and **OpenAI-compatible** plus **faster-whisper** adapters in `ai/`. Code is organized **by feature** (`interview/`, `speech/`, `question_voice/`, `platform/`) with cross-cutting code in `shared/`. Within each feature: transport in `api/`, orchestration in `services/`, pure rules in `domain/`, persistence in `repositories/` (interview only). Interview transactions use `InterviewUnitOfWork` (`interview/repositories/uow.py`), extending base `UnitOfWork` in `shared/infrastructure/`.
+GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Alembic** (schema and data migrations), **Jinja2** templates, and **OpenAI-compatible** plus **faster-whisper** adapters in `ai/`. Code is organized **by feature** (`interview/`, `speech/`, `question_voice/`, `platform/`) with cross-cutting code in `shared/`. Within each feature: transport in `api/`, orchestration in `services/`, pure rules in `domain/`, persistence in `repositories/` (interview only). Interview transactions use `InterviewUnitOfWork` (`interview/repositories/uow.py`), extending base `UnitOfWork` in `shared/infrastructure/`.
+
+## Terminology
+
+| Term | Meaning | Examples |
+|------|---------|----------|
+| **locale** | Language for AI feedback, follow-ups, and speech dictation | `en`, `ru` — stored on `Interview.locale` and `ProviderConfig` |
+| **track** | Question bank slug (top-level directory under `data/questions/`) | `python`, `database`, `system-design` |
+| **level** | Difficulty tier within a track | `junior`, `middle`, `senior` |
+| **category** | Topic YAML file within a track/level | `basics`, `redis`, `system-design` |
 
 ## Project Map
 
@@ -16,7 +25,7 @@ grillkit/
 │   │   │   ├── exceptions.py   # InterviewNotFoundError, InterviewNotActiveError, ...
 │   │   │   └── locales.py      # SUPPORTED_LOCALES, normalize_locale()
 │   │   ├── infrastructure/
-│   │   │   ├── database.py     # SQLite engine, SessionLocal, init_db()
+│   │   │   ├── database.py     # SQLite engine, SessionLocal, init_db() → Alembic
 │   │   │   ├── models.py       # Interview, Answer ORM models
 │   │   │   └── uow.py          # Base UnitOfWork: session, commit, rollback
 │   │   └── repositories/
@@ -107,7 +116,7 @@ grillkit/
 │   ├── piper-voices/<voice_id>/
 │   ├── tts-cache/v2/{locale}/
 │   ├── db/grillkit.db
-│   └── questions/              # YAML banks: {language}/{level}/{category}.yaml
+│   └── questions/              # YAML banks: {track}/{level}/{category}.yaml
 ├── docker-compose.yml          # app service only
 ├── docker-entrypoint.sh        # PUID/PGID, ensures data/db writable
 ├── Dockerfile                  # Multi-stage uv build → uvicorn
@@ -121,7 +130,7 @@ grillkit/
 | GET | `/` | `interview/api/dashboard.py` | Interview history (last 20) |
 | GET | `/setup` | `interview/api/setup.py` | New interview form (redirects to `/config` if unset) |
 | POST | `/setup` | `interview/api/setup.py` | Create interview → redirect `/interview/{id}` |
-| GET | `/setup/options` | `interview/api/setup.py` | Cascaded JSON: languages → levels → categories |
+| GET | `/setup/options` | `interview/api/setup.py` | Cascaded JSON: tracks → levels → categories |
 | GET | `/config` | `platform/api/config.py` | AI provider configuration form |
 | POST | `/config` | `platform/api/config.py` | Test connection (via form dependency), then save |
 | POST | `/config/test` | `platform/api/config.py` | Test connection without saving |
@@ -305,7 +314,7 @@ flowchart TB
 |-------|------|-------|
 | `id` | `str` | UUID v4 primary key |
 | `locale` | `str` | AI feedback language (`en`, `ru`, …) |
-| `selection_spec` | `str` | JSON list of `{language, level, categories[]}` sources (required) |
+| `selection_spec` | `str` | JSON `{version, sources: [{track, level, categories[]}]}` (required) |
 | `question_count` | `int` | Number of questions in session |
 | `question_ids` | `str` | JSON list of question IDs in display order |
 | `question_time_limit_seconds` | `int \| None` | Per-round limit (`None` = timer off) |
@@ -347,12 +356,12 @@ User → add catalog entry (separate form) → LLMCatalogService → data/llm_mo
 
 ```
 User → POST /setup (selection_json, question_count, optional timer)
-  → parse InterviewSelection (languages, per-language level, topic categories)
+  → parse InterviewSelection (tracks, per-track level, topic categories)
   → validate question_count ≥ number of selected topics
   → locale from ConfigService.get_config() → Interview.locale snapshot
   → InterviewCreationService.create_interview(selection, …)
        → build_question_plan(): one question per topic, then proportional fill
-       → questions grouped by language (form order), shuffled within each block
+       → questions grouped by track (form order), shuffled within each block
        → UnitOfWork(auto_commit=True): persist Interview + selection_spec + Answer rows
   → Redirect GET /interview/{id}
 ```
@@ -462,7 +471,7 @@ with UnitOfWork(auto_commit=True) as uow:
 | `data/whisper-models/<size>/` | Offline faster-whisper snapshots (`WhisperModelService`) |
 | `data/piper-voices/<voice_id>/` | Piper ONNX voice files (`PiperVoiceService`) |
 | `data/tts-cache/v2/{locale}/` | Cached question WAVs (`TtsCacheService`; SHA-256 of normalized text) |
-| `data/questions/{language}/{level}/{category}.yaml` | Question banks |
+| `data/questions/{track}/{level}/{category}.yaml` | Question banks |
 
 Docker Compose mounts `./data:/app/data` so DB and config survive container restarts. `init_db()` runs on app startup (`lifespan` in `main.py`).
 
@@ -472,8 +481,9 @@ Current YAML banks under `data/questions/`:
 
 - **python** — junior / middle / senior (multiple categories per level)
 - **database** — junior / middle / senior (SQL, design, NoSQL, etc.)
+- **system-design** — middle / senior (scaling, distributed systems, architecture)
 
-`questions.py` discovers languages and categories from the filesystem. Setup uses `GET /setup/options` for cascaded form updates.
+`questions.py` discovers tracks and categories from the filesystem. Setup uses `GET /setup/options?track=…` for cascaded form updates.
 
 ### Localization (YAML)
 

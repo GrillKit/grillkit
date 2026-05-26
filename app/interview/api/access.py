@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Interview access helpers for other features' API layers."""
 
-from app.interview.domain.session import AnswerView, InterviewView, interview_view
+from app.interview.domain.interview import AnswerView, InterviewView, interview_view
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Interview
 

@@ -4,21 +4,21 @@
 
 from app.interview.domain.selection import (
     InterviewSelection,
-    LanguageSelection,
+    TrackSelection,
     selection_to_spec,
 )
 
 
 def minimal_selection_spec(
     *,
-    language: str = "python",
+    track: str = "python",
     level: str = "junior",
     categories: list[str] | None = None,
 ) -> str:
     """Build a minimal ``selection_spec`` JSON string for test interviews.
 
     Args:
-        language: Question bank slug.
+        track: Question bank slug.
         level: Difficulty level slug.
         categories: Topic slugs (default: ``["basics"]``).
 
@@ -28,8 +28,8 @@ def minimal_selection_spec(
     return selection_to_spec(
         InterviewSelection(
             sources=[
-                LanguageSelection(
-                    language=language,
+                TrackSelection(
+                    track=track,
                     level=level,
                     categories=categories if categories is not None else ["basics"],
                 )

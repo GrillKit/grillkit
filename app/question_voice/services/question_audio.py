@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.interview.api.access import get_current_unanswered, load_interview_or_raise
 from app.interview.domain.progress import require_active
-from app.interview.domain.session import interview_view
+from app.interview.domain.interview import interview_view
 from app.platform.api.config_access import get_question_voice_settings
 from app.question_voice.domain.tts_exceptions import QuestionVoiceDisabledError
 from app.question_voice.services.tts_cache import TtsCacheService

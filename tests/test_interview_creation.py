@@ -8,7 +8,7 @@ import pytest
 
 from app.interview.domain.selection import (
     InterviewSelection,
-    LanguageSelection,
+    TrackSelection,
     get_interview_selection,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
@@ -18,15 +18,15 @@ from app.interview.services.query import InterviewQuery
 
 def _single_selection(
     *,
-    language: str = "python",
+    track: str = "python",
     level: str = "junior",
     categories: list[str] | None = None,
 ) -> InterviewSelection:
-    """Build a single-language selection for tests."""
+    """Build a single-track selection for tests."""
     return InterviewSelection(
         sources=[
-            LanguageSelection(
-                language=language,
+            TrackSelection(
+                track=track,
                 level=level,
                 categories=categories or ["data-structures"],
             )
@@ -126,8 +126,8 @@ def test_create_multi_topic_interview(isolated_db, temp_questions_dir, monkeypat
 
     selection = InterviewSelection(
         sources=[
-            LanguageSelection(
-                language="python",
+            TrackSelection(
+                track="python",
                 level="junior",
                 categories=["data-structures", "algorithms"],
             )

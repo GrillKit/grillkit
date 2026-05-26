@@ -1,5 +1,5 @@
 category: "Distributed Databases"
-language: "database"
+track: "database"
 level: "senior"
 
 description: "Distributed database systems: sharding, replication, leader election, and distributed SQL"

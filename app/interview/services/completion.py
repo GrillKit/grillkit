@@ -17,7 +17,7 @@ from app.interview.domain.selection import (
     get_interview_selection,
     selection_sources_summary,
 )
-from app.interview.domain.session import interview_view
+from app.interview.domain.interview import interview_view
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.evaluator.service import InterviewEvaluatorService

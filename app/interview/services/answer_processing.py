@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 from app.ai.base import AIProvider
 from app.interview.domain.progress import find_unanswered_for_question, require_active
-from app.interview.domain.session import interview_view
+from app.interview.domain.interview import interview_view
 from app.interview.domain.timer import client_timeout_due, is_expired
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
@@ -40,10 +40,10 @@ class AnswerProcessingService:
         question_id: str,
         round_num: int,
     ) -> AsyncIterator[InterviewEvent]:
-        """Record a timed-out round with zero score and advance the session.
+        """Record a timed-out round with zero score and advance the interview.
 
         Args:
-            interview_id: The session UUID.
+            interview_id: The interview UUID.
             question_id: The question ID.
             round_num: The answer round that expired.
 
@@ -53,14 +53,14 @@ class AnswerProcessingService:
         Raises:
             InterviewNotFoundError: If the interview does not exist.
             InterviewNotActiveError: If the interview is already completed.
-            QuestionTimerNotEnabledError: If the session has no time limit.
+            QuestionTimerNotEnabledError: If the interview has no time limit.
             QuestionTimerNotExpiredError: If the deadline has not passed yet.
             UnansweredAnswerNotFoundError: If the round is not open.
         """
         with InterviewUnitOfWork() as uow:
             interview = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            session = interview_view(interview)
-            require_active(session)
+            interview = interview_view(interview)
+            require_active(interview)
 
             limit = interview.question_time_limit_seconds
             if not limit:

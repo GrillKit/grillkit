@@ -1,5 +1,5 @@
 category: "Database Design"
-language: "database"
+track: "database"
 level: "middle"
 
 description: "Intermediate database design: normalization trade-offs, partitioning, sharding, and schema patterns"
@@ -124,3 +124,53 @@ questions:
       - "Migrate: backfill data, update application to use new schema"
       - "Contract: remove old column/table when no longer needed"
       - "Use pt-online-schema-change (Percona) or gh-ost for large tables"
+
+  - id: "dd-006"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["ORM", "SQLAlchemy", "metadata"]
+    question:
+      text:
+        en: "What is Object-Relational Mapping (ORM)? What is `Metadata` in SQLAlchemy?"
+        ru: "Что такое объектно-реляционное отображение (ORM)? Что представляет собой `Metadata` в SQLAlchemy?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the benefits and drawbacks of using an ORM?"
+        - "How does SQLAlchemy's Metadata object work?"
+        - "What is the difference between SQLAlchemy Core and ORM?"
+      ru:
+        - "Какие преимущества и недостатки использования ORM?"
+        - "Как работает объект Metadata в SQLAlchemy?"
+        - "В чём разница между SQLAlchemy Core и ORM?"
+    expected_points:
+      - "ORM: maps database tables to objects in programming language"
+      - "Metadata: container of tables, columns, constraints, and other schema elements"
+      - "SQLAlchemy Metadata provides a single source of truth for schema"
+      - "Can generate SQL from metadata or reflect schema from database"
+      - "Core: SQL expression language, ORM: object mapping on top of Core"
+
+  - id: "dd-007"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["partitioning", "replication", "sharding", "scaling"]
+    question:
+      text:
+        en: "What are partitioning, replication and sharding? What are their main goals?"
+        ru: "Что такое партиционирование, репликация и шардирование? В чём их основные цели?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between horizontal and vertical partitioning?"
+        - "What are the types of replication (master-slave, master-master)?"
+        - "What are the challenges of sharding?"
+      ru:
+        - "В чём разница между горизонтальным и вертикальным партиционированием?"
+        - "Какие типы репликации (master-slave, master-master)?"
+        - "Какие сложности у шардирования?"
+    expected_points:
+      - "Partitioning: splits table within same database for performance and maintenance"
+      - "Replication: copies data across multiple servers for availability and read scaling"
+      - "Sharding: distributes data across different database instances for write scaling"
+      - "Goals: improve performance, availability, scalability, and manageability"
+      - "Each technique addresses different scaling challenges"

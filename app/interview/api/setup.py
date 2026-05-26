@@ -13,7 +13,7 @@ from app.interview.api.deps import InterviewCreationServiceDep
 from app.interview.api.setup_form import setup_form_context
 from app.interview.domain.selection import parse_selection_json, validate_question_count
 from app.platform.api.deps import ConfigServiceDep
-from app.questions import list_categories, list_languages, list_levels
+from app.questions import list_categories, list_levels, list_tracks
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.api.page_context import build_speech_model_page_context
 from app.templating import templates
@@ -77,33 +77,33 @@ async def setup_page(
 
 @router.get("/options")
 async def setup_options(
-    language: str | None = None,
+    track: str | None = None,
     level: str | None = None,
 ) -> JSONResponse:
     """Return cascaded setup options for dynamic form updates.
 
     Args:
-        language: When set, returns levels for that language.
-        level: When set with language, returns categories for that pair.
+        track: When set, returns levels for that question bank track.
+        level: When set with track, returns categories for that pair.
 
     Returns:
-        JSON with ``languages``, ``levels``, or ``categories`` keys.
+        JSON with ``tracks``, ``levels``, or ``categories`` keys.
     """
-    if language is None:
-        return JSONResponse({"languages": list_languages()})
+    if track is None:
+        return JSONResponse({"tracks": list_tracks()})
 
-    languages = list_languages()
-    if language not in languages:
-        raise HTTPException(status_code=404, detail=f"Unknown language: {language}")
+    tracks = list_tracks()
+    if track not in tracks:
+        raise HTTPException(status_code=404, detail=f"Unknown track: {track}")
 
     if level is None:
-        return JSONResponse({"levels": list_levels(language)})
+        return JSONResponse({"levels": list_levels(track)})
 
-    levels = list_levels(language)
+    levels = list_levels(track)
     if level not in levels:
         raise HTTPException(status_code=404, detail=f"Unknown level: {level}")
 
-    return JSONResponse({"categories": sorted(list_categories(language, level))})
+    return JSONResponse({"categories": sorted(list_categories(track, level))})
 
 
 @router.post("", response_class=HTMLResponse)
@@ -117,7 +117,7 @@ async def create_interview(
     enable_question_timer: str | None = Form(None),
     question_time_minutes: int = Form(3),
 ) -> Response:
-    """Create interview session from multi-language setup selection.
+    """Create interview session from multi-track setup selection.
 
     Args:
         request: FastAPI request object.

@@ -3,7 +3,7 @@
 """YAML question loader.
 
 This module provides functionality for loading interview questions
-from YAML files organized by language, level, and category.
+from YAML files organized by track, level, and category.
 """
 
 from dataclasses import dataclass
@@ -126,7 +126,7 @@ def _resolve_follow_ups(value: Any, locale: str, question_id: str) -> list[str]:
 
 
 def load_category(
-    language: str,
+    track: str,
     level: str,
     category: str,
     locale: str = DEFAULT_LOCALE,
@@ -134,7 +134,7 @@ def load_category(
     """Load questions for a specific category.
 
     Args:
-        language: Programming language (e.g., "python", "javascript").
+        track: Question bank slug (e.g. ``python``, ``database``).
         level: Difficulty level (e.g., "junior", "middle", "senior").
         category: Question category name (e.g., "basics", "oop").
         locale: Locale for question text and bank follow-ups (default: ``en``).
@@ -142,7 +142,7 @@ def load_category(
     Returns:
         List of Question objects. Empty list if file doesn't exist.
     """
-    path = QUESTIONS_DIR / language / level / f"{category}.yaml"
+    path = QUESTIONS_DIR / track / level / f"{category}.yaml"
     if not path.exists():
         return []
 
@@ -175,15 +175,15 @@ def load_category(
 
 
 def load_categories(
-    language: str,
+    track: str,
     level: str,
     categories: list[str],
     locale: str = DEFAULT_LOCALE,
 ) -> list[Question]:
-    """Load and merge questions from multiple categories for one language/level.
+    """Load and merge questions from multiple categories for one track/level.
 
     Args:
-        language: Programming language slug.
+        track: Question bank slug.
         level: Difficulty level slug.
         categories: Category YAML stems to load.
         locale: Locale for question text.
@@ -194,7 +194,7 @@ def load_categories(
     seen: set[str] = set()
     merged: list[Question] = []
     for category in categories:
-        for question in load_category(language, level, category, locale=locale):
+        for question in load_category(track, level, category, locale=locale):
             if question.id in seen:
                 continue
             seen.add(question.id)
@@ -202,11 +202,11 @@ def load_categories(
     return merged
 
 
-def list_languages() -> list[str]:
-    """List programming languages that have a question bank directory.
+def list_tracks() -> list[str]:
+    """List question-bank tracks that have a directory under ``data/questions/``.
 
     Returns:
-        Sorted directory names under ``data/questions/`` (e.g. ``python``).
+        Sorted directory names (e.g. ``python``, ``database``).
     """
     if not QUESTIONS_DIR.exists():
         return []
@@ -217,16 +217,16 @@ def list_languages() -> list[str]:
     )
 
 
-def list_levels(language: str) -> list[str]:
-    """List difficulty levels available for a programming language.
+def list_levels(track: str) -> list[str]:
+    """List difficulty levels available for a track.
 
     Args:
-        language: Programming language slug (e.g. ``python``).
+        track: Question bank slug (e.g. ``python``).
 
     Returns:
         Sorted level directory names (e.g. ``junior``, ``middle``).
     """
-    path = QUESTIONS_DIR / language
+    path = QUESTIONS_DIR / track
     if not path.exists():
         return []
     return sorted(
@@ -236,18 +236,18 @@ def list_levels(language: str) -> list[str]:
     )
 
 
-def list_categories(language: str, level: str) -> list[str]:
-    """List available categories for a language and level.
+def list_categories(track: str, level: str) -> list[str]:
+    """List available categories for a track and level.
 
     Args:
-        language: Programming language (e.g., "python", "javascript").
+        track: Question bank slug (e.g. ``python``).
         level: Difficulty level (e.g., "junior", "middle", "senior").
 
     Returns:
         List of category names (YAML filenames without extension).
         Empty list if directory doesn't exist.
     """
-    path = QUESTIONS_DIR / language / level
+    path = QUESTIONS_DIR / track / level
     if not path.exists():
         return []
     return [f.stem for f in path.glob("*.yaml")]

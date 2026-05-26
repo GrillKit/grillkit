@@ -5,7 +5,7 @@
 from typing import Any
 
 from app.interview.domain.progress import find_next_unanswered_after
-from app.interview.domain.session import InterviewView
+from app.interview.domain.interview import InterviewView
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.models import Interview
 

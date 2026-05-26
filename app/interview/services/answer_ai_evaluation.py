@@ -37,7 +37,7 @@ class AnswerAiEvaluationService:
             initial_question_text: Original question text (round 0).
             initial_answer_text: User's initial answer text (round 0).
             provider: Configured AI provider.
-            locale: Language for AI feedback and follow-up questions.
+            locale: Locale for AI feedback and follow-up questions.
 
         Returns:
             Tuple of (evaluation, follow_up_needed, follow_up_text).

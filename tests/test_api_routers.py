@@ -53,7 +53,7 @@ class MockInterview:
         self.question_count = 5
         self.locale = "en"
         self.selection_spec = (
-            '{"version":1,"sources":[{"language":"python","level":"junior",'
+            '{"sources":[{"track":"python","level":"junior",'
             '"categories":["data-structures"]}]}'
         )
         self.score = None

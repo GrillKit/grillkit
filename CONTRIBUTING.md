@@ -16,6 +16,12 @@ uv run pytest
 uv run uvicorn app.main:app --reload
 ```
 
+Schema changes are applied via **Alembic** on application startup (`init_db()` → `alembic upgrade head`). To run migrations manually:
+
+```bash
+uv run alembic upgrade head
+```
+
 Docker (recommended for a production-like run):
 
 ```bash
@@ -38,13 +44,13 @@ docker compose up --build
 
 ### Adding Questions
 
-Questions live in YAML under `data/questions/{language}/{level}/{category}.yaml`.
+Questions live in YAML under `data/questions/{track}/{level}/{category}.yaml`, where **track** is the question bank slug (`python`, `database`, `system-design`, …). See **Terminology** in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Example (`data/questions/python/junior/data-structures.yaml`):
 
 ```yaml
 category: "Data Structures"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Lists, tuples, dicts, and sets"
@@ -65,7 +71,7 @@ questions:
 
 Guidelines:
 
-- Match the schema used in existing banks (`category`, `language`, `level`, `questions`)
+- Match the schema used in existing banks (`category`, `track`, `level`, `questions`)
 - Use clear wording; set `difficulty` 1–5 within the level
 - File name = category slug (e.g. `data-structures.yaml`)
 - Validate YAML syntax before opening a PR

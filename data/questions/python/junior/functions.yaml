@@ -1,5 +1,5 @@
 category: "Functions"
-language: "python"
+track: "python"
 level: "junior"
 
 description: "Python functions: parameters, return values, scoping, and advanced function concepts"
@@ -189,3 +189,76 @@ questions:
       - "Functions can be assigned to variables, passed as arguments, and returned from other functions"
       - "Higher-order functions take or return other functions"
       - "Examples: map(), filter(), sorted(key=...), decorators"
+
+  - id: "func-008"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["pure-function", "lambda", "functions"]
+    question:
+      text:
+        en: "What is a function in Python and what is a pure function? What is an anonymous function (lambda)?"
+        ru: "Что такое функция в Python и какую функцию называют чистой (pure function)? Что такое анонимная функция (lambda)?"
+      code: null
+    follow_ups:
+      en:
+        - "What are the characteristics of a pure function?"
+        - "What are the benefits of using pure functions?"
+        - "What are the limitations of lambda functions?"
+      ru:
+        - "Каковы характеристики чистой функции?"
+        - "Какие преимущества использования чистых функций?"
+        - "Какие ограничения у лямбда-функций?"
+    expected_points:
+      - "Function: reusable block of code that takes inputs and returns outputs"
+      - "Pure function: same input always produces same output, no side effects"
+      - "Lambda: anonymous single-expression function, useful for short operations"
+      - "Pure functions are easier to test, reason about, and parallelize"
+
+  - id: "func-009"
+    type: "knowledge"
+    difficulty: 2
+    tags: ["scope", "closure", "LEGB"]
+    question:
+      text:
+        en: "How does variable scope work in Python? What is a closure and how is it formed?"
+        ru: "Как работает область видимости переменных в Python? Что такое замыкание (closure) и как оно формируется?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the LEGB rule in Python?"
+        - "How does the 'nonlocal' keyword work with closures?"
+        - "What is a practical use case for closures?"
+      ru:
+        - "Что такое правило LEGB в Python?"
+        - "Как работает ключевое слово 'nonlocal' с замыканиями?"
+        - "Какой практический пример использования замыканий?"
+    expected_points:
+      - "Scope: where a variable can be accessed (local, enclosing, global, built-in)"
+      - "Closure: inner function that remembers variables from outer scope even after outer function returns"
+      - "Formed when nested function references variables from enclosing scope"
+      - "Useful for creating function factories, decorators, and maintaining state"
+
+  - id: "func-010"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["decorator", "higher-order", "syntax-sugar"]
+    question:
+      text:
+        en: "Define a decorator. What can act as a decorator and to which elements (functions, methods, classes) can it be applied?"
+        ru: "Дайте определение декоратора. Что может выступать в роли декоратора и к каким элементам (функциям, методам, классам) он может быть применён?"
+      code: null
+    follow_ups:
+      en:
+        - "How does the @decorator syntax work under the hood?"
+        - "What is the difference between function decorators and class decorators?"
+        - "How can you create a decorator that accepts arguments?"
+      ru:
+        - "Как работает синтаксис @декоратор под капотом?"
+        - "В чём разница между декораторами функций и декораторами классов?"
+        - "Как создать декоратор, который принимает аргументы?"
+    expected_points:
+      - "Decorator: function that takes another function and extends its behavior"
+      - "Any callable (function, class with __call__) can be a decorator"
+      - "Can be applied to functions, methods, and classes"
+      - "@decorator is syntactic sugar for func = decorator(func)"
+      - "Decorators can be stacked: @decorator1 @decorator2"

@@ -22,7 +22,7 @@ class Interview(Base):
     Attributes:
         id: Unique interview identifier (UUID v4).
         locale: Language for AI feedback and follow-ups (e.g., "en", "ru").
-        selection_spec: JSON describing languages, levels, and topic categories.
+        selection_spec: JSON describing tracks, levels, and topic categories.
         question_count: Number of questions in this interview.
         question_ids: JSON list of question IDs in display order.
         question_time_limit_seconds: Per-round time limit in seconds (None if disabled).

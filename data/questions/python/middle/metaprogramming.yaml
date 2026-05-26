@@ -1,5 +1,5 @@
 category: "Metaprogramming"
-language: "python"
+track: "python"
 level: "middle"
 
 description: "Python metaprogramming: metaclasses, descriptors, decorators, introspection, and code generation"
@@ -218,3 +218,52 @@ questions:
       - "__getattr__ is only called when normal lookup fails"
       - "Override __getattr__ for dynamic attributes (safe)"
       - "Override __getattribute__ carefully — must call super() to avoid recursion"
+
+  - id: "meta-008"
+    type: "knowledge"
+    difficulty: 3
+    tags: ["magic-methods", "dunder", "context-manager"]
+    question:
+      text:
+        en: "What are magic (dunder) methods? Which of them are called when an instance of a class is created? Which magic methods does a context manager implement (the `with` protocol) and why is it used?"
+        ru: "Что такое магические (dunder) методы? Какие из них вызываются при создании экземпляра класса? Какие магические методы реализует контекстный менеджер (протокол `with`) и для чего он нужен?"
+      code: null
+    follow_ups:
+      en:
+        - "What is the difference between __init__ and __new__?"
+        - "What are some common magic methods for operator overloading?"
+        - "How do context managers help with resource management?"
+      ru:
+        - "В чём разница между __init__ и __new__?"
+        - "Какие есть общие магические методы для перегрузки операторов?"
+        - "Как контекстные менеджеры помогают управлять ресурсами?"
+    expected_points:
+      - "Magic/dunder methods: __init__, __str__, __repr__, __add__, etc."
+      - "Instance creation: __new__ creates instance, __init__ initializes it"
+      - "Context manager protocol: __enter__ (setup), __exit__ (cleanup)"
+      - "Context managers ensure resources are properly released (files, locks, connections)"
+      - "Use 'with' statement for automatic cleanup even on exceptions"
+
+  - id: "meta-009"
+    type: "knowledge"
+    difficulty: 4
+    tags: ["descriptors", "property", "self-binding"]
+    question:
+      text:
+        en: "What are descriptors? How when calling a method through a class instance the instance automatically gets passed as the first argument (`self`)? What is the built-in `property` used for?"
+        ru: "Что такое дескрипторы? Как при вызове метода через экземпляр класса сам экземпляр автоматически передаётся первым аргументом (`self`)? Для чего используется встроенное свойство `property`?"
+      code: null
+    follow_ups:
+      en:
+        - "How does the descriptor protocol enable method binding?"
+        - "What is the difference between data and non-data descriptors?"
+        - "How does @property relate to descriptors?"
+      ru:
+        - "Как протокол дескрипторов обеспечивает связывание методов?"
+        - "В чём разница между дескрипторами данных и не-данных?"
+        - "Как @property связано с дескрипторами?"
+    expected_points:
+      - "Descriptors: objects with __get__, __set__, or __delete__ methods"
+      - "Method binding: functions are non-data descriptors, __get__ returns bound method with self"
+      - "property is a built-in descriptor for computed attributes with getter/setter"
+      - "property simplifies attribute access control without getter/setter methods"
