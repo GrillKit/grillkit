@@ -14,13 +14,13 @@ from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
 from app.paths import CONFIG_PATH, DATA_DIR
 from app.platform.services.llm_catalog import LLMCatalogService
-from app.question_voice.domain.voices import (
+from app.question_voice.services.rules.voices import (
     DEFAULT_TTS_VOICE_ID,
     default_voice_for_locale,
     normalize_tts_voice_id,
 )
-from app.shared.domain.locales import DEFAULT_LOCALE, normalize_locale
-from app.speech.domain.models import (
+from app.shared.locales import DEFAULT_LOCALE, normalize_locale
+from app.speech.services.rules.speech_models import (
     DEFAULT_SPEECH_MODEL_SIZE,
     normalize_speech_model_size,
 )
@@ -29,7 +29,7 @@ MASKED_API_KEY_PLACEHOLDER = "***"
 
 
 @dataclass
-class ProviderConfig:
+class AppConfig:
     """Runtime provider and application configuration.
 
     LLM endpoint details are loaded from ``data/llm_models.json``.
@@ -102,14 +102,14 @@ class ProviderConfig:
         return self.api_key
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ProviderConfig":
+    def from_dict(cls, data: dict[str, Any]) -> "AppConfig":
         """Create from ``config.json`` application settings.
 
         Args:
             data: Dictionary with configuration values.
 
         Returns:
-            ProviderConfig instance without LLM fields populated yet.
+            AppConfig instance without LLM fields populated yet.
         """
         locale = normalize_locale(data.get("locale", DEFAULT_LOCALE))
         raw_voice_id = data.get("tts_voice_id")
@@ -152,7 +152,7 @@ class ProviderConfig:
             return entry.api_key
         return None
 
-    def effective(self) -> "ProviderConfig":
+    def effective(self) -> "AppConfig":
         """Return configuration with catalog defaults and runtime overrides applied.
 
         Returns:
@@ -165,26 +165,26 @@ class ConfigService:
     """Service for managing provider configuration."""
 
     @staticmethod
-    def get_config() -> ProviderConfig | None:
+    def get_config() -> AppConfig | None:
         """Load configuration from disk.
 
         Returns:
-            ProviderConfig if ``config.json`` exists, None otherwise.
+            AppConfig if ``config.json`` exists, None otherwise.
         """
         if not CONFIG_PATH.exists():
             return None
         data = json.loads(CONFIG_PATH.read_text())
-        config = ProviderConfig.from_dict(data)
+        app_config = AppConfig.from_dict(data)
         selected_id = LLMCatalogService.get_selected_model_id()
         if selected_id is None:
-            return config
-        config = replace(config, llm_preset_id=selected_id)
+            return app_config
+        app_config = replace(app_config, llm_preset_id=selected_id)
         if LLMCatalogService.get_model(selected_id) is not None:
-            config = ConfigService.resolve_effective_config(config)
-        return config
+            app_config = ConfigService.resolve_effective_config(app_config)
+        return app_config
 
     @staticmethod
-    def resolve_effective_config(config: ProviderConfig) -> ProviderConfig:
+    def resolve_effective_config(config: AppConfig) -> AppConfig:
         """Apply catalog entry fields to a configuration copy.
 
         Args:
@@ -196,19 +196,17 @@ class ConfigService:
         entry = LLMCatalogService.get_model(config.llm_preset_id)
         if entry is None:
             raise ValueError("No interview model selected")
-        explicit = config.base_url.strip()
-        base_url = explicit.rstrip("/") if explicit else entry.base_url
         api_key = entry.api_key or config.api_key
         return replace(
             config,
             provider_type=entry.provider_type,
             model=entry.model,
-            base_url=base_url,
+            base_url=entry.base_url,
             api_key=api_key,
         )
 
     @staticmethod
-    def save_config(config: ProviderConfig) -> None:
+    def save_config(config: AppConfig) -> None:
         """Save application settings and LLM selection.
 
         Args:
@@ -226,7 +224,7 @@ class ConfigService:
             CONFIG_PATH.unlink()
 
     @staticmethod
-    async def test_connection(config: ProviderConfig) -> tuple[bool, str]:
+    async def test_connection(config: AppConfig) -> tuple[bool, str]:
         """Test provider connection without saving.
 
         Args:

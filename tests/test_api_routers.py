@@ -11,8 +11,8 @@ import pytest
 
 from app.ai.llm_models import LLMModelEntry
 from app.main import create_app
-from app.platform.services.config import ProviderConfig
-from app.shared.domain.exceptions import InterviewNotActiveError, InterviewNotFoundError
+from app.platform.services.config import AppConfig
+from app.shared.exceptions import InterviewNotActiveError, InterviewNotFoundError
 
 
 async def _raising_answer_stream(
@@ -35,7 +35,7 @@ def client():
     async def _fake_ai_provider():
         yield FakeProvider([])
 
-    with patch("app.main.init_db"):
+    with patch("app.main.run_migrations"):
         app = create_app()
         app.dependency_overrides[get_ai_provider] = _fake_ai_provider
         with TestClient(app) as test_client:
@@ -128,7 +128,7 @@ class TestConfigRouter:
 
     def test_config_page_get(self, client):
         """Test GET /config endpoint returns HTML."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="https://api.openai.com",
             model="gpt-4",
@@ -161,7 +161,7 @@ class TestConfigRouter:
 
     async def test_save_config_preserves_api_key_when_field_empty(self, client):
         """POST /config keeps the stored key when the password field is left blank."""
-        existing = ProviderConfig(
+        existing = AppConfig(
             provider_type="openai-compatible",
             base_url="https://api.openai.com",
             model="gpt-4",
@@ -174,7 +174,7 @@ class TestConfigRouter:
                 return_value=existing,
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                "app.platform.services.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -207,7 +207,7 @@ class TestConfigRouter:
         """Test POST /config with successful connection test."""
         with (
             patch(
-                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                "app.platform.services.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -239,7 +239,7 @@ class TestConfigRouter:
         """Test POST /config with failed connection test."""
         with (
             patch(
-                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                "app.platform.services.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -279,7 +279,7 @@ class TestConfigRouter:
         """Test POST /config/test with successful connection."""
         with (
             patch(
-                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                "app.platform.services.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -307,7 +307,7 @@ class TestConfigRouter:
         """Test POST /config/test with failed connection."""
         with (
             patch(
-                "app.platform.api.config.LLMCatalogService.normalize_model_id",
+                "app.platform.services.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(

@@ -4,14 +4,12 @@
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from huggingface_hub import snapshot_download
 
 from app.paths import WHISPER_MODELS_ROOT
-from app.shared.domain.locales import SUPPORTED_LOCALES, normalize_locale
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
 from app.shared.infrastructure.hf_download_progress import hf_progress_tqdm_factory
@@ -20,7 +18,9 @@ from app.shared.infrastructure.model_download import (
     prepare_staging_dir,
     promote_staging_dir,
 )
-from app.speech.domain.models import (
+from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
+from app.speech.schemas.status import WhisperModelStatusRead
+from app.speech.services.rules.speech_models import (
     SpeechModelSpec,
     normalize_speech_model_size,
     speech_model_spec_for_size,
@@ -31,33 +31,6 @@ from app.speech.services.whisper_storage import (
     is_valid_model_dir,
     model_dir,
 )
-
-WhisperModelState = Literal["missing", "ready", "downloading", "error"]
-
-
-@dataclass
-class WhisperModelStatus:
-    """Runtime status of the Whisper model for one size and locale.
-
-    Attributes:
-        size: Speech model size identifier.
-        locale: Interview locale used for transcription language.
-        locale_label: Display name for the locale.
-        state: Installation or download state.
-        percent: Download progress 0–100 when ``state`` is ``downloading``.
-        message: User-facing status or error text.
-        model_display_name: Whisper package label for UI.
-        loaded_in_memory: True when ``WhisperModel`` is loaded for this size.
-    """
-
-    size: str
-    locale: str
-    locale_label: str
-    state: WhisperModelState
-    percent: int
-    message: str
-    model_display_name: str
-    loaded_in_memory: bool = False
 
 
 class WhisperModelService(ArtifactDownloadService):
@@ -70,7 +43,7 @@ class WhisperModelService(ArtifactDownloadService):
     _error_message: ClassVar[str | None] = None
 
     @staticmethod
-    def get_status(size: str, locale: str) -> WhisperModelStatus:
+    def get_status(size: str, locale: str) -> WhisperModelStatusRead:
         """Build current model status for UI and API consumers.
 
         Args:
@@ -99,7 +72,7 @@ class WhisperModelService(ArtifactDownloadService):
                 f"Speech model files are installed but could not be loaded: {err}"
             ),
         )
-        return WhisperModelStatus(
+        return WhisperModelStatusRead(
             size=model_size,
             locale=code,
             locale_label=locale_label,
@@ -111,7 +84,7 @@ class WhisperModelService(ArtifactDownloadService):
         )
 
     @staticmethod
-    async def start_download(size: str, locale: str) -> WhisperModelStatus:
+    async def start_download(size: str, locale: str) -> WhisperModelStatusRead:
         """Start a background download when the model is not yet installed.
 
         Args:

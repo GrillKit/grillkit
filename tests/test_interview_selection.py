@@ -4,7 +4,7 @@
 
 import pytest
 
-from app.interview.domain.selection import (
+from app.interview.services.rules.selection import (
     InterviewSelection,
     TrackQuestionPools,
     TrackSelection,

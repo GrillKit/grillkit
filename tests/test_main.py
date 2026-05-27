@@ -46,20 +46,20 @@ class TestLifespan:
     """Tests for lifespan context manager."""
 
     @pytest.mark.asyncio
-    async def test_lifespan_calls_init_db(self):
-        """Test that lifespan calls init_db on startup."""
-        with patch("app.main.init_db") as mock_init_db:
+    async def test_lifespan_calls_run_migrations(self):
+        """Test that lifespan runs database migrations on startup."""
+        with patch("app.main.run_migrations") as mock_run_migrations:
             mock_app = MagicMock()
 
             async with lifespan(mock_app):
                 pass
 
-            mock_init_db.assert_called_once()
+            mock_run_migrations.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_lifespan_yields_control(self):
         """Test that lifespan yields control to the app."""
-        with patch("app.main.init_db"):
+        with patch("app.main.run_migrations"):
             mock_app = MagicMock()
             entered = False
             exited = False
@@ -78,7 +78,7 @@ class TestAppIntegration:
     @pytest.fixture
     def client(self):
         """Create a test client."""
-        with patch("app.main.init_db"):
+        with patch("app.main.run_migrations"):
             app = create_app()
             with TestClient(app) as test_client:
                 yield test_client

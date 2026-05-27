@@ -19,7 +19,7 @@ from app.interview.services.evaluator.prompts import (
     looks_like_json_schema_fragment,
     parse_json_response,
 )
-from app.shared.domain.locales import DEFAULT_LOCALE
+from app.shared.locales import DEFAULT_LOCALE
 
 __all__ = [
     "AnswerEvaluation",

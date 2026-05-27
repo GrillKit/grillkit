@@ -8,8 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.ai.llm_models import LLMModelEntry
-from app.platform.services.config import ConfigService, ProviderConfig
-from app.platform.services.llm_catalog import LLMCatalogService
+from app.platform.services.config import AppConfig, ConfigService
 
 
 @pytest.fixture
@@ -31,12 +30,12 @@ def mock_provider_factory():
         yield mock_factory
 
 
-class TestProviderConfig:
-    """Tests for ProviderConfig dataclass."""
+class TestAppConfig:
+    """Tests for AppConfig dataclass."""
 
     def test_to_dict(self):
         """Test to_dict method masks API key correctly."""
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -59,7 +58,7 @@ class TestProviderConfig:
 
     def test_to_storage_dict(self):
         """Application settings persist without LLM fields."""
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -82,7 +81,7 @@ class TestProviderConfig:
             "speech_model_size": "medium",
             "question_voice_enabled": True,
         }
-        config = ProviderConfig.from_dict(data)
+        config = AppConfig.from_dict(data)
         assert config.provider_type == "openai-compatible"
         assert config.base_url == ""
         assert config.model == ""
@@ -95,12 +94,12 @@ class TestProviderConfig:
     def test_from_dict_question_voice_enabled(self):
         """Test from_dict reads question_voice_enabled when present."""
         data = {"question_voice_enabled": True}
-        config = ProviderConfig.from_dict(data)
+        config = AppConfig.from_dict(data)
         assert config.question_voice_enabled is True
 
     def test_from_dict_defaults(self):
         """Test from_dict uses default values when keys are missing."""
-        config = ProviderConfig.from_dict({})
+        config = AppConfig.from_dict({})
         assert config.provider_type == "openai-compatible"
         assert config.api_key is None
         assert config.timeout == 60.0
@@ -123,7 +122,7 @@ class TestProviderConfig:
             "app.platform.services.config.LLMCatalogService.get_model",
             lambda _model_id: entry,
         )
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="",
             model="ignored",
@@ -137,7 +136,7 @@ class TestProviderConfig:
     def test_from_dict_normalizes_locale(self):
         """Test from_dict normalizes locale codes."""
         data = {"locale": " RU "}
-        config = ProviderConfig.from_dict(data)
+        config = AppConfig.from_dict(data)
         assert config.locale == "ru"
 
     def test_resolve_api_key_from_form_uses_catalog_key(self, monkeypatch):
@@ -155,11 +154,11 @@ class TestProviderConfig:
             "app.platform.services.config.LLMCatalogService.get_model",
             lambda _model_id: entry,
         )
-        assert ProviderConfig.resolve_api_key_from_form("", "work") == "catalog-secret"
+        assert AppConfig.resolve_api_key_from_form("", "work") == "catalog-secret"
 
     def test_resolve_api_key_from_form_accepts_new_key(self):
         """Non-empty form value replaces the stored API key."""
-        assert ProviderConfig.resolve_api_key_from_form("new-key", "work") == "new-key"
+        assert AppConfig.resolve_api_key_from_form("new-key", "work") == "new-key"
 
     def test_resolve_api_key_from_form_clears_when_empty_and_no_catalog_key(
         self, monkeypatch
@@ -177,13 +176,13 @@ class TestProviderConfig:
             "app.platform.services.config.LLMCatalogService.get_model",
             lambda _model_id: entry,
         )
-        assert ProviderConfig.resolve_api_key_from_form("", "work") is None
+        assert AppConfig.resolve_api_key_from_form("", "work") is None
 
     def test_from_dict_rejects_unknown_locale(self):
         """Test from_dict raises for unsupported locale."""
         data = {"locale": "xx"}
         with pytest.raises(ValueError, match="Unsupported locale"):
-            ProviderConfig.from_dict(data)
+            AppConfig.from_dict(data)
 
 
 class TestConfigService:
@@ -215,14 +214,13 @@ class TestConfigService:
         monkeypatch.setattr(
             "app.platform.services.llm_catalog.LLM_MODELS_PATH", catalog_path
         )
-        LLMCatalogService.invalidate_cache()
         yield test_path
 
     def test_save_and_get_config(self, mock_config_path):
         """Test saving app settings and selected model."""
         _config_path = mock_config_path
         user_path = _config_path.parent / "llm_models.json"
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -247,7 +245,7 @@ class TestConfigService:
 
     def test_delete_config(self, mock_config_path):
         """Test deleting configuration file."""
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -277,7 +275,7 @@ class TestConfigService:
             "app.platform.services.config.LLMCatalogService.get_model",
             lambda _model_id: entry,
         )
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -317,7 +315,7 @@ class TestConfigService:
         mock_provider_factory.from_config.return_value.validate.side_effect = (
             ValueError("Authentication failed: Invalid API key")
         )
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -347,7 +345,7 @@ class TestConfigService:
             lambda _model_id: entry,
         )
         mock_provider_factory.from_config.side_effect = ValueError("Test Error")
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -381,7 +379,7 @@ class TestConfigService:
                 }
             )
         )
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",

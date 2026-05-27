@@ -8,7 +8,7 @@ from faster_whisper import WhisperModel
 import numpy as np
 import numpy.typing as npt
 
-from app.shared.domain.locales import normalize_locale
+from app.shared.locales import normalize_locale
 
 
 class FasterWhisperTranscriber:

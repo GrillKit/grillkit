@@ -9,16 +9,8 @@ final AI evaluations.
 import logging
 
 from app.ai.base import AIProvider
-from app.interview.domain.interview import interview_view
-from app.interview.domain.lifecycle import (
-    build_per_question_score_breakdown,
-    compute_interview_score,
-)
-from app.interview.domain.selection import (
-    get_interview_selection,
-    selection_sources_summary,
-)
 from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
@@ -27,6 +19,14 @@ from app.interview.services.events import (
     InterviewEvent,
 )
 from app.interview.services.query import InterviewQuery
+from app.interview.services.rules.lifecycle import (
+    build_per_question_score_breakdown,
+    compute_interview_score,
+)
+from app.interview.services.rules.selection import (
+    get_interview_selection,
+    selection_sources_summary,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,22 +81,22 @@ class InterviewCompletionService:
             locale=interview.locale,
         )
 
-        normalized_breakdown = build_per_question_score_breakdown(
-            interview_view(interview)
-        )
+        normalized_breakdown = build_per_question_score_breakdown(interview)
         interview_eval = interview_eval.model_copy(
             update={"score_breakdown": normalized_breakdown}
         )
 
         score = 0
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
+            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
 
             uow.interviews.save_evaluation_feedback(
                 db_interview, interview_eval.model_dump_json()
             )
-            score = compute_interview_score(interview_view(db_interview))
+            completed_read = interview_read_from_orm(db_interview)
+            score = compute_interview_score(completed_read)
             uow.interviews.mark_completed(db_interview, score)
+            interview = interview_read_from_orm(db_interview)
 
         max_score = DashboardBuilder.compute_max_score(
             interview, interview_eval.score_breakdown or None

@@ -6,19 +6,21 @@ This module provides database connectivity, session management,
 and the declarative base for all SQLAlchemy models.
 """
 
+import os
+
 from alembic.config import Config
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from alembic import command
-from app.paths import DB_DIR, PROJECT_ROOT
-
-ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
+from app.paths import ALEMBIC_INI, DB_DIR
 
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
-DATABASE_URL = f"sqlite:///{DB_DIR}/grillkit.db"
-
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    f"sqlite:///{DB_DIR}/grillkit.db",
+)
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -29,20 +31,5 @@ class Base(DeclarativeBase):
 
 def run_migrations() -> None:
     """Apply Alembic migrations up to head."""
-
     alembic_cfg = Config(str(ALEMBIC_INI))
     command.upgrade(alembic_cfg, "head")
-
-
-def init_db() -> None:
-    """Ensure database schema is up to date via Alembic migrations."""
-    run_migrations()
-
-
-def get_session() -> Session:
-    """Get a new database session.
-
-    Returns:
-        A new SQLAlchemy Session instance.
-    """
-    return SessionLocal()

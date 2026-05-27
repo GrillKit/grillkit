@@ -16,7 +16,7 @@ uv run pytest
 uv run uvicorn app.main:app --reload
 ```
 
-Schema changes are applied via **Alembic** on application startup (`init_db()` → `alembic upgrade head`). To run migrations manually:
+Schema changes are applied via **Alembic** on application startup (`run_migrations()` → `alembic upgrade head`). To run migrations manually:
 
 ```bash
 uv run alembic upgrade head

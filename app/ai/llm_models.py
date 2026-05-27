@@ -48,7 +48,7 @@ class LLMCatalog:
     models: dict[str, LLMModelEntry]
 
 
-def normalize_model_id(model_id: str | None, catalog: LLMCatalog) -> str:
+def normalize_model_id(model_id: str, catalog: LLMCatalog) -> str:
     """Return a supported catalog model id.
 
     Args:
@@ -59,10 +59,8 @@ def normalize_model_id(model_id: str | None, catalog: LLMCatalog) -> str:
         Normalized model id.
 
     Raises:
-        ValueError: If ``model_id`` is missing or unknown.
+        ValueError: If ``model_id`` is empty/invalid or unknown.
     """
-    if not model_id:
-        raise ValueError("Interview model is required")
     value = model_id.strip()
     if not value or value == CUSTOM_PRESET_ID:
         raise ValueError("Interview model is required")

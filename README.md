@@ -128,6 +128,7 @@ Optional environment variables:
 
 | Variable | Purpose |
 |----------|---------|
+| `DATABASE_URL` | SQLAlchemy database URL (default: `sqlite:///<project>/data/db/grillkit.db`; Docker Compose sets `sqlite:////app/data/db/grillkit.db`) |
 | `HF_TOKEN` | Hugging Face read token for faster, more reliable Whisper and Piper model downloads ([create token](https://huggingface.co/settings/tokens)). Passed through in `docker compose` when set on the host. |
 | `WHISPER_DEVICE` | `cpu` or `cuda` (default `cpu`) |
 | `WHISPER_COMPUTE_TYPE` | `int8` or `float16` (default `int8` on CPU) |

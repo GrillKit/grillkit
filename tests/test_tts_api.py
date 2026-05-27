@@ -10,15 +10,15 @@ import pytest
 
 from app.interview.services.creation import InterviewCreationService
 from app.interview.services.query import InterviewQuery
-from app.platform.services.config import ProviderConfig
-from app.question_voice.services.piper_voice import PiperVoiceStatus
+from app.platform.services.config import AppConfig
+from app.question_voice.schemas import PiperVoiceStatusRead
 
 
 @pytest.fixture
-def voice_config(minimal_provider_config):
+def voice_config(minimal_app_config):
     """Provider config with question voice enabled."""
     return replace(
-        minimal_provider_config,
+        minimal_app_config,
         locale="en",
         question_voice_enabled=True,
     )
@@ -29,7 +29,7 @@ class TestTtsStatusApi:
 
     def test_status_json_when_voice_disabled(self, client):
         """Status reports unavailable when voice is off."""
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -50,7 +50,7 @@ class TestTtsStatusApi:
 
     def test_status_json_when_voice_ready(self, client, voice_config):
         """Status reports ready when the Piper voice is installed."""
-        ready = PiperVoiceStatus(
+        ready = PiperVoiceStatusRead(
             voice_id="en_US-lessac-medium",
             locale="en",
             locale_label="English",
@@ -93,7 +93,7 @@ class TestTtsStatusApi:
 
     def test_voice_download_schedules_work(self, client, voice_config):
         """Download returns status after scheduling Piper voice install."""
-        ready = PiperVoiceStatus(
+        ready = PiperVoiceStatusRead(
             voice_id="en_US-lessac-medium",
             locale="en",
             locale_label="English",
@@ -132,13 +132,16 @@ class TestQuestionAudioApi:
         """Disabled voice returns 404."""
         del temp_questions_dir
         monkeypatch.setattr("random.shuffle", lambda items: None)
-        config = ProviderConfig(
+        config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
             question_voice_enabled=False,
         )
-        from app.interview.domain.selection import InterviewSelection, TrackSelection
+        from app.interview.services.rules.selection import (
+            InterviewSelection,
+            TrackSelection,
+        )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(
@@ -172,7 +175,10 @@ class TestQuestionAudioApi:
         """Enabled voice returns WAV from cache when available."""
         del temp_questions_dir
         monkeypatch.setattr("random.shuffle", lambda items: None)
-        from app.interview.domain.selection import InterviewSelection, TrackSelection
+        from app.interview.services.rules.selection import (
+            InterviewSelection,
+            TrackSelection,
+        )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(

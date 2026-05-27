@@ -2,45 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """Dashboard view-model builder for interview history."""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
-import json
 from typing import Any
 
-from app.interview.domain.lifecycle import MAX_SCORE_PER_ROUND
-from app.interview.domain.selection import (
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.dashboard import DashboardRowRead
+from app.interview.schemas.interview import InterviewRead
+from app.interview.schemas.mappers import interview_read_from_orm
+from app.interview.services.rules.lifecycle import MAX_SCORE_PER_ROUND
+from app.interview.services.rules.selection import (
     InterviewSelection,
     get_interview_selection,
     interview_display_title,
     track_label,
 )
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.shared.infrastructure.models import Interview
-
-
-@dataclass(frozen=True)
-class DashboardInterviewRow:
-    """Row model for the dashboard interview history table.
-
-    Attributes:
-        id: Interview UUID.
-        title: Display title (e.g. "Python Interview").
-        question_count: Number of questions in the session.
-        score_display: Formatted score or em dash when not finished.
-        status: Raw status ("active" or "completed").
-        status_label: Human-readable status for the UI.
-        datetime_display: Localized date/time string for the row.
-        url: Link to the interview page.
-    """
-
-    id: str
-    title: str
-    question_count: int
-    score_display: str
-    status: str
-    status_label: str
-    datetime_display: str
-    url: str
 
 
 class DashboardBuilder:
@@ -63,11 +38,11 @@ class DashboardBuilder:
         return dt.astimezone().strftime("%d %b %Y, %H:%M")
 
     @staticmethod
-    def interview_display_title(interview: Interview) -> str:
+    def interview_display_title(interview: InterviewRead) -> str:
         """Build dashboard/interview page title from selection.
 
         Args:
-            interview: Interview instance.
+            interview: Interview read model.
 
         Returns:
             Title such as ``Python Interview`` or ``Multi-topic Interview``.
@@ -76,28 +51,20 @@ class DashboardBuilder:
         return interview_display_title(selection)
 
     @staticmethod
-    def parse_overall_feedback(interview: Interview) -> dict[str, Any] | None:
-        """Parse ``overall_feedback`` JSON for templates and APIs.
+    def parse_overall_feedback(interview: InterviewRead) -> dict[str, Any] | None:
+        """Return parsed overall feedback for templates and APIs.
 
         Args:
-            interview: Interview, possibly with raw JSON in ``overall_feedback``.
+            interview: Interview read model.
 
         Returns:
             Parsed dict, or None if the session has no feedback.
         """
-        if not interview.overall_feedback:
-            return None
-        try:
-            parsed = json.loads(interview.overall_feedback)
-        except json.JSONDecodeError:
-            return {"overall_feedback": interview.overall_feedback}
-        if isinstance(parsed, dict):
-            return parsed
-        return {"overall_feedback": interview.overall_feedback}
+        return interview.overall_feedback
 
     @staticmethod
     def compute_max_score(
-        interview: Interview,
+        interview: InterviewRead,
         score_breakdown: dict[str, Any] | None = None,
     ) -> int:
         """Compute maximum achievable score for a session.
@@ -106,7 +73,7 @@ class DashboardBuilder:
         five points per answered round (including follow-ups).
 
         Args:
-            interview: Interview with answers loaded.
+            interview: Interview read model with answers loaded.
             score_breakdown: Optional per-question breakdown from session evaluation.
 
         Returns:
@@ -146,7 +113,7 @@ class DashboardBuilder:
         return lines
 
     @staticmethod
-    def list_rows(limit: int = 20) -> list[DashboardInterviewRow]:
+    def list_rows(limit: int = 20) -> list[DashboardRowRead]:
         """Load recent interviews for the dashboard history table.
 
         Args:
@@ -158,8 +125,9 @@ class DashboardBuilder:
         with InterviewUnitOfWork() as uow:
             interviews = uow.interviews.list_recent(limit=limit)
 
-        rows: list[DashboardInterviewRow] = []
-        for interview in interviews:
+        rows: list[DashboardRowRead] = []
+        for interview_orm in interviews:
+            interview = interview_read_from_orm(interview_orm)
             if interview.status == "completed":
                 feedback = DashboardBuilder.parse_overall_feedback(interview)
                 breakdown = feedback.get("score_breakdown") if feedback else None
@@ -167,14 +135,14 @@ class DashboardBuilder:
                 score = interview.score if interview.score is not None else 0
                 score_display = f"{score} / {max_score}"
                 status_label = "Completed"
-                when = interview.completed_at
+                when = interview_orm.completed_at
             else:
                 score_display = "—"
                 status_label = "Active"
-                when = interview.started_at
+                when = interview_orm.started_at
 
             rows.append(
-                DashboardInterviewRow(
+                DashboardRowRead(
                     id=interview.id,
                     title=DashboardBuilder.interview_display_title(interview),
                     question_count=interview.question_count,

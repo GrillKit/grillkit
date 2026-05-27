@@ -15,7 +15,7 @@ from app.speech.services.dictation import DictationSession
 def client():
     """Create a test client without loading Whisper on startup."""
     with (
-        patch("app.main.init_db"),
+        patch("app.main.run_migrations"),
         patch(
             "app.speech.services.whisper_runtime.WhisperRuntime.load_size",
             return_value=False,

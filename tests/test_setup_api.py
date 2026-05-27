@@ -4,7 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from app.platform.services.config import ProviderConfig
+from app.platform.services.config import AppConfig
 
 
 class TestSetupOptions:
@@ -102,7 +102,7 @@ class TestSetupConfigRedirect:
 
     def test_setup_get_shows_configured_locale(self, client):
         """GET /setup displays interview language from saved config."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -133,7 +133,7 @@ class TestSetupConfigRedirect:
 
     def test_setup_post_passes_timer_limit_when_enabled(self, client):
         """POST /setup forwards per-round timer seconds when the checkbox is set."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -178,7 +178,7 @@ class TestSetupConfigRedirect:
 
     def test_setup_post_rejects_question_count_below_topics(self, client):
         """POST /setup rejects when question count is below selected topic count."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",

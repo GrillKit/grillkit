@@ -4,6 +4,13 @@
 
 from typing import Any
 
+from app.interview.schemas.ws import (
+    AnswerFeedbackMessage,
+    AnswerSavedMessage,
+    EvaluatingMessage,
+    InterviewCompletedMessage,
+    server_message_to_dict,
+)
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
@@ -11,6 +18,49 @@ from app.interview.services.events import (
     InterviewCompletedEvent,
     InterviewEvent,
 )
+
+
+def server_message_from_event(
+    event: InterviewEvent,
+) -> (
+    AnswerSavedMessage
+    | EvaluatingMessage
+    | AnswerFeedbackMessage
+    | InterviewCompletedMessage
+):
+    """Map a semantic service event to a typed WebSocket message.
+
+    Args:
+        event: Event from answer or completion services.
+
+    Returns:
+        Pydantic message model for JSON serialization.
+
+    Raises:
+        TypeError: If the event type is not supported.
+    """
+    if isinstance(event, AnswerSavedEvent):
+        return AnswerSavedMessage()
+    if isinstance(event, EvaluatingEvent):
+        return EvaluatingMessage()
+    if isinstance(event, AnswerFeedbackEvent):
+        return AnswerFeedbackMessage(
+            question_id=event.question_id,
+            order=event.order,
+            round=event.round,
+            follow_up_question=event.follow_up_text if event.follow_up_needed else None,
+            next_question=event.next_question,
+            timed_out=event.timed_out,
+            feedback=event.feedback,
+            timer_remaining_seconds=event.timer_remaining_seconds,
+        )
+    if isinstance(event, InterviewCompletedEvent):
+        return InterviewCompletedMessage(
+            overall_feedback=event.overall_feedback,
+            score=event.score,
+            max_score=event.max_score,
+        )
+    raise TypeError(f"Unsupported interview event: {type(event)!r}")
 
 
 def event_to_message(event: InterviewEvent) -> dict[str, Any]:
@@ -22,35 +72,7 @@ def event_to_message(event: InterviewEvent) -> dict[str, Any]:
     Returns:
         JSON-serializable message dict for the client.
     """
-    if isinstance(event, AnswerSavedEvent):
-        return {"type": "saved"}
-    if isinstance(event, EvaluatingEvent):
-        return {"type": "evaluating"}
-    if isinstance(event, AnswerFeedbackEvent):
-        message: dict[str, Any] = {
-            "type": "feedback",
-            "question_id": event.question_id,
-            "order": event.order,
-            "round": event.round,
-            "follow_up_question": event.follow_up_text
-            if event.follow_up_needed
-            else None,
-            "next_question": event.next_question,
-            "timed_out": event.timed_out,
-        }
-        if event.feedback is not None:
-            message["feedback"] = event.feedback
-        if event.timer_remaining_seconds is not None:
-            message["timer_remaining_seconds"] = event.timer_remaining_seconds
-        return message
-    if isinstance(event, InterviewCompletedEvent):
-        return {
-            "type": "interview_completed",
-            "overall_feedback": event.overall_feedback,
-            "score": event.score,
-            "max_score": event.max_score,
-        }
-    raise TypeError(f"Unsupported interview event: {type(event)!r}")
+    return server_message_to_dict(server_message_from_event(event))
 
 
 def events_to_messages(events: list[InterviewEvent]) -> list[dict[str, Any]]:

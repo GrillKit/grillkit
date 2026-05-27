@@ -10,10 +10,8 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
 from app.ai.base import AIProvider
-from app.interview.domain.interview import interview_view
-from app.interview.domain.progress import find_unanswered_for_question, require_active
-from app.interview.domain.timer import client_timeout_due, is_expired
 from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_evaluation_persistence import (
     AnswerEvaluationPersistenceService,
@@ -25,7 +23,12 @@ from app.interview.services.events import (
     InterviewEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.shared.domain.exceptions import (
+from app.interview.services.rules.progress import (
+    find_unanswered_for_question,
+    require_active,
+)
+from app.interview.services.rules.timer import client_timeout_due, is_expired
+from app.shared.exceptions import (
     QuestionTimerNotEnabledError,
     QuestionTimerNotExpiredError,
 )
@@ -58,11 +61,11 @@ class AnswerProcessingService:
             UnansweredAnswerNotFoundError: If the round is not open.
         """
         with InterviewUnitOfWork() as uow:
-            interview_orm = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            interview_dto = interview_view(interview_orm)
-            require_active(interview_dto)
+            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            interview = interview_read_from_orm(interview_orm)
+            require_active(interview)
 
-            limit = interview_dto.question_time_limit_seconds
+            limit = interview.question_time_limit_seconds
             if not limit:
                 raise QuestionTimerNotEnabledError(interview_id)
 
@@ -78,7 +81,7 @@ class AnswerProcessingService:
                 raise QuestionTimerNotExpiredError(interview_id, question_id)
 
             order = db_answer.order
-            locale = interview_dto.locale
+            locale = interview.locale
 
         yield RoundTimerService.persist_timed_out_round(
             interview_id=interview_id,
@@ -116,13 +119,13 @@ class AnswerProcessingService:
             AnswerNotFoundError: If the answer row is missing in the database.
         """
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            interview_orm = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            interview_dto = interview_view(interview_orm)
-            require_active(interview_dto)
+            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            interview = interview_read_from_orm(interview_orm)
+            require_active(interview)
 
-            current_answer = find_unanswered_for_question(interview_dto, question_id)
+            current_answer = find_unanswered_for_question(interview, question_id)
             round_num = current_answer.round
-            limit = interview_orm.question_time_limit_seconds
+            limit = interview.question_time_limit_seconds
 
             if limit and is_expired(current_answer.started_at, limit, grace_seconds=0):
                 async for event in AnswerProcessingService.stream_timeout_submission(
@@ -150,7 +153,7 @@ class AnswerProcessingService:
             question_text = current_answer.question_text
             question_code = current_answer.question_code
             order = current_answer.order
-            locale = interview_dto.locale
+            locale = interview.locale
 
         yield AnswerSavedEvent()
         yield EvaluatingEvent()

@@ -8,12 +8,17 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Added
 
+- `DATABASE_URL` environment variable for SQLAlchemy connection string (default: SQLite file under `data/db/grillkit.db`)
 - Alembic migrations for SQLite schema and `selection_spec` data upgrade (`language` → `track`)
 - Question banks (bilingual en/ru, ~141 new questions): **Python** — junior/middle/senior categories for FastAPI, Django, Django REST Framework, pytest, and asyncio; **Database** — SQLite and Redis basics (junior), locking/concurrency, migrations, and Redis advanced (middle), ClickHouse analytics (senior)
 - **System Design** question bank (language-agnostic): middle fundamentals and senior distributed systems / advanced architecture topics
 
 ### Changed
 
+- Interview feature: three-layer flow (`api` → `services` → `repositories`) with Pydantic read models in `app/interview/schemas/`; API no longer uses SQLAlchemy ORM types directly; WebSocket server messages typed in `app/interview/schemas/ws.py`
+- Speech and question-voice features: Pydantic status/page schemas; page context built in services (`SpeechModelPageService`, `QuestionVoicePageService`)
+- Platform feature: `AppConfigRead`, `ConfigPageContext`, LLM preset read models; `ConfigPageService` and `ConfigFormService`; configuration API delegates to services
+- Removed feature `domain/` packages: business rules and metadata live under `services/`; shared `exceptions` and `locales` at `app/shared/` top level
 - `selection_spec` JSON: `language` → **track**, dropped `version` field; domain types and setup UI/API use **track** terminology (`TrackSelection`, `list_tracks`, `/setup/options?track=…`)
 - Question bank YAML metadata: top-level `language` field renamed to **track** (loader uses directory path; field is documentation only)
 - README and ARCHITECTURE updated for **track** terminology, System Design bank, and Alembic migrations (replaces manual DB reset for schema changes)
@@ -22,10 +27,12 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Fixed
 
-- Docker image includes `alembic.ini` and migration scripts so `init_db()` runs on container startup
+- Docker image includes `alembic.ini` and migration scripts so `run_migrations()` runs on container startup
 - Removed erroneous `uliweb-alembic` dependency that shadowed the real `alembic` package and broke startup
 
 ### Removed
+
+- LLM catalog legacy fields `base_url_local` and `base_url_docker`; catalog entries use `base_url` only
 
 ## 2026.5.24
 

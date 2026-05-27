@@ -2,34 +2,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """Interview access helpers for other features' API layers."""
 
-from app.interview.domain.interview import AnswerView, InterviewView, interview_view
+from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.interview.services.query import InterviewQuery
-from app.shared.infrastructure.models import Interview
 
 
-def get_interview_for_dictation(interview_id: str) -> InterviewView | None:
+def get_interview_for_dictation(interview_id: str) -> InterviewRead | None:
     """Load an interview session for dictation WebSocket handlers.
 
     Args:
         interview_id: Interview session UUID.
 
     Returns:
-        Interview view with answers, or None when not found.
+        Interview read model with answers, or None when not found.
     """
-    interview = InterviewQuery.get_interview(interview_id)
-    if interview is None:
-        return None
-    return interview_view(interview)
+    return InterviewQuery.get_interview(interview_id)
 
 
-def load_interview_or_raise(interview_id: str) -> Interview:
+def load_interview_or_raise(interview_id: str) -> InterviewRead:
     """Load an interview with answers for cross-feature orchestration.
 
     Args:
         interview_id: Interview session UUID.
 
     Returns:
-        Interview ORM row with answers loaded.
+        Interview read model with answers loaded.
 
     Raises:
         InterviewNotFoundError: When the session does not exist.
@@ -37,13 +33,13 @@ def load_interview_or_raise(interview_id: str) -> Interview:
     return InterviewQuery.get_interview_or_raise(interview_id)
 
 
-def get_current_unanswered(interview: Interview) -> AnswerView | None:
+def get_current_unanswered(interview: InterviewRead) -> AnswerRead | None:
     """Return the first unanswered answer in display order.
 
     Args:
-        interview: Interview with eager-loaded answers.
+        interview: Interview read model with answers.
 
     Returns:
-        The first unanswered answer view, or None.
+        The first unanswered answer read model, or None.
     """
     return InterviewQuery.get_current_unanswered(interview)
