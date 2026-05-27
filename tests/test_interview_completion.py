@@ -67,6 +67,5 @@ async def test_complete_interview_persists_completed_status(isolated_db):
     assert reloaded.score == 5
     assert reloaded.completed_at is not None
     assert reloaded.overall_feedback is not None
-    stored = json.loads(reloaded.overall_feedback)
-    assert stored["score_breakdown"]["q1"]["score"] == 5
-    assert stored["score_breakdown"]["q1"]["max"] == 5
+    assert reloaded.overall_feedback["score_breakdown"]["q1"]["score"] == 5
+    assert reloaded.overall_feedback["score_breakdown"]["q1"]["max"] == 5

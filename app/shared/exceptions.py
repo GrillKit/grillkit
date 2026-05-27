@@ -1,6 +1,6 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Domain exceptions for interview flows."""
+"""Shared exceptions for interview flows."""
 
 
 class InterviewDomainError(Exception):

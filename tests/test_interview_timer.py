@@ -4,7 +4,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from app.interview.domain.timer import (
+from app.interview.services.rules.timer import (
     TIME_EXPIRED_ANSWER_TEXT,
     client_timeout_due,
     deadline,

@@ -6,14 +6,14 @@ import json
 
 import pytest
 
-from app.interview.domain.selection import (
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.services.creation import InterviewCreationService
+from app.interview.services.query import InterviewQuery
+from app.interview.services.rules.selection import (
     InterviewSelection,
     TrackSelection,
     get_interview_selection,
 )
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.creation import InterviewCreationService
-from app.interview.services.query import InterviewQuery
 
 
 def _single_selection(

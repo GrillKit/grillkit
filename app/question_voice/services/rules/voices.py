@@ -5,7 +5,7 @@
 from dataclasses import dataclass
 from typing import Final
 
-from app.shared.domain.locales import normalize_locale
+from app.shared.locales import normalize_locale
 
 DEFAULT_TTS_VOICE_ID: Final[str] = "en_US-lessac-medium"
 

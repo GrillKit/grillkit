@@ -6,15 +6,17 @@ import json
 import logging
 from uuid import uuid4
 
-from app.interview.domain.selection import (
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.interview import InterviewRead
+from app.interview.schemas.mappers import interview_read_from_orm
+from app.interview.services.question_planning import build_question_plan
+from app.interview.services.rules.selection import (
     InterviewSelection,
     selection_to_spec,
     validate_question_count,
 )
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.question_planning import build_question_plan
-from app.shared.domain.locales import normalize_locale
 from app.shared.infrastructure.models import Answer, Interview
+from app.shared.locales import normalize_locale
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class InterviewCreationService:
         locale: str = "en",
         question_count: int = 5,
         question_time_limit_seconds: int | None = None,
-    ) -> Interview:
+    ) -> InterviewRead:
         """Create a new interview session with selected questions.
 
         Loads questions from YAML banks per selection, builds a plan with at
@@ -41,7 +43,7 @@ class InterviewCreationService:
             question_time_limit_seconds: Per-round time limit, or None to disable.
 
         Returns:
-            The created Interview instance with answers pre-populated.
+            Read model for the created interview with answers pre-populated.
 
         Raises:
             ValueError: If validation fails or no questions are available.
@@ -86,5 +88,4 @@ class InterviewCreationService:
 
             uow.flush()
             uow.session.refresh(interview)
-            uow.session.expunge(interview)
-            return interview
+            return interview_read_from_orm(interview)

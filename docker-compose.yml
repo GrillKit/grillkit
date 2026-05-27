@@ -9,6 +9,7 @@ services:
       - ./data:/app/data
     environment:
       PYTHONUNBUFFERED: "1"
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/db/grillkit.db}
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       HF_TOKEN: ${HF_TOKEN:-}

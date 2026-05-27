@@ -4,7 +4,7 @@
 
 from fastapi import FastAPI
 
-from app.platform.services.config import ConfigService, ProviderConfig
+from app.platform.services.config import AppConfig, ConfigService
 from app.platform.services.speech_settings import (
     question_voice_settings_from_config,
     speech_settings_from_config,
@@ -37,12 +37,7 @@ class SpeechRuntimeCoordinator:
         await SpeechRuntimeCoordinator.sync_piper(config)
 
     @staticmethod
-    async def shutdown() -> None:
-        """Unload in-process Whisper and Piper models."""
-        SpeechRuntimeCoordinator.unload_all()
-
-    @staticmethod
-    async def sync_whisper(config: ProviderConfig | None) -> None:
+    async def sync_whisper(config: AppConfig | None) -> None:
         """Load or unload Whisper based on configuration and on-disk install state.
 
         Args:
@@ -58,7 +53,7 @@ class SpeechRuntimeCoordinator:
             WhisperRuntime.unload()
 
     @staticmethod
-    async def sync_piper(config: ProviderConfig | None) -> None:
+    async def sync_piper(config: AppConfig | None) -> None:
         """Load or unload Piper based on configuration and on-disk install state.
 
         Args:
@@ -74,7 +69,7 @@ class SpeechRuntimeCoordinator:
             PiperRuntime.unload()
 
     @staticmethod
-    async def reload_after_config_save(config: ProviderConfig) -> None:
+    async def reload_after_config_save(config: AppConfig) -> None:
         """Reload speech runtimes after configuration is persisted.
 
         Args:
@@ -86,7 +81,7 @@ class SpeechRuntimeCoordinator:
     @staticmethod
     async def preload_whisper_for_active_interview(
         app: FastAPI,
-        config: ProviderConfig | None,
+        config: AppConfig | None,
         *,
         interview_active: bool,
     ) -> None:

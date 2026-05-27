@@ -2,45 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Load and persist the interview LLM model catalog from ``data/llm_models.json``."""
 
-from dataclasses import dataclass
 import json
 from typing import Any
 
-from app.ai.llm_models import LLMCatalog, LLMModelEntry, validate_new_model_id
+from app.ai.llm_models import LLMCatalog, LLMModelEntry
 from app.paths import LLM_MODELS_PATH
-
-_catalog_cache: LLMCatalog | None = None
-
-
-@dataclass(frozen=True)
-class NewLLMModel:
-    """User input for adding a catalog model.
-
-    Attributes:
-        model_id: Stable lowercase id for the catalog entry.
-        display_name: Human-readable label shown in the UI.
-        base_url: OpenAI-compatible base URL.
-        model: Provider model name.
-        api_key_required: Whether an API key is required for this endpoint.
-        api_key: Optional API key stored with the catalog entry.
-    """
-
-    model_id: str
-    display_name: str
-    base_url: str
-    model: str
-    api_key_required: bool = False
-    api_key: str | None = None
+from app.platform.schemas import NewLLMModel
 
 
 class LLMCatalogService:
     """Read and update the user LLM model catalog."""
-
-    @staticmethod
-    def invalidate_cache() -> None:
-        """Clear the in-process catalog cache after writes or in tests."""
-        global _catalog_cache
-        _catalog_cache = None
 
     @staticmethod
     def load_catalog() -> LLMCatalog:
@@ -49,16 +20,10 @@ class LLMCatalogService:
         Returns:
             Catalog with selected id and all saved models.
         """
-        global _catalog_cache
-        if _catalog_cache is not None:
-            return _catalog_cache
-
         data = _read_catalog_file()
-        models = _parse_models(data.get("models", {}))
-        selected_raw = str(data.get("selected", "")).strip()
-        selected_id = selected_raw or None
-        _catalog_cache = LLMCatalog(selected_id=selected_id, models=models)
-        return _catalog_cache
+        models = _parse_models(data["models"])
+        selected_id = str(data["selected"]).strip() or None
+        return LLMCatalog(selected_id=selected_id, models=models)
 
     @staticmethod
     def get_selected_model_id() -> str | None:
@@ -116,25 +81,6 @@ class LLMCatalogService:
         )
 
     @staticmethod
-    def normalize_model_id(model_id: str | None) -> str:
-        """Validate a model id against the loaded catalog.
-
-        Args:
-            model_id: Raw model id from form input.
-
-        Returns:
-            Normalized id.
-
-        Raises:
-            ValueError: If the id is missing or unknown.
-        """
-        from app.ai.llm_models import normalize_model_id
-
-        if not model_id or not str(model_id).strip():
-            raise ValueError("Interview model is required")
-        return normalize_model_id(model_id, LLMCatalogService.load_catalog())
-
-    @staticmethod
     def add_user_model(payload: NewLLMModel) -> LLMModelEntry:
         """Append a model to ``data/llm_models.json``.
 
@@ -147,28 +93,19 @@ class LLMCatalogService:
         Raises:
             ValueError: If the id is invalid or already exists.
         """
-        model_id = validate_new_model_id(payload.model_id)
-        display_name = payload.display_name.strip()
-        base_url = payload.base_url.strip().rstrip("/")
-        model_name = payload.model.strip()
-        if not display_name:
-            raise ValueError("Display name is required")
-        if not base_url:
-            raise ValueError("Base URL is required")
-        if not model_name:
-            raise ValueError("Model name is required")
+        model_id = payload.model_id
 
         data = _read_catalog_file()
-        models = dict(data.get("models", {}))
+        models = dict(data["models"])
         if model_id in models:
             raise ValueError(f"Model id '{model_id}' already exists")
 
-        api_key = payload.api_key.strip() if payload.api_key else None
+        api_key = payload.api_key
         api_key_required = payload.api_key_required or bool(api_key)
         entry_dict = _model_dict(
-            display_name=display_name,
-            model_name=model_name,
-            base_url=base_url,
+            display_name=payload.display_name,
+            model_name=payload.model,
+            base_url=payload.base_url,
             api_key_required=api_key_required,
             api_key=api_key,
         )
@@ -187,7 +124,7 @@ class LLMCatalogService:
             api_key: API key to store, or ``None`` to remove it.
         """
         data = _read_catalog_file()
-        models = dict(data.get("models", {}))
+        models = dict(data["models"])
         raw_entry = models.get(model_id)
         if not isinstance(raw_entry, dict):
             return
@@ -253,11 +190,10 @@ def _write_catalog_file(data: dict[str, Any]) -> None:
     """Persist catalog JSON to disk."""
     LLM_MODELS_PATH.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "selected": str(data.get("selected", "")).strip(),
-        "models": data.get("models", {}),
+        "selected": str(data["selected"]).strip(),
+        "models": data["models"],
     }
     LLM_MODELS_PATH.write_text(json.dumps(payload, indent=2))
-    LLMCatalogService.invalidate_cache()
 
 
 def _parse_models(raw: dict[str, Any]) -> dict[str, LLMModelEntry]:
@@ -271,12 +207,7 @@ def _parse_models(raw: dict[str, Any]) -> dict[str, LLMModelEntry]:
 
 def _parse_model(model_id: str, item: dict[str, Any]) -> LLMModelEntry:
     """Parse one catalog model entry."""
-    base_url = str(item.get("base_url", "")).strip()
-    if not base_url:
-        legacy_local = str(item.get("base_url_local", "")).strip()
-        legacy_docker = str(item.get("base_url_docker", "")).strip()
-        base_url = legacy_local or legacy_docker
-    base_url = base_url.rstrip("/")
+    base_url = str(item.get("base_url", "")).strip().rstrip("/")
     raw_api_key = item.get("api_key")
     api_key = str(raw_api_key).strip() if raw_api_key else None
     return LLMModelEntry(

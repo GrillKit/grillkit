@@ -4,25 +4,24 @@
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from huggingface_hub import hf_hub_download
 
 from app.paths import PIPER_VOICES_ROOT
-from app.question_voice.domain.voices import (
-    PiperVoiceSpec,
-    normalize_tts_voice_id,
-    voice_spec_for_id,
-)
+from app.question_voice.schemas import PiperVoiceStatusRead
 from app.question_voice.services.piper_runtime import PiperRuntime
 from app.question_voice.services.piper_storage import (
     is_valid_voice_dir,
     is_voice_installed,
     voice_dir,
 )
-from app.shared.domain.locales import SUPPORTED_LOCALES, normalize_locale
+from app.question_voice.services.rules.voices import (
+    PiperVoiceSpec,
+    normalize_tts_voice_id,
+    voice_spec_for_id,
+)
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
 from app.shared.infrastructure.hf_download_progress import (
@@ -34,35 +33,9 @@ from app.shared.infrastructure.model_download import (
     prepare_staging_dir,
     promote_staging_dir,
 )
+from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
 
 PIPER_VOICES_REPO_ID = "rhasspy/piper-voices"
-
-PiperVoiceState = Literal["missing", "ready", "downloading", "error"]
-
-
-@dataclass
-class PiperVoiceStatus:
-    """Runtime status of a Piper voice for one locale.
-
-    Attributes:
-        voice_id: Piper voice identifier from provider configuration.
-        locale: Interview locale used for status messaging.
-        locale_label: Display name for the locale.
-        state: Installation or download state.
-        percent: Download progress 0–100 when ``state`` is ``downloading``.
-        message: User-facing status or error text.
-        voice_display_name: Piper voice label for UI.
-        loaded_in_memory: True when the voice is loaded in this process.
-    """
-
-    voice_id: str
-    locale: str
-    locale_label: str
-    state: PiperVoiceState
-    percent: int
-    message: str
-    voice_display_name: str
-    loaded_in_memory: bool = False
 
 
 class PiperVoiceService(ArtifactDownloadService):
@@ -75,7 +48,7 @@ class PiperVoiceService(ArtifactDownloadService):
     _error_message: ClassVar[str | None] = None
 
     @staticmethod
-    def get_status(voice_id: str, locale: str) -> PiperVoiceStatus:
+    def get_status(voice_id: str, locale: str) -> PiperVoiceStatusRead:
         """Build current voice status for UI and API consumers.
 
         Args:
@@ -106,7 +79,7 @@ class PiperVoiceService(ArtifactDownloadService):
                 f"Question voice files are installed but could not be loaded: {err}"
             ),
         )
-        return PiperVoiceStatus(
+        return PiperVoiceStatusRead(
             voice_id=code,
             locale=locale_code,
             locale_label=locale_label,
@@ -118,7 +91,7 @@ class PiperVoiceService(ArtifactDownloadService):
         )
 
     @staticmethod
-    async def start_download(voice_id: str, locale: str) -> PiperVoiceStatus:
+    async def start_download(voice_id: str, locale: str) -> PiperVoiceStatusRead:
         """Start a background download when the voice is not yet installed.
 
         Args:

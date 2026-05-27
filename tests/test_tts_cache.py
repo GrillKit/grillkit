@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.question_voice.domain.tts_exceptions import QuestionVoiceSynthesisError
-from app.question_voice.domain.voices import DEFAULT_TTS_VOICE_ID
+from app.question_voice.services.rules.voices import DEFAULT_TTS_VOICE_ID
 from app.question_voice.services.tts_cache import TtsCacheService
+from app.question_voice.services.tts_exceptions import QuestionVoiceSynthesisError
 
 
 class TestTtsCacheService:

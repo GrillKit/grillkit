@@ -4,13 +4,13 @@
 
 from fastapi import FastAPI
 
-from app.platform.services.config import ProviderConfig
+from app.platform.services.config import AppConfig
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 
 
 async def preload_whisper_for_active_interview(
     app: FastAPI,
-    config: ProviderConfig | None,
+    config: AppConfig | None,
     *,
     interview_active: bool,
 ) -> None:

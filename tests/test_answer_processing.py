@@ -7,7 +7,6 @@ import json
 
 import pytest
 
-from app.interview.domain.timer import TIME_EXPIRED_ANSWER_TEXT
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_processing import AnswerProcessingService
@@ -17,7 +16,8 @@ from app.interview.services.events import (
     EvaluatingEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.shared.domain.exceptions import InterviewNotActiveError
+from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
+from app.shared.exceptions import InterviewNotActiveError
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
 from tests.helpers.selection import minimal_selection_spec

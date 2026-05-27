@@ -4,9 +4,9 @@
 
 from typing import Any
 
-from app.interview.domain.interview import InterviewView
-from app.interview.domain.progress import find_next_unanswered_after
 from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.interview import InterviewRead
+from app.interview.services.rules.progress import find_next_unanswered_after
 from app.shared.infrastructure.models import Interview
 
 
@@ -17,7 +17,7 @@ class SessionNavigationService:
     def advance_to_next_unanswered(
         uow: InterviewUnitOfWork,
         db_interview: Interview,
-        session: InterviewView,
+        session: InterviewRead,
         *,
         question_id: str,
         round_num: int,
@@ -27,7 +27,7 @@ class SessionNavigationService:
         Args:
             uow: Active unit of work.
             db_interview: Parent interview ORM row.
-            session: Immutable session view.
+            session: Immutable session read model.
             question_id: Question ID of the completed round.
             round_num: Follow-up round that was just completed.
 

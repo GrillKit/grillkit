@@ -11,11 +11,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 
 from app.interview.api.deps import InterviewCreationServiceDep
 from app.interview.api.setup_form import setup_form_context
-from app.interview.domain.selection import parse_selection_json, validate_question_count
+from app.interview.services.rules.selection import (
+    parse_selection_json,
+    validate_question_count,
+)
 from app.platform.api.deps import ConfigServiceDep
 from app.questions import list_categories, list_levels, list_tracks
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.api.page_context import build_speech_model_page_context
+from app.speech.services.page import SpeechModelPageService
 from app.templating import templates
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -70,7 +73,10 @@ async def setup_page(
         "setup.html",
         {
             **setup_form_context(locale=config.locale),
-            **build_speech_model_page_context(config, whisper_model_service),
+            **SpeechModelPageService.build_page_context(
+                config,
+                whisper_model_service=whisper_model_service,
+            ).model_dump(),
         },
     )
 
@@ -174,6 +180,9 @@ async def create_interview(
                     error=str(e),
                     min_question_count=min_count,
                 ),
-                **build_speech_model_page_context(config, whisper_model_service),
+                **SpeechModelPageService.build_page_context(
+                    config,
+                    whisper_model_service=whisper_model_service,
+                ).model_dump(),
             },
         )

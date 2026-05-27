@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from app.shared.domain.locales import language_instruction
+from app.shared.locales import language_instruction
 
 _JSON_SCHEMA_TYPE_NAMES = frozenset(
     {"object", "string", "array", "integer", "number", "boolean", "null"}

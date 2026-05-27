@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from app.shared.infrastructure.database import Base, get_session
+from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
 from tests.helpers.selection import minimal_selection_spec
 
@@ -136,8 +136,8 @@ class TestInterview:
 class TestDatabaseFunctions:
     """Tests for database utility functions."""
 
-    def test_init_db_creates_tables(self, test_engine):
-        """Test that init_db creates tables."""
+    def test_create_all_creates_tables(self, test_engine):
+        """Test that metadata.create_all creates tables."""
         Base.metadata.drop_all(bind=test_engine)
 
         _Session = sessionmaker(bind=test_engine)  # noqa: N806
@@ -154,20 +154,3 @@ class TestDatabaseFunctions:
         result = session.query(Interview).first()
         assert result is None
         session.close()
-
-    def test_get_session_returns_session(self, test_engine, monkeypatch):
-        """Test that get_interview returns a Session object."""
-        from app.shared.infrastructure import database
-
-        original_engine = database.engine
-        monkeypatch.setattr(database, "engine", test_engine)
-
-        session = get_session()
-        assert session is not None
-        assert hasattr(session, "query")
-        assert hasattr(session, "add")
-        assert hasattr(session, "commit")
-
-        session.close()
-
-        monkeypatch.setattr(database, "engine", original_engine)

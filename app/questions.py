@@ -13,7 +13,7 @@ from typing import Any
 import yaml
 
 from app.paths import QUESTIONS_DIR
-from app.shared.domain.locales import DEFAULT_LOCALE, normalize_locale
+from app.shared.locales import DEFAULT_LOCALE, normalize_locale
 
 logger = logging.getLogger(__name__)
 

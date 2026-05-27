@@ -1,10 +1,10 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Per-round question timer domain rules."""
+"""Per-round question timer helpers for interview services."""
 
 from datetime import UTC, datetime, timedelta
 
-from app.shared.domain.locales import TIMEOUT_FEEDBACK_MESSAGES, localized_string
+from app.shared.locales import TIMEOUT_FEEDBACK_MESSAGES, localized_string
 
 TIME_EXPIRED_ANSWER_TEXT = "[Time expired]"
 

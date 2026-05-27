@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.main import create_app
-from app.platform.services.config import ProviderConfig
+from app.platform.services.config import AppConfig
 from app.shared.infrastructure.database import Base
 from tests.fakes import FakeProvider
 
@@ -21,16 +21,16 @@ from tests.fakes import FakeProvider
 @pytest.fixture
 def client():
     """Create a test client with mocked database init."""
-    with patch("app.main.init_db"):
+    with patch("app.main.run_migrations"):
         app = create_app()
         with TestClient(app) as test_client:
             yield test_client
 
 
 @pytest.fixture
-def minimal_provider_config() -> ProviderConfig:
+def minimal_app_config() -> AppConfig:
     """Minimal saved provider configuration for API tests."""
-    return ProviderConfig(
+    return AppConfig(
         provider_type="openai-compatible",
         base_url="http://localhost",
         model="gpt-4",

@@ -20,7 +20,7 @@ from app.paths import STATIC_DIR
 from app.platform.api import config as config_router
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 from app.question_voice.api import routes as question_voice_router
-from app.shared.infrastructure.database import init_db
+from app.shared.infrastructure.database import run_migrations
 from app.speech.api import dictation as dictation_router
 from app.speech.api import routes as speech_router
 
@@ -31,10 +31,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     Initializes database and loads the Whisper model when installed.
     """
-    init_db()
+    run_migrations()
     await SpeechRuntimeCoordinator.startup(app)
     yield
-    await SpeechRuntimeCoordinator.shutdown()
+    SpeechRuntimeCoordinator.unload_all()
 
 
 def create_app() -> FastAPI:
