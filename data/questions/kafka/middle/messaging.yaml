@@ -1,0 +1,130 @@
+category: Kafka Messaging
+track: kafka
+level: middle
+description: Delivery semantics, consumer groups, rebalancing, and producer reliability
+questions:
+- id: kmsg-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kafka
+  - ordering
+  - durability
+  - delivery-semantics
+  question:
+    text:
+      en: What delivery semantics does Kafka provide (at-most-once, at-least-once, exactly-once)? How to achieve exactly-once
+        semantics (EOS) in Kafka?
+      ru: Какие семантики доставки предоставляет Kafka (at-most-once, at-least-once, exactly-once)? Как достичь exactly-once
+        semantics (EOS) в Kafka?
+    code: '# Exactly-once with idempotent producer + transactions
+
+      producer.init_transactions()
+
+      producer.begin_transaction()
+
+      producer.send(''topic1'', value)
+
+      producer.send(''topic2'', value)
+
+      producer.commit_transaction()
+
+      '
+  follow_ups:
+    en:
+    - What is idempotent producer?
+    - How does Kafka handle transaction recovery?
+    - What is the performance impact of EOS?
+    ru:
+    - Что такое идемпотентный продюсер?
+    - Как Kafka восстанавливает транзакции?
+    - Как EOS влияет на производительность?
+  expected_points:
+  - 'At-most-once: auto-commit before processing, possible data loss'
+  - 'At-least-once: commit after processing, possible duplicates'
+  - 'Exactly-once: idempotent producer + transactions'
+  - 'Idempotence: producerId + sequence number per message'
+  - 'Transactions: atomic write to multiple partitions and transactional consumer'
+  - EOS reduces throughput by ~20-30%
+- id: kmsg-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kafka
+  - consumer
+  - rebalance
+  - group-coordination
+  question:
+    text:
+      en: What is consumer group rebalancing? Describe the rebalance protocol (JoinGroup, SyncGroup). What are cooperative
+        vs eager rebalancing? How to avoid 'rebalance storm'?
+      ru: Что такое ребалансировка consumer group? Опишите протокол ребалансировки (JoinGroup, SyncGroup). В чём разница между
+        cooperative и eager ребалансировкой? Как избежать 'rebalance storm'?
+    code: '# Eager rebalancing: all consumers revoke partitions, pause consumption
+
+      # Cooperative rebalancing (incremental): only some partitions move
+
+
+      # Session.timeout.ms and max.poll.interval.ms
+
+      # If processing too long -> consumer leaves group -> rebalance
+
+      '
+  follow_ups:
+    en:
+    - What happens if a consumer dies without leaving the group?
+    - How to set max.poll.records to avoid rebalance?
+    ru:
+    - Что будет, если consumer умер без выхода из группы?
+    - Как настроить max.poll.records, чтобы избежать ребалансировки?
+  expected_points:
+  - Rebalancing — redistribution of partitions when group membership changes
+  - 'Protocol: Coordinator → JoinGroup → leader election → SyncGroup'
+  - 'Eager: all consumers stop, then receive new partitions (Stop-The-World)'
+  - 'Cooperative: gradual partition movement (Partition.Revoke/Assign)'
+  - 'Rebalance storm: frequent rebalances due to timeouts; fix by increasing session.timeout and max.poll.interval.ms'
+- id: kmsg-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kafka
+  - producer
+  - acks
+  - idempotence
+  - performance
+  question:
+    text:
+      en: What is the acks parameter in Kafka producer? Explain acks=0, acks=1, acks=all. How does it affect durability and
+        latency? What is min.insync.replicas?
+      ru: Что такое параметр acks у продюсера Kafka? Объясните acks=0, acks=1, acks=all. Как это влияет на сохранность и задержку?
+        Что такое min.insync.replicas?
+    code: '# Producer config
+
+      acks=0         # fire-and-forget
+
+      acks=1         # leader acknowledgement only
+
+      acks=all       # wait for ISR replicas
+
+
+      # Broker config
+
+      min.insync.replicas=2  # need at least 2 replicas in ISR
+
+
+      # Guarantee: with acks=all and min.insync.replicas=2 -> data written to at least 2 brokers
+
+      '
+  follow_ups:
+    en:
+    - What happens if min.insync.replicas cannot be satisfied?
+    - How to achieve strong consistency without full availability?
+    ru:
+    - Что будет, если min.insync.replicas не может быть удовлетворён?
+    - Как добиться строгой согласованности без полной доступности?
+  expected_points:
+  - 'acks=0: maximum performance, possible data loss'
+  - 'acks=1: leader acknowledges, but follower may lag (loss if leader fails)'
+  - 'acks=all: acknowledgment from all ISR replicas, maximum durability'
+  - 'min.insync.replicas: minimum number of ISR replicas required for acknowledgment'
+  - If insufficient replicas, producer receives NotEnoughReplicasException

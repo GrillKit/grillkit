@@ -1,0 +1,161 @@
+category: RabbitMQ Client Development
+track: python
+level: middle
+description: Async consumers, RPC, connection recovery, and message serialization
+questions:
+- id: rpy-m-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - python
+  - rabbitmq
+  - pika
+  - consumer
+  - ack
+  question:
+    text:
+      en: Implement a RabbitMQ consumer using pika with manual acknowledgements, QoS prefetch count=1, and basic_cancel. Show
+        how to handle graceful shutdown and requeue on failure.
+      ru: Реализуйте RabbitMQ консьюмера на Python с использованием pika с ручными подтверждениями, QoS prefetch count=1 и
+        basic_cancel. Покажите корректное завершение работы и повторную постановку в очередь при ошибке.
+    code: "import pika, signal, sys\n\nconnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nchannel\
+      \ = connection.channel()\nchannel.basic_qos(prefetch_count=1)\n\ndef callback(ch, method, properties, body):\n    try:\n\
+      \        print(f\"Processing {body}\")\n        # ... processing that may raise\n        ch.basic_ack(delivery_tag=method.delivery_tag)\n\
+      \    except Exception:\n        # requeue = True sends back to same queue (may cause infinite loop)\n        ch.basic_nack(delivery_tag=method.delivery_tag,\
+      \ requeue=True)\n\ndef signal_handler(sig, frame):\n    print(\"Cancelling consumer and closing connection\")\n    channel.basic_cancel(consumer_tag='my_tag')\n\
+      \    connection.close()\n    sys.exit(0)\n\nsignal.signal(signal.SIGINT, signal_handler)\n\nchannel.basic_consume(queue='task_queue',\
+      \ on_message_callback=callback, auto_ack=False, consumer_tag='my_tag')\nchannel.start_consuming()\n"
+  follow_ups:
+    en:
+    - What is the difference between nack and reject?
+    - How to implement exponential backoff with requeue false and DLX?
+    - How to handle consumer cancel (e.g., queue deletion)?
+    ru:
+    - В чём разница между nack и reject?
+    - Как реализовать экспоненциальную задержку с requeue false и DLX?
+    - Как обрабатывать отмену консьюмера (например, удаление очереди)?
+  expected_points:
+  - 'basic_ack: confirms successful processing, broker removes message'
+  - 'basic_nack: rejects with requeue option (true = back to queue, false = DLX or drop)'
+  - 'basic_reject: rejects a single message (legacy, use nack)'
+  - prefetch_count=1 limits unacked messages — fair dispatch
+  - 'basic_cancel: stops consumer, needed for graceful shutdown'
+- id: rpy-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - rabbitmq
+  - aio-pika
+  - asyncio
+  question:
+    text:
+      en: Create an async RabbitMQ consumer using aio-pika with robust connection, manual ack, and backpressure handling.
+        Show integration with FastAPI startup/shutdown events. How to limit concurrent message processing?
+      ru: Создайте асинхронного RabbitMQ консьюмера с использованием aio-pika с надёжным соединением, ручным ack и управлением
+        backpressure. Покажите интеграцию с событиями запуска/остановки FastAPI. Как ограничить конкурентную обработку сообщений?
+    code: "from fastapi import FastAPI\nimport aio_pika\nimport asyncio\n\napp = FastAPI()\nconnection = None\nsemaphore =\
+      \ asyncio.Semaphore(10)  # limit concurrent processing\n\n@app.on_event(\"startup\")\nasync def startup():\n    global\
+      \ connection\n    connection = await aio_pika.connect_robust(\"amqp://guest:guest@localhost/\")\n    channel = await\
+      \ connection.channel()\n    await channel.set_qos(prefetch_count=20)\n    queue = await channel.declare_queue(\"my_queue\"\
+      , durable=True)\n    await queue.consume(process_message, no_ack=False)\n\n@app.on_event(\"shutdown\")\nasync def shutdown():\n\
+      \    await connection.close()\n\nasync def process_message(message: aio_pika.IncomingMessage):\n    async with semaphore:\
+      \  # backpressure\n        async with message.process(requeue=False):\n            # business logic\n            await\
+      \ asyncio.sleep(0.1)\n            print(f\"Processed {message.body}\")\n            # ack automatically when exiting\
+      \ process() context manager\n"
+  follow_ups:
+    en:
+    - What does connect_robust do?
+    - How to send RPC requests with aio-pika?
+    - How to use direct reply-to with async consumer?
+    ru:
+    - Что делает connect_robust?
+    - Как отправлять RPC запросы с aio-pika?
+    - Как использовать direct reply-to с асинхронным консьюмером?
+  expected_points:
+  - 'connect_robust: automatic reconnect on connection loss'
+  - async with message.process(requeue=False) auto-acks on exit (nack on exception)
+  - set_qos(prefetch_count) manages flow but does not fully limit processing concurrency
+  - Semaphore limits concurrent in-flight message processing in the application
+  - 'For RPC: reply_to queue and correlation_id; direct-reply-to uses ''amq.rabbitmq.reply-to'''
+- id: rpy-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - rabbitmq
+  - connection
+  - reconnect
+  - heartbeat
+  question:
+    text:
+      en: How to handle RabbitMQ connection failures and reconnections in Python? Discuss heartbeat settings, connection recovery
+        strategies (exponential backoff, retry limits), and channel recovery. Show a robust publisher with automatic reconnect.
+      ru: Как обрабатывать сбои соединения с RabbitMQ и переподключения в Python? Обсудите настройки heartbeat, стратегии
+        восстановления соединения (экспоненциальная задержка, лимиты повторов) и восстановление каналов. Покажите надёжного
+        издателя с автоматическим переподключением.
+    code: "import pika, time, logging\n\nclass RobustPublisher:\n    def __init__(self, amqp_url, retry_limit=5, retry_delay=2):\n\
+      \        self.amqp_url = amqp_url\n        self.retry_limit = retry_limit\n        self.retry_delay = retry_delay\n\
+      \        self.connection = None\n        self.channel = None\n        self.connect()\n    \n    def connect(self):\n\
+      \        for attempt in range(self.retry_limit):\n            try:\n                params = pika.URLParameters(self.amqp_url)\n\
+      \                params.heartbeat = 60  # seconds\n                params.socket_timeout = 30\n                self.connection\
+      \ = pika.BlockingConnection(params)\n                self.channel = self.connection.channel()\n                self.channel.confirm_delivery()\n\
+      \                logging.info(\"Connected to RabbitMQ\")\n                return\n            except pika.exceptions.AMQPConnectionError\
+      \ as e:\n                logging.warning(f\"Connection attempt {attempt+1} failed: {e}\")\n                time.sleep(self.retry_delay\
+      \ * (2 ** attempt))  # exponential backoff\n        raise Exception(\"Could not connect after retries\")\n    \n   \
+      \ def publish(self, exchange, routing_key, body):\n        try:\n            self.channel.basic_publish(exchange, routing_key,\
+      \ body, mandatory=True)\n        except (pika.exceptions.ChannelClosed, pika.exceptions.ConnectionClosed) as e:\n  \
+      \          logging.error(f\"Publish error, reconnecting: {e}\")\n            self.connect()\n            self.channel.basic_publish(exchange,\
+      \ routing_key, body, mandatory=True)\n"
+  follow_ups:
+    en:
+    - What is the difference between connection and channel recovery?
+    - How to detect stale connection with heartbeat?
+    - When to use BlockingConnection vs SelectConnection?
+    ru:
+    - В чём разница между восстановлением соединения и канала?
+    - Как обнаружить неактивное соединение с помощью heartbeat?
+    - Когда использовать BlockingConnection против SelectConnection?
+  expected_points:
+  - Heartbeat prevents connection close due to inactivity (default 60 sec)
+  - On connection loss all channels become invalid; everything must be recreated
+  - Exponential backoff is the standard reconnect strategy
+  - SelectConnection (async) allows more flexible recovery but is more complex
+  - Use mandatory + return callbacks to verify delivery reliability
+- id: rpy-m-004
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - rabbitmq
+  - json
+  - avro
+  - msgpack
+  question:
+    text:
+      en: How to handle message serialization in RabbitMQ Python clients? Compare JSON, MessagePack, Avro, and Protobuf. Show
+        an example of using JSON with content_type header and custom serializer for complex objects.
+      ru: Как работать с сериализацией сообщений в Python клиентах RabbitMQ? Сравните JSON, MessagePack, Avro и Protobuf.
+        Покажите пример использования JSON с заголовком content_type и собственного сериализатора для сложных объектов.
+    code: "import json, pickle, msgpack\nfrom pika.spec import BasicProperties\n\n# JSON serialization\ndata = {'user': 'bob',\
+      \ 'action': 'login'}\nbody = json.dumps(data).encode()\nprops = BasicProperties(content_type='application/json', content_encoding='utf-8')\n\
+      channel.basic_publish('', 'queue', body, properties=props)\n\n# Consumer decodes based on content_type\ndef callback(ch,\
+      \ method, props, body):\n    if props.content_type == 'application/json':\n        data = json.loads(body.decode())\n\
+      \    elif props.content_type == 'application/msgpack':\n        data = msgpack.unpackb(body)\n    # ...\n\n# For schema\
+      \ evolution, use Avro with Schema Registry (like confluent)\n# Or Protobuf with .proto definitions\n"
+  follow_ups:
+    en:
+    - What are the advantages of Protobuf over JSON?
+    - How to handle versioning of serialized data?
+    - Is there built-in support for Avro in any Python RabbitMQ client?
+    ru:
+    - Каковы преимущества Protobuf перед JSON?
+    - Как работать с версионированием сериализованных данных?
+    - Есть ли встроенная поддержка Avro в каком-либо Python RabbitMQ клиенте?
+  expected_points:
+  - 'JSON: readable, slow, large size, no strict schema'
+  - 'MsgPack: more compact than JSON, still dynamic'
+  - 'Protobuf: contract serialization, fast, small size, backward compatibility'
+  - 'Avro: schema stored separately, supports evolution'
+  - Content-type header helps the consumer pick the correct deserializer
+  - Python has no built-in Avro for AMQP; use manual implementation or external tooling

@@ -1,0 +1,147 @@
+category: Airflow Operations
+track: airflow
+level: middle
+description: DAG testing, monitoring, metrics, and RBAC security
+questions:
+- id: aops-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - testing
+  - unit-test
+  - dag-validation
+  question:
+    text:
+      en: 'How to test Airflow DAGs? Explain: DAG validation (airflow dags test), unit testing with pytest, mocking operators/hooks,
+        using DagBag for loading tests. How to test a DAG''s task dependencies without running external systems?'
+      ru: 'Как тестировать DAG в Airflow? Объясните: валидация DAG (airflow dags test), unit-тестирование с pytest, мокирование
+        операторов/хуков, использование DagBag для тестов загрузки. Как протестировать зависимости задач без запуска внешних
+        систем?'
+    code: "# test_dag.py\nfrom airflow.models import DagBag\n\ndef test_dag_loaded():\n    dag_bag = DagBag(dag_folder='/path/to/dags')\n\
+      \    assert dag_bag.dags['my_dag'] is not None\n    assert not dag_bag.import_errors\n\ndef test_dag_structure():\n\
+      \    dag = dag_bag.get_dag('my_dag')\n    assert dag.task_dict.keys() == {'t1', 't2', 't3'}\n    assert dag.task_dict['t1'].downstream_task_ids\
+      \ == {'t2'}\n\n# Using pytest with Airflow's test utilities\nfrom airflow.utils.dag_cycle_tester import check_cycle\n\
+      \ndef test_no_cycle():\n    dag = create_dag()\n    check_cycle(dag)  # raises if cycle\n\n# Test task with mocked hook\n\
+      from unittest.mock import patch\ndef test_task():\n    with patch('airflow.providers.postgres.hooks.postgres.PostgresHook.run')\
+      \ as mock_run:\n        task = PythonOperator(task_id='test', python_callable=lambda: None)\n        task.execute(context={'ds':\
+      \ '2024-01-01'})\n        mock_run.assert_called_once()\n"
+  follow_ups:
+    en:
+    - How to test sensor logic (timeout, poke interval)?
+    - What is the Airflow Test Environment (airflow testing with local executor)?
+    ru:
+    - Как тестировать логику сенсоров (тайм-аут, интервал опроса)?
+    - Что такое тестовое окружение Airflow (airflow testing с локальным исполнителем)?
+  expected_points:
+  - 'DAG validation: `airflow dags test` (local test run without scheduler).'
+  - DagBag loads all DAGs and captures import errors – use in CI.
+  - 'Unit tests: pytest with mock hooks/operators to avoid external dependencies.'
+  - 'Test dependencies: inspect task.downstream_task_ids, upstream_task_ids.'
+  - 'Cycle detection: check_cycle() utility.'
+  - 'Integration tests: spin up Airflow in Docker (e.g., with Breeze).'
+- id: aops-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - monitoring
+  - prometheus
+  - statsd
+  - logs
+  question:
+    text:
+      en: How to monitor Airflow health and performance? Explain metrics exposed via StatsD (with Prometheus sink), tracking
+        DAG duration, task failures, scheduler lag. How to set up alerts for stuck DAGs, scheduler heartbeat, and celery queue
+        length? What is the purpose of Airflow's health endpoint?
+      ru: Как мониторить состояние и производительность Airflow? Объясните метрики, передаваемые через StatsD (с приёмником
+        Prometheus), отслеживание длительности DAG, сбоев задач, отставания планировщика. Как настроить оповещения о зависших
+        DAG, heartbeat планировщика и длине очереди Celery? Какова цель health endpoint в Airflow?
+    code: "# airflow.cfg for metrics\n[metrics]\nstatsd_on = True\nstatsd_host = localhost\nstatsd_port = 8125\nstatsd_prefix\
+      \ = airflow\n\n# Expose Prometheus endpoint (using statsd-exporter or native Prometheus)\n[metrics]\nmetrics_backend\
+      \ = statsd\nstatsd_host = prometheus-statsd-exporter:9125\n\n# Health endpoint\n# GET /health\n{\n  \"metadatabase\"\
+      : {\"status\": \"healthy\"},\n  \"scheduler\": {\"status\": \"healthy\", \"latest_scheduler_heartbeat\": \"2024-01-01T00:00:00Z\"\
+      }\n}\n\n# Key metrics to monitor\n# dag_processing.processes (scheduler health)\n# scheduler.tasks.running, .queued,\
+      \ .starving\n# ti.finish.{dag_id}.{task_id}.{status}\n# celery.worker.consumed, .queue_length (if CeleryExecutor)\n"
+  follow_ups:
+    en:
+    - How to detect a DAG that hasn't run for X hours?
+    - What is 'scheduler lag' and why does it matter?
+    ru:
+    - Как обнаружить DAG, который не запускался X часов?
+    - Что такое 'отставание планировщика' и почему это важно?
+  expected_points:
+  - 'StatsD: Airflow emits metrics (task duration, status, scheduler activity).'
+  - 'Prometheus + Grafana: collect via statsd-exporter or native (Airflow 2.6+ Prometheus).'
+  - 'Health endpoint: checks DB connectivity and scheduler last heartbeat.'
+  - 'Scheduler lag: difference between current time and last scheduler heartbeat – indicates stuck scheduler.'
+  - 'DAG duration alerts: if DAG runs longer than expected.'
+  - 'Celery queue length: tasks backlog indicates insufficient workers.'
+  - Monitor task failures rate and kill duration (time spent in running state).
+- id: aops-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - security
+  - rbac
+  - ldap
+  - oauth
+  question:
+    text:
+      en: 'How to secure an Airflow deployment? Explain built-in RBAC (Role-Based Access Control): roles (Admin, User, Op,
+        Viewer), permissions on DAGs and resources. How to integrate with LDAP, OAuth (Google, GitHub), or OpenID Connect?
+        What is the `fernet_key` used for?'
+      ru: 'Как защитить развёртывание Airflow? Объясните встроенный RBAC (управление доступом на основе ролей): роли (Admin,
+        User, Op, Viewer), разрешения на DAG и ресурсы. Как интегрировать с LDAP, OAuth (Google, GitHub) или OpenID Connect?
+        Для чего используется `fernet_key`?'
+    code: '# airflow.cfg authentication
+
+      [webserver]
+
+      authenticate = True
+
+      auth_backend = airflow.api.auth.backend.basic_auth
+
+      # or
+
+      auth_backend = airflow.providers.fab.auth_backend.oauth
+
+
+      # OAuth configuration (e.g., GitHub)
+
+      [oauth]
+
+      enabled = True
+
+      oauth_provider = github
+
+      client_id = xxx
+
+      client_secret = xxx
+
+
+      # RBAC: custom role definition via CLI or UI
+
+      airflow roles add-permission --role MyRole --resource DAG:example_dag --can_edit
+
+
+      # Fernet key for encrypting connection passwords in DB
+
+      fernet_key = cXVhbnR1bXNreWlzZWN1cmVhbmRvbmdzdHJpbmcxMjM=
+
+      '
+  follow_ups:
+    en:
+    - How to restrict access to specific DAGs per team?
+    - What is the difference between FAB and RBAC in Airflow?
+    ru:
+    - Как ограничить доступ к конкретным DAG для каждой команды?
+    - В чём разница между FAB и RBAC в Airflow?
+  expected_points:
+  - 'RBAC (Flask-AppBuilder) provides default roles: Admin (full), User (can view/edit DAGs), Op (can run tasks), Viewer (read-only).'
+  - 'Fine-grained permissions: can control on DAG-level (can_read, can_edit, can_delete, can_trigger).'
+  - 'Integrations: LDAP, OAuth (GitHub, Google, Okta), OpenID Connect (Keycloak).'
+  - 'Fernet key: symmetric encryption key for connection passwords stored in metadata DB.'
+  - 'Secret rotation: change fernet_key periodically (re-encrypt connections).'
+  - 'Network security: use TLS (HTTPS) for webserver and internal RPC.'

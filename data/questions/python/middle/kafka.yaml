@@ -1,0 +1,154 @@
+category: Kafka Client Development
+track: python
+level: middle
+description: Async consumers, error handling, retries, and monitoring in Python
+questions:
+- id: kpy-m-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - python
+  - kafka
+  - consumer
+  - offset
+  question:
+    text:
+      en: Implement a Kafka consumer in Python (confluent-kafka) reading messages from a topic with manual offset commit.
+        Explain auto commit vs manual commit, synchronous vs asynchronous commit.
+      ru: Реализуйте Kafka консьюмера на Python (confluent-kafka) с чтением сообщений из топика и ручным коммитом офсета.
+        Объясните авто-коммит vs ручной коммит, синхронный vs асинхронный коммит.
+    code: "from confluent_kafka import Consumer\n\nconf = {\n    'bootstrap.servers': 'localhost:9092',\n    'group.id': 'mygroup',\n\
+      \    'auto.offset.reset': 'earliest',\n    'enable.auto.commit': False   # manual commit\n}\nconsumer = Consumer(conf)\n\
+      consumer.subscribe(['mytopic'])\n\ntry:\n    while True:\n        msg = consumer.poll(1.0)\n        if msg is None:\
+      \ continue\n        if msg.error():\n            print(f\"Error: {msg.error()}\")\n            continue\n        # process\
+      \ message\n        print(f\"Received: {msg.value()}\")\n        \n        # commit synchronously\n        consumer.commit(asynchronous=False)\n\
+      \        # or async: consumer.commit(asynchronous=True)\nexcept KeyboardInterrupt:\n    pass\nfinally:\n    consumer.close()\n"
+  follow_ups:
+    en:
+    - What happens if commit fails?
+    - How to commit specific offsets (not just last polled)?
+    - What is the risk of manual commit?
+    ru:
+    - Что будет, если коммит не удался?
+    - Как коммитить конкретные офсеты (не последний полученный)?
+    - В чём риск ручного коммита?
+  expected_points:
+  - 'Auto commit (enable.auto.commit=true): commits every auto.commit.interval.ms, but duplicates are possible'
+  - 'Manual commit: control over timing, can commit after successful processing'
+  - 'Sync commit: blocks until broker responds, reliable'
+  - 'Async commit: non-blocking, commit may be lost on crash, faster'
+  - Manual commit enables exactly-once semantics (with idempotent processing)
+- id: kpy-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - kafka
+  - aiokafka
+  - asyncio
+  - fastapi
+  question:
+    text:
+      en: How to consume Kafka messages asynchronously using aiokafka inside a FastAPI application? Show proper startup/shutdown,
+        concurrency control, and backpressure handling.
+      ru: Как асинхронно потреблять сообщения Kafka с помощью aiokafka внутри FastAPI приложения? Покажите правильный запуск/остановку,
+        контроль конкурентности и управление backpressure.
+    code: "from fastapi import FastAPI\nfrom aiokafka import AIOKafkaConsumer\nimport asyncio\n\napp = FastAPI()\nconsumer\
+      \ = AIOKafkaConsumer('mytopic', bootstrap_servers='localhost:9092', group_id='fastapi-group')\n\n@app.on_event('startup')\n\
+      async def startup():\n    await consumer.start()\n    asyncio.create_task(consume())\n\n@app.on_event('shutdown')\n\
+      async def shutdown():\n    await consumer.stop()\n\nasync def consume():\n    async for msg in consumer:\n        #\
+      \ process message (limit concurrency)\n        await process_message(msg)\n        # commit manually if needed\n   \
+      \     await consumer.commit()\n\nasync def process_message(msg):\n    # simulate processing\n    await asyncio.sleep(0.1)\n\
+      \    print(f\"Processed: {msg.value}\")\n"
+  follow_ups:
+    en:
+    - How to limit max inflight messages (concurrency) with aiokafka?
+    - How to handle rebalances in async code?
+    - What is the difference between aiokafka and confluent-kafka async wrapper?
+    ru:
+    - Как ограничить максимальное количество одновременно обрабатываемых сообщений в aiokafka?
+    - Как обрабатывать ребалансировки в async коде?
+    - В чём разница между aiokafka и async обёрткой confluent-kafka?
+  expected_points:
+  - aiokafka provides an async/await API based on asyncio
+  - Start consumer via start(), stop via stop(), create a task for consume loop
+  - async for msg in consumer — iterator that waits for new messages
+  - 'For concurrency limiting: use asyncio.Semaphore or a bounded queue'
+  - 'Backpressure: if processing is slower than consumption, tune fetch.max.wait.ms or apply broker-side throttling'
+  - aiokafka is less performant than confluent-kafka but convenient in async applications
+- id: kpy-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - kafka
+  - errors
+  - retries
+  - poison-pill
+  question:
+    text:
+      en: How to handle message processing failures and retries in Python Kafka consumer? Discuss dead-letter queue pattern,
+        poison pills, and exponential backoff. How to implement custom retry with commit control?
+      ru: Как обрабатывать ошибки обработки сообщений и повторы в Python Kafka консьюмере? Обсудите паттерн dead-letter queue
+        (DLQ), ядовитые сообщения и экспоненциальную задержку. Как реализовать повтор с контролем коммита?
+    code: "# Dead-letter topic approach\n# On processing error: send raw message to 'topic-dlq', commit offset of original\
+      \ message\n\nfrom confluent_kafka import Consumer, Producer\nimport time\n\nconsumer = Consumer(...)\nproducer = Producer(...)\n\
+      \nwhile True:\n    msg = consumer.poll(1.0)\n    try:\n        process(msg)\n        consumer.commit()\n    except Exception\
+      \ as e:\n        # send to DLQ\n        producer.produce('my-topic-dlq', value=msg.value(), key=msg.key())\n       \
+      \ producer.flush()\n        consumer.commit()  # skip this message\n        # or implement retry with backoff by not\
+      \ committing and seeking\n"
+  follow_ups:
+    en:
+    - What is the difference between retry and reprocess?
+    - How to implement exponential backoff with Kafka?
+    - What metrics to monitor for DLQ?
+    ru:
+    - В чём разница между повтором и повторной обработкой?
+    - Как реализовать экспоненциальную задержку с Kafka?
+    - Какие метрики отслеживать для DLQ?
+  expected_points:
+  - Processing errors must not block the consumer (otherwise rebalance)
+  - 'Dead-letter queue: separate topic for unprocessable messages'
+  - 'Poison pill: message that always fails; must be skipped'
+  - 'Retries: skip commit and use seek() to return to a previous offset'
+  - 'Exponential backoff: use a separate delayed topic or an application timer'
+  - 'Alternative: pause/resume partition during retry'
+- id: kpy-m-004
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - kafka
+  - monitoring
+  - metrics
+  - lags
+  question:
+    text:
+      en: 'What metrics and tools are essential for monitoring Python Kafka applications? How to measure consumer lag, producer
+        throughput, errors. How to debug common issues: ''message too large'', ''broker not available'', ''rebalance timeout''.'
+      ru: 'Какие метрики и инструменты важны для мониторинга Python Kafka приложений? Как измерить lag консьюмера, пропускную
+        способность продюсера, ошибки. Как отлаживать типичные проблемы: ''message too large'', ''broker not available'',
+        ''rebalance timeout''.'
+    code: "# Get consumer lag from Kafka consumer group command\n# kafka-consumer-groups --bootstrap-server localhost:9092\
+      \ --group mygroup --describe\n\n# In Python, use confluent_kafka's list_consumer_group_lags()\nfrom confluent_kafka.admin\
+      \ import AdminClient\nadmin = AdminClient({'bootstrap.servers': 'localhost:9092'})\nlags = admin.list_consumer_group_lags('mygroup')\n\
+      for topic, partition, lag in lags:\n    print(f\"{topic}-{partition}: lag={lag}\")\n\n# Producer metrics: delivery errors,\
+      \ request latency, queue length\n# Use stats callback in confluent_kafka\ndef stats_cb(stats_json):\n    stats = json.loads(stats_json)\n\
+      \    print(f\"Outgoing queue: {stats['outbuf_cnt']}, message count: {stats['txmsgs']}\")\n"
+  follow_ups:
+    en:
+    - How to alert when consumer lag exceeds threshold?
+    - What is a good lag value?
+    - How to debug rebalance issues with logs?
+    ru:
+    - Как отправлять алерт, когда lag превышает порог?
+    - Какое значение lag считается хорошим?
+    - Как отлаживать проблемы ребаланса по логам?
+  expected_points:
+  - Consumer lag = difference between latest partition offset and consumer committed offset
+  - High lag means the consumer cannot keep up with processing
+  - 'Metrics: JMX (Kafka brokers), Prometheus + Grafana, Burrow (LinkedIn) for lag'
+  - 'In Python: producer stats_cb config, client metrics from librdkafka'
+  - 'Message too large: increase max.request.size or message.max.bytes'
+  - 'Broker not available: check network, DNS, and security settings'
+  - 'Rebalance timeout: increase max.poll.interval.ms and session.timeout.ms'

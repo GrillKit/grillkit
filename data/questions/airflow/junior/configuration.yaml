@@ -1,0 +1,106 @@
+category: Airflow Configuration
+track: airflow
+level: junior
+description: Variables, connections, secrets backends, and XCom data passing
+questions:
+- id: aconf-j-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - airflow
+  - variables
+  - connections
+  - secrets-backend
+  question:
+    text:
+      en: How to manage configuration and secrets in Airflow? Explain Variables (using Airflow's UI or CLI) and Connections.
+        How to avoid hardcoding passwords? What is a secrets backend (e.g., HashiCorp Vault, AWS Secrets Manager)?
+      ru: Как управлять конфигурацией и секретами в Airflow? Объясните Variables (через UI или CLI) и Connections. Как избежать
+        жёсткого кодирования паролей? Что такое бэкенд секретов (например, HashiCorp Vault, AWS Secrets Manager)?
+    code: '# Using Variables in DAG
+
+      from airflow.models import Variable
+
+
+      api_url = Variable.get("API_URL")
+
+      # Optional default
+
+      api_key = Variable.get("API_KEY", default_var="default-key")
+
+      # JSON variable
+
+      config = Variable.get("CONFIG", deserialize_json=True)
+
+
+      # Using Connection in Hook
+
+      from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+      hook = PostgresHook(postgres_conn_id=''my_db'')
+
+
+      # Define connection via environment variable (AIRFLOW_CONN_MY_DB)
+
+      # Format: postgresql://user:pass@host:5432/db
+
+
+      # Secrets backend config in airflow.cfg
+
+      [secrets]
+
+      backend = airflow.providers.hashicorp.secrets.vault.VaultBackend
+
+      backend_kwargs = {"connections_path": "airflow/connections", "variables_path": "airflow/variables"}
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between Variable.get and using Jinja templates with {{ var.value.xyz }}?
+    - How to cache Variables to reduce DB load?
+    ru:
+    - В чём разница между Variable.get и использованием Jinja-шаблонов с {{ var.value.xyz }}?
+    - Как кэшировать Variables для снижения нагрузки на БД?
+  expected_points:
+  - 'Variables: generic key/value store (in metadata DB) – for non-secret configuration.'
+  - 'Connections: store credentials (host, port, login, password, extra) for external systems.'
+  - Never hardcode passwords – use Connections or secrets backend.
+  - 'Secrets backend: external secret management (Vault, AWS Secrets Manager, GCP Secret Manager).'
+  - 'Access Variables in templates: {{ var.value.my_var }}; or in Python with Variable.get().'
+  - Airflow automatically masks connection passwords in logs.
+- id: aconf-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - airflow
+  - xcom
+  - taskflow
+  - data-passing
+  question:
+    text:
+      en: How to pass data between tasks in Airflow? Explain XComs, their storage (backed by metadata DB), and limitations
+        (size, serialization). Compare classic XComs (xcom_push/xcom_pull) with TaskFlow API automatic passing (return values
+        and @task decorator).
+      ru: Как передавать данные между задачами в Airflow? Объясните XComs, их хранение (в БД метаданных) и ограничения (размер,
+        сериализация). Сравните классические XComs (xcom_push/xcom_pull) с автоматической передачей через TaskFlow API (возвращаемые
+        значения и декоратор @task).
+    code: "# Classic XCom (pre-2.0 style)\ndef push_function(**context):\n    context['ti'].xcom_push(key='data', value={'foo':\
+      \ 'bar'})\n\nPythonOperator(task_id='push', python_callable=push_function)\n\ndef pull_function(**context):\n    data\
+      \ = context['ti'].xcom_pull(task_ids='push', key='data')\n    print(data)\n\n# TaskFlow API (2.0+)\n@task\ndef extract():\n\
+      \    return {'user': 'alice', 'score': 100}\n\n@task\ndef process(data):\n    print(f\"Processing {data['user']}\")\n\
+      \    return data['score'] * 2\n\n@task\ndef save(result):\n    print(f\"Saved: {result}\")\n\n# Dependencies inferred\
+      \ automatically\nsave(process(extract()))\n"
+  follow_ups:
+    en:
+    - What is the size limit for XCom values? How to change it?
+    - What is the performance impact of large XComs?
+    ru:
+    - Каков лимит размера для XCom значений? Как его изменить?
+    - Как большие XCom влияют на производительность?
+  expected_points:
+  - XComs (Cross-communications) allow tasks to exchange small amounts of data.
+  - Stored in metadata DB (sqlite/postgres/mysql) – not suitable for large data (use object storage instead).
+  - 'Default size limit: 48KB (controlled by xcom_max_size in airflow.cfg or ''max-size'' in XCom backend).'
+  - 'Classic: xcom_push(key, value) and xcom_pull(task_ids, key).'
+  - 'TaskFlow API: tasks return values, automatically passed as XComs, dependencies inferred.'
+  - 'For large data: pass S3/GCS paths via XCom, store actual data in cloud storage.'

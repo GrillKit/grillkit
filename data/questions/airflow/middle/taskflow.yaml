@@ -1,0 +1,44 @@
+category: Airflow TaskFlow API
+track: airflow
+level: middle
+description: TaskFlow decorators, automatic XComs, and dynamic task mapping
+questions:
+- id: atask-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - taskflow
+  - decorators
+  - python
+  question:
+    text:
+      en: What is the TaskFlow API in Airflow 2.0? How does it simplify DAG authoring? Explain @dag and @task decorators,
+        automatic XCom passing, and how to use multiple outputs (MultipleOutputs, expand). When should you use TaskFlow vs
+        traditional operators?
+      ru: Что такое TaskFlow API в Airflow 2.0? Как он упрощает написание DAG? Объясните декораторы @dag и @task, автоматическую
+        передачу XCom и использование нескольких выходов (MultipleOutputs, expand). Когда следует использовать TaskFlow вместо
+        традиционных операторов?
+    code: "from airflow.decorators import dag, task\nfrom datetime import datetime\n\n@dag(schedule_interval='@daily', start_date=datetime(2024,1,1),\
+      \ catchup=False)\ndef my_pipeline():\n    \n    @task\n    def extract():\n        return {'ids': [1,2,3], 'names':\
+      \ ['alice','bob']}\n    \n    @task\n    def process(data):\n        return [f\"processed_{n}\" for n in data['names']]\n\
+      \    \n    @task\n    def save(results):\n        print(f\"Saving {results}\")\n        return len(results)\n    \n\
+      \    # Automatic dependency inference\n    count = save(process(extract()))\n    \n    # Multiple outputs\n    @task(multiple_outputs=True)\n\
+      \    def split():\n        return {'odd': 1, 'even': 2}\n    \n    # Dynamic task mapping (2.3+)\n    @task\n    def\
+      \ process_one(x):\n        return x * 2\n    \n    numbers = [1,2,3]\n    process_one.expand(x=numbers)  # creates 3\
+      \ mapped tasks\n\ndag = my_pipeline()\n"
+  follow_ups:
+    en:
+    - Can I mix traditional operators with TaskFlow tasks?
+    - How does @task.branch work?
+    ru:
+    - Можно ли смешивать традиционные операторы с задачами TaskFlow?
+    - Как работает @task.branch?
+  expected_points:
+  - TaskFlow API uses decorators to define DAGs and tasks (Python-centric).
+  - Return values automatically passed as XComs (no manual push/pull).
+  - Dependencies inferred from function calls.
+  - 'Multiple outputs: return dictionary with keys, each becomes separate XCom.'
+  - 'Dynamic task mapping: `expand()` to create multiple parallel tasks from a list.'
+  - TaskFlow is cleaner for Python-heavy pipelines; traditional operators better for external system interactions (SQL, S3).
+  - Mixing is possible; traditional operators can pull XComs from TaskFlow tasks and vice versa.

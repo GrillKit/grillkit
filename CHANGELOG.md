@@ -12,6 +12,12 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 - Alembic migrations for SQLite schema and `selection_spec` data upgrade (`language` → `track`)
 - Question banks (bilingual en/ru, ~141 new questions): **Python** — junior/middle/senior categories for FastAPI, Django, Django REST Framework, pytest, and asyncio; **Database** — SQLite and Redis basics (junior), locking/concurrency, migrations, and Redis advanced (middle), ClickHouse analytics (senior)
 - **System Design** question bank (language-agnostic): middle fundamentals and senior distributed systems / advanced architecture topics
+- **Kafka** question bank (18 questions, bilingual en/ru): platform topics in `kafka/` (junior fundamentals, middle messaging and storage, senior cluster architecture and stream processing); Python client topics in `python/{junior,middle,senior}/kafka.yaml` (libraries through production EOS, schema registry, and multiprocessing)
+- **RabbitMQ** question bank (17 questions, bilingual en/ru): platform topics in `rabbitmq/` and Python client topics in `python/{junior,middle,senior}/rabbitmq.yaml`
+- **Docker** question bank (7 questions, bilingual en/ru): junior fundamentals, middle operations, senior security in `docker/`
+- **Kubernetes** question bank (10 questions, bilingual en/ru): junior fundamentals, middle networking/scheduling, senior production in `kubernetes/`
+- **Observability** question bank (18 questions, bilingual en/ru): Prometheus, Grafana, and Loki topics in `observability/` across junior/middle/senior levels
+- **Airflow** question bank (15 questions, bilingual en/ru): fundamentals, executors, scheduling, operations, TaskFlow, and production topics in `airflow/`
 
 ### Changed
 
