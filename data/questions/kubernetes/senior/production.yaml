@@ -1,0 +1,76 @@
+category: Kubernetes Production
+track: kubernetes
+level: senior
+description: Ingress controllers, TLS, RBAC, and pod security standards
+questions:
+- id: kprod-s-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kubernetes
+  - ingress
+  - nginx-ingress
+  - cert-manager
+  - tls
+  question:
+    text:
+      en: 'What is an Ingress Controller? Compare NGINX Ingress, Traefik, and AWS ALB Ingress Controller. How to implement
+        TLS termination with cert-manager and Let''s Encrypt? Explain Ingress rules (path types: Exact, Prefix, ImplementationSpecific).'
+      ru: 'Что такое Ingress Controller? Сравните NGINX Ingress, Traefik и AWS ALB Ingress Controller. Как реализовать терминирование
+        TLS с cert-manager и Let''s Encrypt? Объясните правила Ingress (типы путей: Exact, Prefix, ImplementationSpecific).'
+    code: "# Ingress with TLS (cert-manager annotation)\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  annotations:\n\
+      \    cert-manager.io/cluster-issuer: letsencrypt-prod\nspec:\n  tls:\n  - hosts: [example.com]\n    secretName: example-tls\n\
+      \  rules:\n  - host: example.com\n    http:\n      paths:\n      - path: /api\n        pathType: Prefix\n        backend:\
+      \ {service: {name: api, port: {number: 80}}}\n"
+  follow_ups:
+    en:
+    - How to route WebSocket traffic via Ingress?
+    - What is the difference between Ingress and Gateway API?
+    ru:
+    - Как маршрутизировать WebSocket трафик через Ingress?
+    - В чём разница между Ingress и Gateway API?
+  expected_points:
+  - 'Ingress Controller: implementation of Ingress API (e.g., NGINX, Traefik, HAProxy, AWS ALB, GCE).'
+  - 'NGINX: feature-rich, uses ConfigMap. Traefik: dynamic config, built-in Prometheus. AWS ALB: native cloud L7.'
+  - cert-manager automates TLS certificates from Let's Encrypt (Issuer/ClusterIssuer).
+  - 'Path types: Exact (exact string match), Prefix (slash-delimited prefix), ImplementationSpecific (interpreted by controller).'
+  - 'WebSocket: supported if controller handles upgrade headers (NGINX does by default).'
+  - Gateway API (successor to Ingress) offers role-based routing, cross-namespace references.
+- id: kprod-s-002
+  type: knowledge
+  difficulty: 4
+  tags:
+  - kubernetes
+  - security
+  - rbac
+  - serviceaccount
+  - podsecurity
+  question:
+    text:
+      en: 'Explain Kubernetes security: RBAC (Roles, ClusterRoles, RoleBindings, ClusterRoleBindings), ServiceAccounts, PodSecurityStandards
+        (PSP deprecated) and PodSecurity admission. How to restrict container privileges (securityContext: runAsNonRoot, allowPrivilegeEscalation,
+        readOnlyRootFilesystem)?'
+      ru: 'Объясните безопасность Kubernetes: RBAC (Roles, ClusterRoles, RoleBindings, ClusterRoleBindings), ServiceAccounts,
+        PodSecurityStandards (PSP устарел) и PodSecurity admission. Как ограничить привилегии контейнера (securityContext:
+        runAsNonRoot, allowPrivilegeEscalation, readOnlyRootFilesystem)?'
+    code: "# Role (namespace-scoped)\nkind: Role\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\"\
+      , \"list\"]\n\n# RoleBinding\nkind: RoleBinding\nsubjects:\n- kind: ServiceAccount\n  name: my-sa\nroleRef: {kind: Role,\
+      \ name: pod-reader}\n\n# Pod security context\nspec:\n  securityContext:\n    runAsNonRoot: true\n    runAsUser: 1000\n\
+      \  containers:\n  - name: app\n    securityContext:\n      allowPrivilegeEscalation: false\n      readOnlyRootFilesystem:\
+      \ true\n\n# PodSecurity admission (enforce baseline)\nnamespace: default\nlabels:\n  pod-security.kubernetes.io/enforce:\
+      \ baseline\n"
+  follow_ups:
+    en:
+    - What is the difference between Role and ClusterRole?
+    - How to audit security violations?
+    ru:
+    - В чём разница между Role и ClusterRole?
+    - Как отслеживать нарушения безопасности?
+  expected_points:
+  - 'RBAC: grant permissions to subjects (users, groups, ServiceAccounts).'
+  - 'Role: namespace-scoped. ClusterRole: cluster-scoped (or used for namespace roles).'
+  - RoleBinding binds Role to subjects (within namespace). ClusterRoleBinding binds ClusterRole cluster-wide.
+  - 'ServiceAccount: identity for pods (used to authenticate to API).'
+  - PodSecurityStandards (baseline, restricted, privileged) enforced via PodSecurity admission (replaces PodSecurityPolicy).
+  - 'securityContext: runAsNonRoot, runAsUser, fsGroup, capabilities drop, readOnlyRootFilesystem.'
+  - 'Audit logging: enable audit policy to log API requests (e.g., for RBAC violations).'

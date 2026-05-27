@@ -1,0 +1,39 @@
+category: Loki Storage
+track: observability
+level: senior
+description: Object storage, TSDB index, compactor, and retention
+questions:
+- id: oloki-s-001
+  type: knowledge
+  difficulty: 4
+  tags:
+  - loki
+  - boltdb-shipper
+  - object-storage
+  - s3
+  - compactor
+  question:
+    text:
+      en: How does Loki store data in object storage (S3, GCS, MinIO)? Explain the boltdb-shipper and TSDB index modes. What
+        are the advantages of TSDB index over boltdb-shipper? How to run the compactor and what does it do?
+      ru: Как Loki хранит данные в объектном хранилище (S3, GCS, MinIO)? Объясните режимы индекса boltdb-shipper и TSDB. Каковы
+        преимущества TSDB индекса перед boltdb-shipper? Как запустить компрактор и что он делает?
+    code: "# Loki storage config for S3\nstorage_config:\n  boltdb_shipper:\n    active_index_directory: /loki/index\n   \
+      \ shared_store: s3\n    cache_location: /loki/cache\n  aws:\n    s3: s3://bucket/loki\n\n# TSDB index (Loki 2.8+)\n\
+      schema_config:\n  configs:\n    - from: 2023-01-01\n      store: tsdb\n      object_store: s3\n      schema: v12\n\n\
+      # Compactor (single instance, handle index compaction)\ntarget: compactor\ncompactor:\n  working_directory: /loki/compactor\n\
+      \  retention_enabled: true\n  retention_delete_delay: 2h\n"
+  follow_ups:
+    en:
+    - What is the difference between boltdb-shipper and TSDB?
+    - How to implement log deletion/retention?
+    ru:
+    - В чём разница между boltdb-shipper и TSDB?
+    - Как реализовать удаление/удержание логов?
+  expected_points:
+  - Loki separates index from chunks; both can be stored in object storage.
+  - 'boltdb-shipper: writes index to object storage as BoltDB files (periodic upload).'
+  - 'TSDB: Prometheus-inspired index (faster queries for high cardinality labels, better storage).'
+  - 'TSDB advantages: no per-tenant limit, faster label values queries, less compactor I/O.'
+  - 'Compactor: compresses and retains index files, applies retention policies.'
+  - 'Retention: deletion of chunks based on age (enabled in compactor).'

@@ -1,0 +1,140 @@
+category: Kubernetes Fundamentals
+track: kubernetes
+level: junior
+description: Cluster architecture, pods, workloads, and configuration
+questions:
+- id: kfund-j-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - kubernetes
+  - architecture
+  - master
+  - node
+  - components
+  question:
+    text:
+      en: Describe the Kubernetes architecture. Explain control plane components (API server, etcd, scheduler, controller
+        manager) and node components (kubelet, kube-proxy, container runtime). What is a Pod?
+      ru: Опишите архитектуру Kubernetes. Объясните компоненты control plane (API server, etcd, scheduler, controller manager)
+        и компоненты узла (kubelet, kube-proxy, container runtime). Что такое Pod?
+    code: "# Minimal Pod definition\napiVersion: v1\nkind: Pod\nmetadata:\n  name: mypod\nspec:\n  containers:\n  - name:\
+      \ nginx\n    image: nginx:latest\n    ports:\n    - containerPort: 80\n"
+  follow_ups:
+    en:
+    - What is the purpose of the scheduler?
+    - How does kubelet communicate with the API server?
+    ru:
+    - Какова цель планировщика?
+    - Как kubelet общается с API сервером?
+  expected_points:
+  - 'Control plane: API server (entry point, validation), etcd (cluster state), scheduler (pod placement), controller manager
+    (reconciliation loops).'
+  - 'Nodes: kubelet (manages pods, container runtime), kube-proxy (network rules), container runtime (containerd, CRI-O).'
+  - 'Pod: smallest deployable unit, one or more containers sharing network and storage.'
+  - API server is the only component that talks to etcd.
+  - 'Controllers: deployment, replicaset, endpoint, node, etc.'
+- id: kfund-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - kubernetes
+  - pods
+  - lifecycle
+  - init-containers
+  question:
+    text:
+      en: Explain the Pod lifecycle phases (Pending, Running, Succeeded, Failed, Unknown). What are init containers, postStart/preStop
+        hooks, and liveness/readiness/startup probes? How to define them?
+      ru: Объясните фазы жизненного цикла Pod (Pending, Running, Succeeded, Failed, Unknown). Что такое init-контейнеры, хуки
+        postStart/preStop и пробы liveness/readiness/startup? Как их определить?
+    code: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: probe-demo\nspec:\n  initContainers:\n  - name: init-myservice\n\
+      \    image: busybox\n    command: ['sh', '-c', 'echo \"init\"']\n  containers:\n  - name: app\n    image: nginx\n  \
+      \  livenessProbe:\n      httpGet: {path: /healthz, port: 80}\n      initialDelaySeconds: 15\n      periodSeconds: 20\n\
+      \    readinessProbe:\n      exec: {command: [\"cat\", \"/tmp/ready\"]}\n      initialDelaySeconds: 5\n    lifecycle:\n\
+      \      postStart: {exec: {command: [\"/bin/sh\", \"-c\", \"echo started\"]}}\n      preStop: {exec: {command: [\"/bin/sh\"\
+      , \"-c\", \"nginx -s quit\"]}}\n"
+  follow_ups:
+    en:
+    - What happens if liveness probe fails?
+    - How to debug a Pod stuck in CrashLoopBackOff?
+    ru:
+    - Что произойдёт при сбое пробы liveness?
+    - Как отладить Pod в состоянии CrashLoopBackOff?
+  expected_points:
+  - 'Phases: Pending (scheduling), Running (containers ready), Succeeded (terminated success), Failed (error), Unknown (state
+    lost).'
+  - Init containers run sequentially before main containers (must complete successfully).
+  - 'Liveness probe: restarts container on failure (deadlock detection).'
+  - 'Readiness probe: removes pod from service endpoints (traffic cut).'
+  - 'Startup probe: gives slow-starting containers extra time.'
+  - 'PostStart: runs after container starts (may delay readiness).'
+  - 'PreStop: grace period for cleanup before termination.'
+- id: kfund-j-003
+  type: knowledge
+  difficulty: 2
+  tags:
+  - kubernetes
+  - deployment
+  - statefulset
+  - daemonset
+  - job
+  question:
+    text:
+      en: 'Explain Kubernetes workload resources: Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob. When to use
+        each? How does a RollingUpdate differ from Recreate strategy?'
+      ru: 'Объясните ресурсы рабочих нагрузок Kubernetes: Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob. Когда
+        использовать каждый? Чем отличается стратегия RollingUpdate от Recreate?'
+    code: "# RollingUpdate vs Recreate\nspec:\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxSurge: 25%\n\
+      \      maxUnavailable: 25%\n\n# StatefulSet with stable network identity\napiVersion: apps/v1\nkind: StatefulSet\nspec:\n\
+      \  serviceName: \"my-service\"\n  replicas: 3\n  template: ...\n\n# DaemonSet (one pod per node)\nkind: DaemonSet\n\
+      spec: ...\n"
+  follow_ups:
+    en:
+    - Why StatefulSet needs a headless service?
+    - How to perform a blue-green deployment with Deployments?
+    ru:
+    - Зачем StatefulSet нужен headless service?
+    - Как выполнить blue-green развёртывание с Deployments?
+  expected_points:
+  - 'Deployment: manages ReplicaSets, declarative updates, rollback (stateless apps).'
+  - 'ReplicaSet: ensures number of pod replicas (usually managed by Deployment).'
+  - 'StatefulSet: stable network identity, sticky storage, ordered deployment (databases).'
+  - 'DaemonSet: runs one pod per node (monitoring, log collectors).'
+  - 'Job: runs to completion (batch processing). CronJob: scheduled jobs.'
+  - 'RollingUpdate: gradual replacement of pods (zero downtime).'
+  - 'Recreate: delete all old pods before creating new ones (downtime).'
+- id: kfund-j-004
+  type: knowledge
+  difficulty: 2
+  tags:
+  - kubernetes
+  - configmap
+  - secret
+  - environment
+  question:
+    text:
+      en: How to manage configuration in Kubernetes? Explain ConfigMap and Secret. How to inject them as environment variables
+        or volume mounts? What are the limitations of Secrets (size, etc.)? How to update config without restarting pods?
+      ru: Как управлять конфигурацией в Kubernetes? Объясните ConfigMap и Secret. Как внедрить их как переменные окружения
+        или смонтировать как тома? Каковы ограничения Secret (размер и т.д.)? Как обновить конфиг без перезапуска подов?
+    code: "# ConfigMap from literal\nkubectl create configmap app-config --from-literal=key1=value1\n\n# Use as volume (auto-updates\
+      \ when ConfigMap changes, but pod may not notice)\nspec:\n  volumes:\n  - name: config\n    configMap: {name: app-config}\n\
+      \  containers:\n  - volumeMounts: [{mountPath: /etc/config, name: config}]\n\n# Use as environment variable (static,\
+      \ requires pod restart)\nspec:\n  containers:\n  - env:\n    - name: KEY1\n      valueFrom:\n        configMapKeyRef:\
+      \ {name: app-config, key: key1}\n\n# Secret (base64 encoded, but not encrypted at rest by default)\nkubectl create secret\
+      \ generic db-secret --from-literal=password=s3cret\n"
+  follow_ups:
+    en:
+    - How to encrypt Secrets at rest in etcd?
+    - What is the alternative to ConfigMap for sensitive data?
+    ru:
+    - Как зашифровать Secrets в etcd?
+    - Что является альтернативой ConfigMap для чувствительных данных?
+  expected_points:
+  - 'ConfigMap: non-sensitive configuration (max size 1MiB).'
+  - 'Secret: base64 encoded sensitive data (passwords, tokens).'
+  - 'Injection: environment variables (static, pod restart needed) or volume mounts (dynamic).'
+  - Volume-mounted configmaps/secrets update automatically (but app may need to reload).
+  - Secrets are not encrypted in etcd by default (enable encryption at rest).
+  - 'External secrets: HashiCorp Vault, External Secrets Operator.'

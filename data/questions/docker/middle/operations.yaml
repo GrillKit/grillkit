@@ -1,0 +1,126 @@
+category: Docker Operations
+track: docker
+level: middle
+description: Networking, Compose, and container debugging
+questions:
+- id: dops-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - docker
+  - network
+  - bridge
+  - overlay
+  - host
+  question:
+    text:
+      en: 'Explain Docker networking drivers: bridge (default), host, none, overlay, macvlan. How does container-to-container
+        communication work on the same host and across hosts? What is the difference between user-defined bridge and default
+        bridge?'
+      ru: 'Объясните драйверы сетей Docker: bridge (по умолчанию), host, none, overlay, macvlan. Как работает общение между
+        контейнерами на одном хосте и между разными хостами? В чём разница между пользовательским мостом и стандартным?'
+    code: '# Create user-defined bridge (automatic DNS resolution)
+
+      docker network create mynet
+
+      docker run --network=mynet --name app1 myimage
+
+      docker run --network=mynet --name app2 myimage
+
+      # app2 can ping app1 by name
+
+
+      # Overlay network (requires Swarm or K8s)
+
+      docker network create -d overlay myoverlay
+
+
+      # Host network (no isolation, uses host''s interfaces)
+
+      docker run --network=host myapp
+
+      '
+  follow_ups:
+    en:
+    - How to expose a container's port to the host?
+    - What is the purpose of the 'none' network?
+    ru:
+    - Как открыть порт контейнера на хосте?
+    - Какова цель сети 'none'?
+  expected_points:
+  - 'Bridge: private internal network, containers get IPs, port mapping via NAT.'
+  - User-defined bridge provides automatic DNS resolution (containers can reach each other by name).
+  - Default bridge (docker0) has no DNS; use --link (deprecated).
+  - 'Host network: container uses host''s network stack (no isolation, faster).'
+  - 'Overlay: connects containers across multiple Docker daemons (Swarm/Kubernetes).'
+  - 'Macvlan: assigns a MAC address, container appears as physical device on network.'
+  - 'None: no network (loopback only).'
+- id: dops-m-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - docker
+  - compose
+  - multi-container
+  - orchestration
+  question:
+    text:
+      en: 'What is Docker Compose? Explain version 3 syntax: services, networks, volumes, depends_on, healthcheck, environment.
+        How to scale services and handle environment-specific overrides (docker-compose.override.yml)?'
+      ru: 'Что такое Docker Compose? Объясните синтаксис версии 3: services, networks, volumes, depends_on, healthcheck, environment.
+        Как масштабировать сервисы и обрабатывать переопределения для разных окружений (docker-compose.override.yml)?'
+    code: "# docker-compose.yml\nversion: '3.8'\nservices:\n  web:\n    build: .\n    ports: [\"80:80\"]\n    depends_on:\
+      \ [redis, db]\n    healthcheck: {test: [\"CMD\", \"curl\", \"-f\", \"http://localhost\"], interval: 30s}\n  redis:\n\
+      \    image: redis:alpine\n    volumes: [redis_data:/data]\n  db:\n    image: postgres:13\n    environment: {POSTGRES_PASSWORD:\
+      \ secret}\n\nvolumes: {redis_data:}\nnetworks: {default: {driver: bridge}}\n\n# Scale web to 3 replicas\ndocker compose\
+      \ up --scale web=3\n"
+  follow_ups:
+    en:
+    - What is the difference between depends_on and healthcheck + condition?
+    - How to share environment variables from .env file?
+    ru:
+    - В чём разница между depends_on и healthcheck с условием?
+    - Как использовать переменные окружения из .env файла?
+  expected_points:
+  - Docker Compose defines multi-container applications in a YAML file.
+  - 'services: each container definition (image, build, ports, volumes).'
+  - 'networks: custom networks for service isolation.'
+  - 'volumes: named volumes for data persistence.'
+  - 'depends_on: controls startup order but not readiness (use healthcheck for real readiness).'
+  - 'healthcheck: tests container health (used by orchestrators).'
+  - Override files (docker-compose.override.yml) automatically merged.
+  - 'Environment variables: ''environment'' key or .env file.'
+- id: dops-m-003
+  type: knowledge
+  difficulty: 2
+  tags:
+  - docker
+  - logs
+  - debugging
+  - docker-events
+  question:
+    text:
+      en: 'How to inspect and debug Docker containers? Explain: docker logs, docker exec, docker stats, docker top, docker
+        events. What logging drivers are available (json-file, syslog, journald, fluentd)? How to limit log size?'
+      ru: 'Как инспектировать и отлаживать контейнеры Docker? Объясните: docker logs, docker exec, docker stats, docker top,
+        docker events. Какие драйверы логирования доступны (json-file, syslog, journald, fluentd)? Как ограничить размер логов?'
+    code: "# View logs\ndocker logs -f --tail 100 container_name\n\n# Execute inside container\ndocker exec -it container_name\
+      \ /bin/bash\n\n# Resource usage\ndocker stats container_name\n\n# Real-time events from daemon\ndocker events --filter\
+      \ 'event=die'\n\n# Limit log size in daemon.json\n{\n  \"log-driver\": \"json-file\",\n  \"log-opts\": {\"max-size\"\
+      : \"10m\", \"max-file\": \"3\"}\n}\n"
+  follow_ups:
+    en:
+    - How to get logs of a stopped container?
+    - What information does 'docker inspect' provide?
+    ru:
+    - Как получить логи остановленного контейнера?
+    - Какую информацию предоставляет 'docker inspect'?
+  expected_points:
+  - 'docker logs: fetches logs from container''s stdout/stderr (depends on logging driver).'
+  - 'docker exec: run commands inside running container (debugging, inspection).'
+  - 'docker stats: real-time resource usage (CPU, memory, network, I/O).'
+  - 'docker top: processes running in container.'
+  - 'docker events: stream of daemon events (start, stop, die, etc.).'
+  - 'Logging drivers: json-file (default), syslog, fluentd, gelf, journald, none.'
+  - Limit logs via log-opts (max-size, max-file) to avoid disk exhaustion.
+  - 'docker inspect: low-level JSON details (networks, volumes, state, etc.).'

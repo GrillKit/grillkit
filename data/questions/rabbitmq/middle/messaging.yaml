@@ -1,0 +1,78 @@
+category: RabbitMQ Messaging
+track: rabbitmq
+level: middle
+description: Delivery guarantees, acknowledgements, prefetch, and dead-letter exchanges
+questions:
+- id: rmsg-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - rabbitmq
+  - delivery
+  - ack
+  - confirm
+  - persistent
+  question:
+    text:
+      en: What delivery guarantees does RabbitMQ provide? Explain publisher confirms, mandatory/immediate flags, consumer
+        acknowledgements (auto, manual), prefetch count, and message persistence.
+      ru: Какие гарантии доставки предоставляет RabbitMQ? Объясните подтверждения издателя (publisher confirms), флаги mandatory/immediate,
+        подтверждения потребителя (auto, manual), prefetch count и персистентность сообщений.
+    code: "# Publisher confirms (synchronous wait)\nchannel.confirm_delivery()\nif channel.basic_publish(exchange='', routing_key='queue',\
+      \ body='msg', mandatory=True):\n    print(\"Confirmed\")\n\n# Asynchronous confirm with callback\nchannel.add_on_return_callback(on_message_returned)\n\
+      \n# Consumer manual ack\nchannel.basic_consume(queue='queue', auto_ack=False, on_message_callback=callback)\ndef callback(ch,\
+      \ method, properties, body):\n    process(body)\n    ch.basic_ack(delivery_tag=method.delivery_tag)\n\n# Prefetch count\
+      \ (quality of service)\nchannel.basic_qos(prefetch_count=1)  # only one unacked message per consumer\n\n# Persistent\
+      \ message\nproperties = pika.BasicProperties(delivery_mode=2)  # persistent\n"
+  follow_ups:
+    en:
+    - What is the difference between confirm and transaction?
+    - How to handle nack and requeue?
+    - What is the default prefetch and why change it?
+    ru:
+    - В чём разница между confirm и транзакцией?
+    - Как обрабатывать nack и повторную постановку в очередь?
+    - Какое значение prefetch по умолчанию и зачем его менять?
+  expected_points:
+  - 'Publisher confirms: broker acknowledges message receipt (sync or async)'
+  - 'mandatory: returns message if it cannot be routed'
+  - 'Consumer acks: manual ack controls removal from queue'
+  - 'nack: reject with optional requeue or dead-letter'
+  - 'prefetch_count: limits unacked messages per consumer'
+  - 'Persistent messages: written to disk but fsync not guaranteed (needs durable queue and confirm)'
+  - Transactions (txSelect) are slow, not recommended (prefer confirms)
+- id: rmsg-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - rabbitmq
+  - dead-letter
+  - dlx
+  - error-handling
+  question:
+    text:
+      en: What is Dead Letter Exchange (DLX) in RabbitMQ? How to configure it for queues? When do messages become dead-lettered?
+        Show a typical dead-letter queue pattern for failed messages.
+      ru: Что такое Dead Letter Exchange (DLX) в RabbitMQ? Как его настроить для очередей? В каких случаях сообщения попадают
+        в DLX? Покажите типичный паттерн dead-letter очереди для неудачных сообщений.
+    code: "# Main queue with DLX configuration\nargs = {\n    'x-dead-letter-exchange': 'dlx.exchange',\n    'x-dead-letter-routing-key':\
+      \ 'failed',\n    'x-max-retries': 3  # custom argument (needs plugin or app logic)\n}\nchannel.queue_declare(queue='main_queue',\
+      \ durable=True, arguments=args)\n\n# Dead-letter exchange and queue\nchannel.exchange_declare('dlx.exchange', exchange_type='direct')\n\
+      channel.queue_declare('dlx.queue', durable=True)\nchannel.queue_bind('dlx.queue', 'dlx.exchange', routing_key='failed')\n\
+      \n# Message becomes dead-letter when:\n# - rejected (basic.reject/nack) with requeue=false\n# - expired (TTL)\n# - queue\
+      \ length exceeded (max-length)\n"
+  follow_ups:
+    en:
+    - How to implement retry with delay using DLX + TTL?
+    - Can DLX be chained?
+    - How to preserve original routing info for dead-lettered messages?
+    ru:
+    - Как реализовать повтор с задержкой, используя DLX + TTL?
+    - Можно ли цепочно использовать DLX?
+    - Как сохранить оригинальную информацию о маршрутизации для dead-letter сообщений?
+  expected_points:
+  - DLX is a regular exchange for messages not delivered to the target queue
+  - 'Causes: nack/requeue=false, TTL expiry, queue overflow'
+  - Dead-lettered messages get headers (x-death, original routing key)
+  - 'Pattern: main queue → on error → DLX → retry queue with TTL → back to main'
+  - Replaces lack of native delayed messages (RabbitMQ 3.13+ has delayed exchange)

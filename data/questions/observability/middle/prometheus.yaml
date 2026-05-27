@@ -1,0 +1,139 @@
+category: Prometheus Operations
+track: observability
+level: middle
+description: PromQL, exporters, service discovery, and alerting rules
+questions:
+- id: oprom-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - prometheus
+  - promql
+  - query
+  - rate
+  - vector
+  question:
+    text:
+      en: 'Write PromQL queries to: (a) get current memory usage, (b) calculate per-second rate of HTTP requests over 5 minutes,
+        (c) get 95th percentile of request duration, (d) compare current CPU to 1 hour ago. Explain vector matching (on, ignoring,
+        group_left/right).'
+      ru: 'Напишите PromQL запросы для: (a) получения текущего использования памяти, (b) вычисления per-second rate HTTP запросов
+        за 5 минут, (c) получения 95-го перцентиля длительности запросов, (d) сравнения текущего CPU с состоянием час назад.
+        Объясните сопоставление векторов (on, ignoring, group_left/right).'
+    code: '# (a) current memory usage
+
+      node_memory_MemAvailable_bytes
+
+
+      # (b) rate of HTTP requests (per second) over 5m
+
+      rate(http_requests_total[5m])
+
+
+      # (c) 95th percentile request duration from histogram (over last 10m)
+
+      histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[10m])) by (le))
+
+
+      # (d) compare CPU usage now vs 1h ago
+
+      node_cpu_seconds_total{mode="user"} / ignoring(mode) group_left
+
+      (node_cpu_seconds_total{mode="user"} offset 1h)
+
+
+      # Vector matching examples:
+
+      # on: join on specific labels
+
+      rate(http_requests_total[5m]) * on(instance) group_left(node_name) node_info
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between rate() and irate()?
+    - How to use absent() for monitoring missing metrics?
+    ru:
+    - В чём разница между rate() и irate()?
+    - Как использовать absent() для мониторинга отсутствующих метрик?
+  expected_points:
+  - rate() calculates per-second average over interval (handles counter resets).
+  - irate() uses last two points (more sensitive to spikes).
+  - histogram_quantile() estimates quantile from histogram buckets.
+  - offset modifier shifts time back for comparison.
+  - 'Vector matching: ''on'' specifies labels, ''ignoring'' excludes labels.'
+  - group_left/right for many-to-one joins.
+- id: oprom-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - prometheus
+  - exporters
+  - service-discovery
+  - kubernetes
+  question:
+    text:
+      en: How to monitor infrastructure with Prometheus exporters? Explain node_exporter, blackbox_exporter, and cAdvisor.
+        How does Prometheus service discovery work in Kubernetes (kubernetes_sd_config)? Show relabel_configs to filter and
+        rewrite labels.
+      ru: Как мониторить инфраструктуру с помощью экспортеров Prometheus? Объясните node_exporter, blackbox_exporter и cAdvisor.
+        Как работает service discovery в Kubernetes (kubernetes_sd_config)? Покажите relabel_configs для фильтрации и перезаписи
+        меток.
+    code: "# Kubernetes service discovery config\nscrape_configs:\n  - job_name: 'kubernetes-pods'\n    kubernetes_sd_configs:\n\
+      \      - role: pod\n    relabel_configs:\n      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]\n\
+      \        action: keep\n        regex: true\n      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]\n\
+      \        action: replace\n        target_label: __metrics_path__\n        regex: (.+)\n      - source_labels: [__address__,\
+      \ __meta_kubernetes_pod_annotation_prometheus_io_port]\n        action: replace\n        regex: (.+):(?:\\d+);(\\d+)\n\
+      \        replacement: $1:$2\n        target_label: __address__\n\n# Blackbox exporter (probe HTTP endpoint)\nmodules:\n\
+      \  http_2xx:\n    prober: http\n    timeout: 5s\n"
+  follow_ups:
+    en:
+    - What is the purpose of __address__ and __metrics_path__ labels?
+    - How to add custom labels from pod annotations?
+    ru:
+    - Какова цель меток __address__ и __metrics_path__?
+    - Как добавить пользовательские метки из аннотаций pod?
+  expected_points:
+  - 'node_exporter: hardware and OS metrics (Linux, Windows).'
+  - 'blackbox_exporter: probe endpoints (HTTP, TCP, ICMP).'
+  - 'cAdvisor: container metrics (integrated into kubelet).'
+  - 'kubernetes_sd_config: discovers pods, services, nodes, endpoints.'
+  - 'relabel_configs: keep/drop targets, modify labels, set metrics path.'
+  - 'Common meta labels: __meta_kubernetes_pod_label_*, annotation_*.'
+- id: oprom-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - prometheus
+  - alertmanager
+  - recording-rules
+  - alerting-rules
+  question:
+    text:
+      en: 'How to define Prometheus alerting and recording rules? Show an example of alert rule (high CPU usage) and recording
+        rule (aggregate request rate). Explain Alertmanager configuration: routes, receivers, inhibition, group_by, group_wait/group_interval/repeat_interval.'
+      ru: 'Как определить правила оповещения и записывающие правила Prometheus? Покажите пример alert rule (высокое использование
+        CPU) и recording rule (агрегированный rate запросов). Объясните конфигурацию Alertmanager: маршруты, получатели, ингибирование,
+        group_by, group_wait/group_interval/repeat_interval.'
+    code: "# recording rule (aggregate)\ngroups:\n  - name: recording_rules\n    rules:\n      - record: job:http_requests:rate5m\n\
+      \        expr: sum(rate(http_requests_total[5m])) by (job)\n\n# alert rule\n  - name: cpu_alerts\n    rules:\n     \
+      \ - alert: HighCPUUsage\n        expr: node_cpu_seconds_total{mode=\"user\"} > 0.8\n        for: 5m\n        annotations:\n\
+      \          summary: \"High CPU on {{ $labels.instance }}\"\n\n# Alertmanager config (alertmanager.yml)\nroute:\n  group_by:\
+      \ ['alertname', 'cluster']\n  group_wait: 10s\n  group_interval: 30s\n  repeat_interval: 4h\n  receiver: 'pagerduty'\n\
+      \  routes:\n    - match:\n        severity: critical\n      receiver: 'pagerduty'\nreceivers:\n  - name: 'pagerduty'\n\
+      \    pagerduty_configs: [ ... ]\ninhibit_rules:\n  - source_match: {severity: 'critical'}\n    target_match: {severity:\
+      \ 'warning'}\n    equal: ['instance']\n"
+  follow_ups:
+    en:
+    - What is the purpose of 'for' in alert rules?
+    - How to avoid alert storms with inhibition?
+    ru:
+    - Какова цель 'for' в правилах оповещения?
+    - Как избежать лавины оповещений с помощью ингибирования?
+  expected_points:
+  - 'Recording rules: precompute expensive queries for faster dashboards.'
+  - 'Alert rules: evaluate condition; send to Alertmanager when firing.'
+  - '''for'' duration: alert must be true for this long before firing (prevents flapping).'
+  - 'Alertmanager: routes (tree), group_by (batching), wait intervals.'
+  - 'Inhibition: suppress less severe alerts when critical alert fires.'
+  - 'Common receivers: Slack, PagerDuty, OpsGenie, email.'

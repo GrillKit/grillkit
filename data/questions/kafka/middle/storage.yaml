@@ -1,0 +1,51 @@
+category: Kafka Storage
+track: kafka
+level: middle
+description: Log segments, retention policies, and log compaction
+questions:
+- id: kstore-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kafka
+  - storage
+  - retention
+  - compaction
+  question:
+    text:
+      en: How does Kafka store messages on disk? What are log segments, rolling, retention policies (time, size), and log
+        compaction? What is the difference between deletion and compaction?
+      ru: Как Kafka хранит сообщения на диске? Что такое сегменты лога, rolling, политики удержания (время, размер) и compaction?
+        В чём разница между удалением и компакцией?
+    code: '# Retention configuration
+
+      log.retention.hours=168  # 7 days
+
+      log.retention.bytes=1073741824  # 1GB per partition
+
+
+      # Compaction: keep latest value per key
+
+      log.cleanup.policy=compact  # for changelog topics
+
+
+      # Deletion: remove old records
+
+      log.cleanup.policy=delete
+
+      '
+  follow_ups:
+    en:
+    - What is a segment? Why not one big file?
+    - How to recover deleted segments?
+    - When to use compaction vs deletion?
+    ru:
+    - Что такое сегмент? Почему не один большой файл?
+    - Как восстановить удалённые сегменты?
+    - Когда использовать compaction вместо deletion?
+  expected_points:
+  - Partition split into segments (1 GB default or time-based)
+  - Active segment (writable), old segments (read-only)
+  - 'Deletion by time or size: entire segments are removed'
+  - 'Compaction: keeps latest value per key (log compaction), removes duplicates'
+  - Used for state tables (Kafka Streams) and update events

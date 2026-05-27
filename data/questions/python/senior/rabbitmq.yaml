@@ -1,0 +1,88 @@
+category: RabbitMQ Client Production
+track: python
+level: senior
+description: RPC patterns and DLX-based retry with exponential backoff
+questions:
+- id: rpy-s-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - python
+  - rabbitmq
+  - rpc
+  - pika
+  - async
+  question:
+    text:
+      en: 'Implement a classic RPC pattern over RabbitMQ in Python: client sends a request with correlation_id and reply_to
+        queue, server processes and sends response. Show timeout handling and concurrent requests.'
+      ru: 'Реализуйте классический паттерн RPC поверх RabbitMQ на Python: клиент отправляет запрос с correlation_id и reply_to
+        очередью, сервер обрабатывает и отправляет ответ. Покажите обработку таймаута и конкурентные запросы.'
+    code: "# RPC Client (using pika)\nimport pika, uuid, time\n\nclass RpcClient:\n    def __init__(self):\n        self.connection\
+      \ = pika.BlockingConnection()\n        self.channel = self.connection.channel()\n        result = self.channel.queue_declare(queue='',\
+      \ exclusive=True)\n        self.callback_queue = result.method.queue\n        self.channel.basic_consume(queue=self.callback_queue,\
+      \ on_message_callback=self.on_response, auto_ack=True)\n        self.response = None\n        self.corr_id = None\n\
+      \    \n    def on_response(self, ch, method, props, body):\n        if self.corr_id == props.correlation_id:\n     \
+      \       self.response = body\n    \n    def call(self, message, timeout=5):\n        self.response = None\n        self.corr_id\
+      \ = str(uuid.uuid4())\n        self.channel.basic_publish(\n            exchange='', routing_key='rpc_queue',\n    \
+      \        properties=pika.BasicProperties(\n                reply_to=self.callback_queue,\n                correlation_id=self.corr_id,\n\
+      \            ),\n            body=message\n        )\n        start = time.time()\n        while self.response is None:\n\
+      \            self.connection.process_data_events(timeout=0.1)\n            if time.time() - start > timeout:\n     \
+      \           raise TimeoutError()\n        return self.response.decode()\n\n# RPC Server\ndef fib(n): return n if n <=\
+      \ 1 else fib(n-1) + fib(n-2)\n\ndef on_request(ch, method, props, body):\n    n = int(body)\n    response = str(fib(n))\n\
+      \    ch.basic_publish(\n        exchange='', routing_key=props.reply_to,\n        properties=pika.BasicProperties(correlation_id=props.correlation_id),\n\
+      \        body=response\n    )\n    ch.basic_ack(delivery_tag=method.delivery_tag)\n\nchannel.basic_qos(prefetch_count=1)\n\
+      channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)\n"
+  follow_ups:
+    en:
+    - How to make RPC client async with aio-pika?
+    - What is the advantage of direct-reply-to over exclusive queue?
+    ru:
+    - Как сделать RPC клиента асинхронным с aio-pika?
+    - В чём преимущество direct-reply-to перед эксклюзивной очередью?
+  expected_points:
+  - Each request has a unique correlation_id; response carries the same ID
+  - reply_to is the queue where the server sends the response (can be temporary exclusive)
+  - 'direct-reply-to (amq.rabbitmq.reply-to): no queue creation needed, faster'
+  - Timeout via loop with process_data_events() or asyncio.wait_for()
+- id: rpy-s-002
+  type: knowledge
+  difficulty: 4
+  tags:
+  - python
+  - rabbitmq
+  - dlx
+  - retry
+  - delay
+  question:
+    text:
+      en: How to implement a retry pattern with exponential backoff in RabbitMQ using Python (pika)? Use dead-letter exchange
+        with delayed retry queue. Show configuration of main queue, retry queue with TTL, and message flow.
+      ru: Как реализовать паттерн повтора с экспоненциальной задержкой в RabbitMQ на Python (pika)? Используйте dead-letter
+        exchange с очередью повторных попыток с TTL. Покажите конфигурацию основной очереди, очереди повторов и поток сообщений.
+    code: "import pika\n\nconn = pika.BlockingConnection()\nch = conn.channel()\n\n# Setup DLX\nch.exchange_declare('dlx_exchange',\
+      \ exchange_type='direct', durable=True)\nch.exchange_declare('retry_exchange', exchange_type='direct', durable=True)\n\
+      \n# Retry queue with per-message TTL (set by headers or queue arg)\nretry_args = {\n    'x-dead-letter-exchange': 'dlx_exchange',\n\
+      \    'x-dead-letter-routing-key': 'main',\n    'x-message-ttl': 5000  # 5 seconds initial delay\n}\nch.queue_declare('retry_queue',\
+      \ durable=True, arguments=retry_args)\nch.queue_bind('retry_queue', 'retry_exchange', routing_key='retry')\n\n# Main\
+      \ queue: dead-letter to retry on failure\nmain_args = {\n    'x-dead-letter-exchange': 'retry_exchange',\n    'x-dead-letter-routing-key':\
+      \ 'retry'\n}\nch.queue_declare('main_queue', durable=True, arguments=main_args)\nch.queue_bind('main_queue', 'dlx_exchange',\
+      \ routing_key='main')\n\n# Consumer on main queue: if fails, nack with requeue=False -> goes to retry via DLX\ndef consumer_callback(ch,\
+      \ method, props, body):\n    try:\n        # process\n        ch.basic_ack(method.delivery_tag)\n    except Exception:\n\
+      \        # optionally increase delay by modifying x-death header? Requires custom header manipulation\n        ch.basic_nack(method.delivery_tag,\
+      \ requeue=False)\n\n# Retry consumer: consumes from retry_queue and republishes to main (or simply let TTL do the DLX)\n\
+      # Actually retry_queue TTL will move message back to main_queue after delay automatically.\n# So we only need to consume\
+      \ main_queue.\n\nch.basic_consume('main_queue', consumer_callback, auto_ack=False)\n"
+  follow_ups:
+    en:
+    - How to increment delay on each retry (exponential backoff) using multiple retry queues?
+    - What are the limitations of TTL-based retry?
+    ru:
+    - Как увеличить задержку на каждой попытке (экспоненциальная задержка) с использованием нескольких очередей повтора?
+    - Каковы ограничения подхода с TTL?
+  expected_points:
+  - nack(requeue=false) sends message to the main queue DLX (retry_exchange)
+  - Retry queue has TTL; after expiry the message returns to main via DLX
+  - 'Exponential backoff: multiple retry queues with different TTLs and routing keys'
+  - 'Limits: max retries bounded by queue count; TTL queue blocks other messages during delay'
+  - 'Alternative: delayed exchange plugin is simpler but does not guarantee order'

@@ -1,0 +1,102 @@
+category: Airflow Fundamentals
+track: airflow
+level: junior
+description: Architecture, operators, sensors, hooks, and task dependencies
+questions:
+- id: afund-j-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - airflow
+  - architecture
+  - components
+  - scheduler
+  question:
+    text:
+      en: 'Explain Apache Airflow architecture. What are the core components: Scheduler, Webserver, Executor, Worker, Metadata
+        Database? How do they interact? What is a DAG and what is its purpose?'
+      ru: 'Объясните архитектуру Apache Airflow. Каковы основные компоненты: Scheduler, Webserver, Executor, Worker, Metadata
+        Database? Как они взаимодействуют? Что такое DAG и какова его цель?'
+    code: "# A simple DAG definition\nfrom airflow import DAG\nfrom airflow.operators.dummy import DummyOperator\nfrom datetime\
+      \ import datetime\n\nwith DAG('example_dag', start_date=datetime(2024,1,1), schedule_interval='@daily') as dag:\n  \
+      \  start = DummyOperator(task_id='start')\n    end = DummyOperator(task_id='end')\n    start >> end\n"
+  follow_ups:
+    en:
+    - What is the role of the Scheduler? How does it parse DAGs?
+    - What information does the metadata database store?
+    ru:
+    - Какова роль планировщика? Как он обрабатывает DAG-файлы?
+    - Какую информацию хранит база метаданных?
+  expected_points:
+  - 'Scheduler: parses DAG files, schedules tasks, triggers task instances, handles dependencies.'
+  - 'Webserver: provides UI for monitoring, triggering, debugging DAGs and task instances.'
+  - 'Executor: defines how task instances are run (Sequential, Local, Celery, Kubernetes).'
+  - 'Worker: executes tasks (only in distributed executors).'
+  - 'Metadata DB: stores DAG runs, task instances, variables, connections, logs, etc.'
+  - 'DAG (Directed Acyclic Graph): collection of tasks with defined dependencies and schedule.'
+- id: afund-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - airflow
+  - operators
+  - hooks
+  - sensors
+  question:
+    text:
+      en: What are Operators, Sensors, and Hooks in Airflow? Name common operators (BashOperator, PythonOperator, SQLExecuteQueryOperator,
+        etc.). How do Sensors differ from Operators? What is the purpose of Hooks?
+      ru: Что такое Operators, Sensors и Hooks в Airflow? Назовите распространённые операторы (BashOperator, PythonOperator,
+        SQLExecuteQueryOperator и др.). Чем Sensors отличаются от Operators? Какова цель Hooks?
+    code: "from airflow.operators.bash import BashOperator\nfrom airflow.operators.python import PythonOperator\nfrom airflow.sensors.filesystem\
+      \ import FileSensor\nfrom airflow.providers.postgres.hooks.postgres import PostgresHook\n\ntask_bash = BashOperator(task_id='date',\
+      \ bash_command='date')\n\ndef my_func():\n    hook = PostgresHook(postgres_conn_id='pg_default')\n    data = hook.get_records(sql=\"\
+      SELECT * FROM table\")\n    print(data)\n\ntask_python = PythonOperator(task_id='process', python_callable=my_func)\n\
+      wait_for_file = FileSensor(task_id='wait_for_file', filepath='/tmp/data.csv', poke_interval=30)\n"
+  follow_ups:
+    en:
+    - How to create a custom operator?
+    - What is the difference between @task decorator and traditional PythonOperator?
+    ru:
+    - Как создать собственный оператор?
+    - В чём разница между декоратором @task и традиционным PythonOperator?
+  expected_points:
+  - 'Operators: atomic units of work (e.g., BashOperator, PythonOperator, SQL operators).'
+  - 'Sensors: special operators that wait for a condition (file exists, API response, etc.).'
+  - 'Hooks: interfaces to external systems (database, cloud storage, API) – used by operators.'
+  - Sensors have a poke_interval and timeout; can be rescheduled to avoid hanging worker slots (deferrable mode).
+  - 'Custom operators: subclass BaseOperator, implement execute() or get_template_fields().'
+- id: afund-j-003
+  type: knowledge
+  difficulty: 2
+  tags:
+  - airflow
+  - dependencies
+  - bitshift
+  - taskflow
+  question:
+    text:
+      en: How to define task dependencies in Airflow? Explain bitshift operators (>>, <<), set_upstream/set_downstream, and
+        chaining. What is the difference between cross-DAG dependencies (ExternalTaskSensor) and trigger DAGs (TriggerDagRunOperator)?
+      ru: Как определить зависимости между задачами в Airflow? Объясните операторы bitshift (>>, <<), set_upstream/set_downstream
+        и цепочки. В чём разница между зависимостями между DAG (ExternalTaskSensor) и запуском одного DAG из другого (TriggerDagRunOperator)?
+    code: "with DAG(...) as dag:\n    t1 = DummyOperator(task_id='t1')\n    t2 = DummyOperator(task_id='t2')\n    t3 = DummyOperator(task_id='t3')\n\
+      \    t4 = DummyOperator(task_id='t4')\n\n# Bitshift syntax\nt1 >> [t2, t3] >> t4\n# Equivalent: t1.set_downstream(t2);\
+      \ t2.set_upstream(t1)\n\n# Cross-DAG dependencies: wait for another DAG's task\nExternalTaskSensor(\n    task_id='wait_for_dag1',\n\
+      \    external_dag_id='dag1',\n    external_task_id='final_task',\n    allowed_states=['success']\n)\n\n# Trigger a DAG\
+      \ from another DAG\nTriggerDagRunOperator(\n    task_id='trigger_dag2',\n    trigger_dag_id='dag2',\n    conf={'key':\
+      \ 'value'}\n)\n"
+  follow_ups:
+    en:
+    - What are dynamic task mappings (map, expand) in Airflow 2.3+?
+    - How to handle conditional logic (branching)?
+    ru:
+    - Что такое динамическое отображение задач (map, expand) в Airflow 2.3+?
+    - Как реализовать условную логику (ветвление)?
+  expected_points:
+  - Use >> (downstream) and << (upstream) for readability.
+  - set_upstream/set_downstream equivalent but less readable.
+  - 'ExternalTaskSensor: waits for a task completion in another DAG (requires same execution_date or using execution_delta).'
+  - 'TriggerDagRunOperator: starts another DAG (can pass config).'
+  - 'BranchPythonOperator: chooses one of several downstream paths.'
+  - Taskflow API (decorators) automatically infers dependencies from returned values.
