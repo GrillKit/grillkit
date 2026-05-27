@@ -9,7 +9,7 @@ dependencies = [
     "fastapi==0.136.1",
     "uvicorn[standard]==0.47.0",
     "python-multipart==0.0.29",
-    "sqlalchemy==2.0.49",
+    "sqlalchemy==2.0.50",
     "openai==2.37.0",
     "jinja2==3.1.6",
     "pyyaml==6.0.3",
