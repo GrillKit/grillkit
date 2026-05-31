@@ -77,6 +77,18 @@ class AIProvider(ABC):
         pass
 
     @abstractmethod
+    async def probe_audio_input(self, audio_wav: bytes) -> bool:
+        """Probe whether the endpoint accepts multimodal audio input.
+
+        Args:
+            audio_wav: Canonical WAV bytes (mono PCM).
+
+        Returns:
+            True when the provider accepts the audio probe request.
+        """
+        pass
+
+    @abstractmethod
     async def generate(
         self,
         messages: list[Message],
@@ -87,6 +99,33 @@ class AIProvider(ABC):
 
         Args:
             messages: List of conversation messages.
+            temperature: Sampling temperature (0.0 to 2.0).
+            max_tokens: Maximum tokens to generate.
+
+        Returns:
+            The generation result with content and metadata.
+
+        Raises:
+            ValueError: If the request fails or parameters are invalid.
+        """
+        pass
+
+    @abstractmethod
+    async def generate_with_audio(
+        self,
+        messages: list[Message],
+        audio_wav: bytes,
+        *,
+        user_text: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ) -> GenerationResult:
+        """Generate a response from system messages, user text, and audio.
+
+        Args:
+            messages: System (and optional assistant) messages without user audio.
+            audio_wav: Canonical WAV bytes representing the user's spoken answer.
+            user_text: Text context for the user turn (question prompt, no answer text).
             temperature: Sampling temperature (0.0 to 2.0).
             max_tokens: Maximum tokens to generate.
 

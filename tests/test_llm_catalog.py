@@ -34,6 +34,21 @@ class TestLLMCatalog:
         assert catalog.selected_id is None
         assert catalog.models == {}
 
+    def test_add_user_model_persists_accepts_audio_input(self, llm_catalog_path):
+        """Audio capability flag round-trips through llm_models.json."""
+        entry = LLMCatalogService.add_user_model(
+            NewLLMModel(
+                model_id="audio",
+                display_name="Audio API",
+                base_url="https://api.example.com/v1",
+                model="gpt-4o-audio",
+                accepts_audio_input=True,
+            )
+        )
+        assert entry.accepts_audio_input is True
+        saved = json.loads(llm_catalog_path.read_text())
+        assert saved["models"]["audio"]["accepts_audio_input"] is True
+
     def test_add_user_model_persists_api_key(self, llm_catalog_path):
         """Models can store an API key in llm_models.json."""
         entry = LLMCatalogService.add_user_model(

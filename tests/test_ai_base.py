@@ -80,7 +80,23 @@ class TestAIProvider:
             async def validate(self):
                 return True
 
+            async def probe_audio_input(self, audio_wav):
+                _ = audio_wav
+                return True
+
             async def generate(self, messages, temperature=0.7, max_tokens=2000):
+                return GenerationResult("test")
+
+            async def generate_with_audio(
+                self,
+                messages,
+                audio_wav,
+                *,
+                user_text,
+                temperature=0.7,
+                max_tokens=2000,
+            ):
+                _ = messages, audio_wav, user_text, temperature, max_tokens
                 return GenerationResult("test")
 
             async def generate_stream(self, messages, temperature=0.7, max_tokens=2000):
@@ -106,7 +122,23 @@ class TestAIProvider:
             async def validate(self):
                 return True
 
+            async def probe_audio_input(self, audio_wav):
+                _ = audio_wav
+                return True
+
             async def generate(self, messages, temperature=0.7, max_tokens=2000):
+                return GenerationResult("test")
+
+            async def generate_with_audio(
+                self,
+                messages,
+                audio_wav,
+                *,
+                user_text,
+                temperature=0.7,
+                max_tokens=2000,
+            ):
+                _ = messages, audio_wav, user_text, temperature, max_tokens
                 return GenerationResult("test")
 
             async def generate_stream(self, messages, temperature=0.7, max_tokens=2000):

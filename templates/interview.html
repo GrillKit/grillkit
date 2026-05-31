@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 
+{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.state == "ready" %}
+{% set audio_answer_enabled = dictation_enabled and interview_model_accepts_audio %}
+
 {% block title %}Interview - GrillKit{% endblock %}
 {% block body_class %}page-interview{% endblock %}
 {% block app_class %} app-container--interview{% endblock %}
 {% block main_class %} main-content--interview{% endblock %}
 
 {% block content %}
-{% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.state == "ready" %}
 <div class="interview-page">
     <aside class="interview-sidebar">
         <div id="interview-alerts">
@@ -158,6 +160,7 @@
              {% if question_voice_enabled %}data-question-voice-enabled="true"{% endif %}
              {% if current_answer_id %}data-current-answer-id="{{ current_answer_id }}"{% endif %}
              {% if dictation_enabled %}data-dictation-enabled="true"{% endif %}
+             {% if audio_answer_enabled %}data-audio-answer-enabled="true"{% endif %}
              {% if question_timer_enabled %}data-question-timer-enabled="true"{% endif %}
              data-current-round="{{ current_round }}">
             <textarea name="answer_text" id="answer_text"
@@ -170,6 +173,21 @@
                     Voice
                 </button>
                 <span id="dictation-hint" class="dictation-hint" hidden>Listening… speak your answer</span>
+                {% endif %}
+                {% if audio_answer_enabled %}
+                <button type="button" id="audio-record-btn" class="btn btn-secondary btn-audio-record"
+                        aria-label="Record audio answer" title="Record an audio answer">
+                    Record
+                </button>
+                <button type="button" id="audio-cancel-btn" class="btn btn-secondary btn-audio-cancel" hidden
+                        aria-label="Cancel audio recording" title="Cancel recording">
+                    Cancel
+                </button>
+                <button type="button" id="audio-send-btn" class="btn btn-secondary btn-audio-send" hidden
+                        aria-label="Send audio answer" title="Send recorded audio">
+                    Send audio
+                </button>
+                <span id="audio-record-hint" class="audio-record-hint" hidden>Recording… click Cancel or Send audio</span>
                 {% endif %}
                 <button type="button" id="submit-btn" class="btn btn-primary" onclick="submitAnswer()">Submit Answer</button>
             </div>
@@ -306,6 +324,14 @@
                 startEvaluationWatchdog();
                 break;
 
+            case 'transcript':
+                if (typeof window.grillkitUpdateAudioAnswerBubble === 'function') {
+                    window.grillkitUpdateAudioAnswerBubble(data.text);
+                } else {
+                    showAnswerBubbleWithText(data.text);
+                }
+                break;
+
             case 'feedback':
                 clearEvaluationWatchdog();
                 showEvaluating(false);
@@ -373,6 +399,9 @@
         if (typeof window.grillkitAbortDictation === 'function') {
             window.grillkitAbortDictation();
         }
+        if (typeof window.grillkitAbortAudioRecording === 'function') {
+            window.grillkitAbortAudioRecording();
+        }
 
         const textarea = document.getElementById('answer_text');
         const answerText = textarea.value.trim();
@@ -414,20 +443,23 @@
         ws.send(JSON.stringify({ type: 'complete' }));
     }
 
-    function showAnswerBubble() {
-        const textarea = document.getElementById('answer_text');
-        const answerText = textarea.value.trim();
-
+    function showAnswerBubbleWithText(answerText) {
         const chatContainer = document.getElementById('chat-container');
         const answerDiv = document.createElement('div');
         answerDiv.className = 'chat-message answer';
         answerDiv.innerHTML = '<div class="chat-bubble answer-bubble"><strong>You:</strong> ' + escapeHtml(answerText) + '</div>';
         chatContainer.appendChild(answerDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function showAnswerBubble() {
+        const textarea = document.getElementById('answer_text');
+        const answerText = textarea.value.trim();
+
+        showAnswerBubbleWithText(answerText);
 
         textarea.value = '';
         textarea.focus();
-
-        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
     function showEvaluating(visible) {
@@ -577,6 +609,10 @@
         const textarea = document.getElementById('answer_text');
         const submitBtn = document.getElementById('submit-btn');
         const endBtn = document.getElementById('end-btn');
+        const dictationBtn = document.getElementById('dictation-mic-btn');
+        const audioRecordBtn = document.getElementById('audio-record-btn');
+        const audioCancelBtn = document.getElementById('audio-cancel-btn');
+        const audioSendBtn = document.getElementById('audio-send-btn');
         if (textarea) {
             textarea.disabled = !enabled;
             if (enabled) {
@@ -584,8 +620,31 @@
             }
         }
         if (submitBtn) submitBtn.disabled = !enabled;
+        if (dictationBtn) dictationBtn.disabled = !enabled;
+        const audioCaptureActive =
+            audioCancelBtn &&
+            !audioCancelBtn.hidden &&
+            typeof window.grillkitIsAudioRecording === 'function' &&
+            window.grillkitIsAudioRecording();
+        if (audioRecordBtn) audioRecordBtn.disabled = !enabled;
+        if (audioCancelBtn) {
+            audioCancelBtn.disabled = audioCaptureActive ? false : true;
+        }
+        if (audioSendBtn) {
+            audioSendBtn.disabled = audioCaptureActive ? false : true;
+        }
         if (endBtn && enabled) endBtn.disabled = false;
     }
+
+    window.grillkitHandleInterviewEvent = handleWsMessage;
+    window.grillkitGetSubmissionContext = function () {
+        return { questionId: currentQuestionId, round: currentRound };
+    };
+    window.grillkitSetSubmitting = function (value) {
+        isSubmitting = value;
+        window.isSubmitting = value;
+    };
+    window.grillkitShowAnswerBubble = showAnswerBubbleWithText;
 
     window.showError = showError;
 
@@ -631,6 +690,9 @@
     });
 </script>
 <script src="/static/js/dictation.js?v={{ static_version('js/dictation.js') }}"></script>
+{% if audio_answer_enabled %}
+<script src="/static/js/interview_audio_answer.js?v={{ static_version('js/interview_audio_answer.js') }}"></script>
+{% endif %}
 {% if question_voice_enabled and interview.status == "active" and current_question %}
 <script src="/static/js/interview_voice.js?v={{ static_version('js/interview_voice.js') }}"></script>
 {% endif %}

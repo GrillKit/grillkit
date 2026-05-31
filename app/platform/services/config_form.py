@@ -67,21 +67,30 @@ class ConfigFormService:
                 "Interview model not found",
             )
 
+        normalized_locale = normalize_locale(locale)
+        keep_existing_voice = (
+            existing is not None
+            and normalize_locale(existing.locale) == normalized_locale
+        )
+        if keep_existing_voice and existing is not None:
+            tts_voice_id = existing.tts_voice_id
+        else:
+            tts_voice_id = default_voice_for_locale(normalized_locale)
+
         config = AppConfig(
             provider_type=entry.provider_type,
             base_url=entry.base_url,
             model=entry.model,
             api_key=AppConfig.resolve_api_key_from_form(api_key, normalized_preset_id),
             timeout=timeout,
-            locale=normalize_locale(locale),
+            locale=normalized_locale,
             speech_model_size=normalize_speech_model_size(speech_model_size),
             question_voice_enabled=question_voice_enabled,
-            tts_voice_id=(
-                existing.tts_voice_id
-                if existing
-                else default_voice_for_locale(normalize_locale(locale))
-            ),
+            tts_voice_id=tts_voice_id,
             llm_preset_id=normalized_preset_id,
         )
-        success, message = await config_service.test_connection(config)
+        success, message = await config_service.test_interview_model(
+            config,
+            accepts_audio_input=entry.accepts_audio_input,
+        )
         return config, success, message

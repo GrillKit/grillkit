@@ -24,6 +24,7 @@ class LLMModelEntry:
         base_url: OpenAI-compatible API base URL.
         api_key_required: Whether the UI should prompt for an API key.
         api_key: Stored API key for catalog entries (optional).
+        accepts_audio_input: Whether the model supports multimodal audio answers.
     """
 
     id: str
@@ -33,6 +34,7 @@ class LLMModelEntry:
     base_url: str
     api_key_required: bool
     api_key: str | None = None
+    accepts_audio_input: bool = False
 
 
 @dataclass(frozen=True)

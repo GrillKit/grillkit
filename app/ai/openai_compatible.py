@@ -6,6 +6,7 @@ This module provides an adapter for OpenAI-compatible APIs including
 OpenAI, Grok, Ollama, vLLM, and other OpenAI-compatible endpoints.
 """
 
+import base64
 from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError, RateLimitError
@@ -116,6 +117,73 @@ class OpenAICompatibleProvider(AIProvider):
             finish_reason=finish_reason,
         )
 
+    async def generate_with_audio(
+        self,
+        messages: list[Message],
+        audio_wav: bytes,
+        *,
+        user_text: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ) -> GenerationResult:
+        """Generate a response from system messages, user text, and audio.
+
+        Args:
+            messages: System messages for the chat completion request.
+            audio_wav: Canonical WAV bytes representing the user's spoken answer.
+            user_text: Text context for the user turn.
+            temperature: Sampling temperature (0.0 to 2.0).
+            max_tokens: Maximum tokens to generate.
+
+        Returns:
+            The generation result with content and metadata.
+
+        Raises:
+            ValueError: If authentication fails, rate limit exceeded, or API error occurs.
+        """
+        encoded = base64.standard_b64encode(audio_wav).decode("ascii")
+        api_messages: list[ChatCompletionMessageParam] = self._format_messages(messages)
+        api_messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_text},
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": encoded,
+                            "format": "wav",
+                        },
+                    },
+                ],
+            }
+        )
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=api_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
+            )
+        except AuthenticationError as e:
+            raise ValueError("Invalid API key") from e
+        except RateLimitError as e:
+            raise ValueError("Rate limit exceeded") from e
+        except OpenAIError as e:
+            raise ValueError(f"API error: {e}") from e
+
+        choice = response.choices[0]
+        content = choice.message.content or ""
+        finish_reason = choice.finish_reason
+        tokens_used = response.usage.total_tokens if response.usage else None
+
+        return GenerationResult(
+            content=content,
+            tokens_used=tokens_used,
+            finish_reason=finish_reason,
+        )
+
     async def generate_stream(
         self,
         messages: list[Message],
@@ -164,6 +232,27 @@ class OpenAICompatibleProvider(AIProvider):
             await self.client.models.list()
             return True
         except OpenAIError:
+            return False
+
+    async def probe_audio_input(self, audio_wav: bytes) -> bool:
+        """Probe whether the endpoint accepts multimodal audio input.
+
+        Args:
+            audio_wav: Canonical WAV bytes (mono PCM).
+
+        Returns:
+            True when the provider accepts the audio probe request.
+        """
+        try:
+            await self.generate_with_audio(
+                messages=[],
+                audio_wav=audio_wav,
+                user_text="Reply with OK only.",
+                temperature=0.0,
+                max_tokens=16,
+            )
+            return True
+        except ValueError:
             return False
 
     async def close(self) -> None:

@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.platform.api.deps import ConfigServiceDep
 from app.platform.schemas import NewLLMModel
-from app.platform.services.config import AppConfig
+from app.platform.services.config import AppConfig, ConfigService
 from app.platform.services.config_form import ConfigFormService
 from app.platform.services.llm_catalog import LLMCatalogService
 from app.platform.services.page import ConfigPageService
@@ -199,6 +199,7 @@ async def add_llm_model(
     model: str = Form(...),
     api_key: str = Form(""),
     api_key_required: bool = Form(False),
+    accepts_audio_input: bool = Form(False),
 ) -> HTMLResponse:
     """Add a user-defined OpenAI-compatible model to the catalog.
 
@@ -212,6 +213,7 @@ async def add_llm_model(
         model: Provider model name.
         api_key: Optional API key stored with the catalog entry.
         api_key_required: Whether the saved provider config needs an API key.
+        accepts_audio_input: Whether the catalog entry supports audio answers.
 
     Returns:
         Configuration page with a success or validation error message.
@@ -228,7 +230,27 @@ async def add_llm_model(
             model=model,
             api_key_required=api_key_required,
             api_key=api_key,
+            accepts_audio_input=accepts_audio_input,
         )
+        speech_model_size = (
+            config.speech_model_size
+            if config is not None
+            else DEFAULT_SPEECH_MODEL_SIZE
+        )
+        probe_config = AppConfig(
+            provider_type="openai-compatible",
+            base_url=payload.base_url,
+            model=payload.model,
+            api_key=payload.api_key,
+            speech_model_size=speech_model_size,
+            locale=config.locale if config is not None else DEFAULT_LOCALE,
+        )
+        success, test_message = await ConfigService.test_interview_model(
+            probe_config,
+            accepts_audio_input=payload.accepts_audio_input,
+        )
+        if not success:
+            raise ValueError(test_message)
         entry = LLMCatalogService.add_user_model(payload)
         selected_preset_id = entry.id
         message = f"Added model '{entry.display_name}' to the catalog."

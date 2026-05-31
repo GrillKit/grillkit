@@ -25,6 +25,7 @@ class LLMPageService:
                 model=entry.model,
                 base_url=entry.base_url,
                 api_key_required=entry.api_key_required,
+                accepts_audio_input=entry.accepts_audio_input,
             )
             for entry in LLMCatalogService.list_models()
         ]

@@ -21,8 +21,9 @@
                 <option value="{{ preset.id }}"
                         {% if selected_llm_preset_id == preset.id %}selected{% endif %}
                         {% if preset.description %}data-description="{{ preset.description }}"{% endif %}
-                        data-api-key-required="{{ 'true' if preset.api_key_required else 'false' }}">
-                    {{ preset.display_name }}
+                        data-api-key-required="{{ 'true' if preset.api_key_required else 'false' }}"
+                        data-accepts-audio-input="{{ 'true' if preset.accepts_audio_input else 'false' }}">
+                    {{ preset.display_name }}{% if preset.accepts_audio_input %} (audio){% endif %}
                 </option>
                 {% endfor %}
             </select>
@@ -144,6 +145,13 @@
                 API key required
             </label>
         </div>
+        <div class="form-group">
+            <label class="form-label">
+                <input type="checkbox" name="accepts_audio_input" id="catalog_accepts_audio_input" value="true">
+                Accepts audio input
+            </label>
+            <p class="form-hint">When enabled, the model is tested with a short audio probe on add and when saving configuration. Whisper must be installed for the selected speech model size.</p>
+        </div>
         <button type="submit" class="btn btn-secondary">Add model</button>
     </form>
 </div>
@@ -154,14 +162,20 @@
     const presetSelect = document.getElementById("llm_preset_id");
     const description = document.getElementById("llm-preset-description");
     const apiKeyGroup = document.getElementById("api-key-group");
+    const audioHint =
+        "This model accepts audio answers. Whisper must be installed for the selected speech model size.";
     if (!presetSelect) {
         return;
     }
     function applyPresetMode() {
         const option = presetSelect.options[presetSelect.selectedIndex];
         const apiKeyRequired = option.dataset.apiKeyRequired === "true";
+        const acceptsAudio = option.dataset.acceptsAudioInput === "true";
         if (description) {
-            description.textContent = option.dataset.description || "";
+            const base = option.dataset.description || "";
+            description.textContent = acceptsAudio
+                ? (base ? base + " — " : "") + audioHint
+                : base;
         }
         if (apiKeyGroup) {
             apiKeyGroup.hidden = !apiKeyRequired;

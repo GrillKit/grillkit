@@ -3,7 +3,7 @@
 """Pytest configuration and shared fixtures."""
 
 from collections.abc import Callable
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 import pytest
@@ -21,7 +21,16 @@ from tests.fakes import FakeProvider
 @pytest.fixture
 def client():
     """Create a test client with mocked database init."""
-    with patch("app.main.run_migrations"):
+    with (
+        patch("app.main.run_migrations"),
+        patch(
+            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+        ),
+    ):
         app = create_app()
         with TestClient(app) as test_client:
             yield test_client

@@ -9,6 +9,7 @@ from app.interview.schemas.ws import (
     AnswerSavedMessage,
     EvaluatingMessage,
     InterviewCompletedMessage,
+    TranscriptMessage,
     server_message_to_dict,
 )
 from app.interview.services.events import (
@@ -17,6 +18,7 @@ from app.interview.services.events import (
     EvaluatingEvent,
     InterviewCompletedEvent,
     InterviewEvent,
+    TranscriptEvent,
 )
 
 
@@ -25,6 +27,7 @@ def server_message_from_event(
 ) -> (
     AnswerSavedMessage
     | EvaluatingMessage
+    | TranscriptMessage
     | AnswerFeedbackMessage
     | InterviewCompletedMessage
 ):
@@ -43,6 +46,12 @@ def server_message_from_event(
         return AnswerSavedMessage()
     if isinstance(event, EvaluatingEvent):
         return EvaluatingMessage()
+    if isinstance(event, TranscriptEvent):
+        return TranscriptMessage(
+            question_id=event.question_id,
+            round=event.round,
+            text=event.text,
+        )
     if isinstance(event, AnswerFeedbackEvent):
         return AnswerFeedbackMessage(
             question_id=event.question_id,
