@@ -1,0 +1,148 @@
+category: RabbitMQ Architecture
+track: rabbitmq
+level: senior
+description: Clustering, quorum queues, streams, and essential plugins
+questions:
+- id: rarch-s-001
+  type: knowledge
+  difficulty: 4
+  tags:
+  - rabbitmq
+  - clustering
+  - ha
+  - mirroring
+  - quorum-queues
+  question:
+    text:
+      en: 'How does RabbitMQ clustering work? Explain different high availability strategies: classic mirrored queues (HA
+        policy) vs quorum queues (based on Raft). What is the difference in data safety, performance, and failover behavior?'
+      ru: 'Как работает кластеризация RabbitMQ? Объясните различные стратегии высокой доступности: классические зеркалируемые
+        очереди (HA policy) против quorum queues (на основе Raft). В чём разница в надёжности данных, производительности и
+        поведении при отказе?'
+    code: '# HA policy for mirrored queues (deprecated but still used)
+
+      rabbitmqctl set_policy ha-all "^ha\." ''{"ha-mode":"all","ha-sync-mode":"automatic"}''
+
+
+      # Quorum queue (recommended for HA)
+
+      args = {''x-queue-type'': ''quorum''}
+
+      channel.queue_declare(queue=''quorum_queue'', durable=True, arguments=args)
+
+
+      # Cluster nodes: all nodes know about exchanges, bindings, but queues live on one node (unless mirrored/quorum)
+
+      '
+  follow_ups:
+    en:
+    - How many nodes needed for a quorum queue?
+    - What happens if majority of quorum nodes are lost?
+    - Can you mix quorum and classic queues?
+    ru:
+    - Сколько узлов необходимо для кворумной очереди?
+    - Что происходит при потере большинства узлов кворума?
+    - Можно ли смешивать кворумные и классические очереди?
+  expected_points:
+  - 'RabbitMQ cluster: multiple nodes acting as one broker (shared cookie, Erlang clustering)'
+  - 'Mirrored queues: master-slave, async replication (may lose data if master fails before sync)'
+  - 'Quorum queues: Raft consensus, sync replication with leader and followers'
+  - Quorum offers better durability but higher latency; needs majority (n/2+1) for writes
+  - Quorum queues don't support exclusive, per-message TTL (except DLX), non-destructive get
+  - For highest performance — non-mirrored queues (single node)
+- id: rarch-s-002
+  type: knowledge
+  difficulty: 4
+  tags:
+  - rabbitmq
+  - streams
+  - replay
+  - persistent
+  question:
+    text:
+      en: 'What are RabbitMQ Streams? How do they differ from classic queues? Explain stream features: non-destructive consumption,
+        time-based retention, offset tracking, super-streams, and use cases.'
+      ru: 'Что такое RabbitMQ Streams? Чем они отличаются от классических очередей? Объясните возможности потоков: недеструктивное
+        потребление, удержание по времени, отслеживание офсетов, супер-потоки и сценарии использования.'
+    code: '# Declare a stream (via plugin or client)
+
+      # RabbitMQ 3.9+ with rabbitmq_stream plugin
+
+
+      args = {''x-queue-type'': ''stream'', ''x-max-length-bytes'': 10_000_000_000, ''x-stream-max-segment-size-bytes'': 500_000_000}
+
+      channel.queue_declare(queue=''my_stream'', durable=True, arguments=args)
+
+
+      # Consume from a specific offset
+
+      # offset: first, last, next, or numeric
+
+      # Not applicable with basic.consume (stream uses special protocol)
+
+      '
+  follow_ups:
+    en:
+    - How do streams compare with Kafka?
+    - Can you have multiple consumers reading same stream independently?
+    - What is a super-stream?
+    ru:
+    - Как потоки соотносятся с Kafka?
+    - Может ли несколько потребителей независимо читать один и тот же поток?
+    - Что такое супер-поток?
+  expected_points:
+  - 'Streams: persistent, replicated, append-only log (like Kafka)'
+  - 'Non-destructive read: multiple consumers can read the same data independently'
+  - 'Offset tracking: consumer stores its position'
+  - 'Super-stream: partitioned stream for parallelism'
+  - Streams need a dedicated TCP-based protocol, not AMQP 0-9-1 clients
+  - 'Use cases: audit, analytics, event replay, shared-state microservices'
+- id: rarch-s-003
+  type: knowledge
+  difficulty: 4
+  tags:
+  - rabbitmq
+  - plugins
+  - management
+  - shovel
+  - federation
+  question:
+    text:
+      en: 'Name essential RabbitMQ plugins: management, shovel, federation, delayed message exchange. How to use shovel for
+        moving messages between clusters? What is federation for? Explain the use of rabbitmqadmin.'
+      ru: 'Назовите важные плагины RabbitMQ: management, shovel, federation, delayed message exchange. Как использовать shovel
+        для перемещения сообщений между кластерами? Для чего нужна федерация? Объясните использование rabbitmqadmin.'
+    code: '# Enable plugins
+
+      rabbitmq-plugins enable rabbitmq_management rabbitmq_shovel rabbitmq_federation
+
+
+      # Shovel config (dynamic shovel via runtime parameter)
+
+      rabbitmqctl set_parameter shovel my-shovel ''{"src-uri":"amqp://src","dest-uri":"amqp://dest","src-queue":"src-queue","dest-exchange":"dest-exchange"}''
+
+
+      # Delayed Message Exchange plugin (not built-in, install separately)
+
+      args = {''x-delayed-type'': ''direct''}
+
+      channel.exchange_declare(''delayed_exchange'', ''x-delayed-message'', arguments=args)
+
+      # Publish with delay
+
+      props = pika.BasicProperties(headers={''x-delay'': 5000})
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between shovel and federation?
+    - When to use delayed exchange vs DLX+TTL pattern?
+    ru:
+    - В чём разница между shovel и federation?
+    - Когда использовать delayed exchange вместо DLX+TTL?
+  expected_points:
+  - 'Management: HTTP API, web UI, queue and connection monitoring'
+  - 'Shovel: moves messages between brokers (different clusters, versions) with transformation'
+  - 'Federation: links exchange/queue across clusters without a single cluster (higher latency)'
+  - 'Delayed Message Exchange: plugin for delayed delivery (RabbitMQ 3.13 added native delayed)'
+  - 'rabbitmqadmin: Python CLI for the management API'

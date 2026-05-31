@@ -7,12 +7,31 @@ endpoint for real-time answers and completion. Business logic is
 delegated to the service layer.
 """
 
+from collections.abc import AsyncIterator
+import json
 import logging
-from typing import Any
+from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 
+from app.ai.base import AIProvider
+from app.ai.speech_transcriber import SpeechTranscriber
 from app.interview.api.deps import (
     AIProviderDep,
     AnswerProcessingServiceDep,
@@ -21,24 +40,22 @@ from app.interview.api.deps import (
 )
 from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
 from app.interview.api.ws_protocol import event_to_message, events_to_messages
-from app.interview.domain.selection import get_interview_selection
-from app.interview.services.dashboard import DashboardBuilder
+from app.interview.services.answer_processing import AnswerProcessingService
+from app.interview.services.page import InterviewPageService
 from app.platform.api.deps import ConfigServiceDep
-from app.question_voice.api.audio import get_question_audio_path
-from app.question_voice.api.page_context import build_question_voice_page_context
-from app.question_voice.domain.tts_exceptions import (
+from app.question_voice.services.page import QuestionVoicePageService
+from app.question_voice.services.question_audio import get_question_audio_path
+from app.question_voice.services.tts_exceptions import (
     QuestionVoiceDisabledError,
     QuestionVoiceSynthesisError,
 )
-from app.shared.domain.exceptions import InterviewDomainError
-from app.shared.domain.locales import (
-    SUPPORTED_LOCALES,
-    TIMEOUT_CHAT_LABELS,
-    localized_string,
-)
+from app.shared.exceptions import InterviewDomainError
+from app.shared.infrastructure.audio_wav import validate_wav_bytes
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.api.page_context import build_speech_model_page_context
 from app.speech.api.preload import preload_whisper_for_active_interview
+from app.speech.services.page import SpeechModelPageService
+from app.speech.services.whisper_runtime import WhisperRuntime
+from app.speech.services.whisper_storage import is_installed
 from app.templating import templates
 
 router = APIRouter(prefix="/interview", tags=["interview"])
@@ -86,11 +103,82 @@ def _ai_error_message(exc: Exception) -> str:
     return f"AI evaluation failed: {text}"
 
 
+async def _resolve_speech_transcriber(
+    request: Request, config_service: ConfigServiceDep
+) -> SpeechTranscriber:
+    """Return a loaded speech transcriber or raise HTTPException.
+
+    Args:
+        request: FastAPI request with application state.
+        config_service: Provider configuration service.
+
+    Returns:
+        Loaded speech transcriber instance.
+
+    Raises:
+        HTTPException: When Whisper is unavailable.
+    """
+    transcriber = getattr(request.app.state, "speech_transcriber", None)
+    if transcriber is None:
+        config = config_service.get_config()
+        if config is not None and is_installed(config.speech_model_size):
+            await WhisperRuntime.load_size(config.speech_model_size)
+            transcriber = getattr(request.app.state, "speech_transcriber", None)
+    if transcriber is None:
+        load_error = WhisperRuntime.load_error()
+        detail = f" Speech model load error: {load_error}" if load_error else ""
+        raise HTTPException(
+            status_code=503,
+            detail="Speech model is not loaded. Download it in Configuration." + detail,
+        )
+    return cast(SpeechTranscriber, transcriber)
+
+
+async def _stream_audio_answer_ndjson(
+    *,
+    interview_id: str,
+    question_id: str,
+    wav_bytes: bytes,
+    provider: AIProvider,
+    transcriber: SpeechTranscriber,
+) -> AsyncIterator[str]:
+    """Map audio answer service events to NDJSON lines.
+
+    Args:
+        interview_id: Interview session UUID.
+        question_id: Question being answered.
+        wav_bytes: Uploaded WAV payload.
+        provider: Configured AI provider.
+        transcriber: Loaded speech transcriber.
+
+    Yields:
+        One JSON object per line for ``StreamingResponse``.
+    """
+    try:
+        async for event in AnswerProcessingService.stream_audio_answer_submission(
+            interview_id=interview_id,
+            question_id=question_id,
+            wav_bytes=wav_bytes,
+            provider=provider,
+            transcriber=transcriber,
+        ):
+            yield json.dumps(event_to_message(event)) + "\n"
+    except InterviewDomainError as exc:
+        yield json.dumps(ws_error_payload(exc)) + "\n"
+    except ValueError as exc:
+        yield json.dumps({"type": "error", "message": str(exc)}) + "\n"
+    except Exception as exc:
+        logger.exception(
+            "Audio answer submission failed for session %s",
+            interview_id,
+        )
+        yield json.dumps({"type": "error", "message": _ai_error_message(exc)}) + "\n"
+
+
 @router.get("/{interview_id}", response_class=HTMLResponse)
 async def interview_page(
     request: Request,
     interview_id: str,
-    interview_query: InterviewQueryDep,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
 ) -> Response:
@@ -102,69 +190,38 @@ async def interview_page(
     Args:
         request: FastAPI request object.
         interview_id: The session UUID.
-        interview_query: Interview read service.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
 
     Returns:
         HTML response with interview view, or redirect if not found.
     """
-    interview = interview_query.get_interview(interview_id)
+    interview = InterviewPageService.load_interview(interview_id)
     if not interview:
         return RedirectResponse(url="/", status_code=303)
 
-    interview_status = interview.status
-    if interview_status == "active":
-        interview_query.ensure_current_round_started(interview_id)
-        reloaded = interview_query.get_interview(interview_id)
-        if reloaded is not None:
-            interview = reloaded
-
-    current_question = interview_query.get_current_unanswered(interview)
-    question_timer_enabled = interview.question_time_limit_seconds is not None
-    timer_remaining_seconds = (
-        interview_query.timer_remaining_for_interview(interview)
-        if question_timer_enabled
-        else None
-    )
-    current_round = current_question.round if current_question else 0
-    overall_feedback_data = DashboardBuilder.parse_overall_feedback(interview)
-    max_score = DashboardBuilder.compute_max_score(interview)
     config = config_service.get_config()
     await preload_whisper_for_active_interview(
         request.app,
         config,
-        interview_active=interview_status == "active",
+        interview_active=interview.status == "active",
     )
 
-    selection = get_interview_selection(interview)
-    selection_lines = DashboardBuilder.selection_summary_lines(selection)
-    interview_title = DashboardBuilder.interview_display_title(interview)
-
-    voice_ctx = await build_question_voice_page_context(config)
+    page_context = InterviewPageService.build_page_context(
+        interview,
+        config=config,
+        question_voice_enabled=bool(config and config.question_voice_enabled),
+    )
+    voice_ctx = (await QuestionVoicePageService.build_page_context(config)).model_dump()
     return templates.TemplateResponse(
         request,
         "interview.html",
         {
-            "interview": interview,
-            "interview_title": interview_title,
-            "selection_lines": selection_lines,
-            "answers": interview.answers,
-            "current_question": current_question,
-            "current_answer_id": current_question.id if current_question else None,
-            "question_voice_enabled": bool(config and config.question_voice_enabled),
-            "overall_feedback": overall_feedback_data,
-            "max_score": max_score,
-            "locale_label": SUPPORTED_LOCALES.get(interview.locale, interview.locale),
-            "question_timer_enabled": question_timer_enabled,
-            "question_time_limit_seconds": interview.question_time_limit_seconds,
-            "timer_remaining_seconds": timer_remaining_seconds,
-            "current_round": current_round,
-            "timeout_chat_label": localized_string(
-                interview.locale, TIMEOUT_CHAT_LABELS
-            ),
-            "llm_request_timeout_seconds": int(config.timeout) if config else 60,
-            **build_speech_model_page_context(config, whisper_model_service),
+            **page_context.model_dump(),
+            **SpeechModelPageService.build_page_context(
+                config,
+                whisper_model_service=whisper_model_service,
+            ).model_dump(),
             **voice_ctx,
         },
     )
@@ -199,6 +256,65 @@ async def question_audio(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return FileResponse(path, media_type="audio/wav", filename="question.wav")
+
+
+@router.post("/{interview_id}/audio-answer")
+async def submit_audio_answer(
+    request: Request,
+    interview_id: str,
+    config_service: ConfigServiceDep,
+    provider: AIProviderDep,
+    question_id: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+) -> StreamingResponse:
+    """Submit a spoken answer and stream NDJSON evaluation events.
+
+    Multipart form fields:
+    - ``question_id`` — question being answered
+    - ``file`` — canonical mono 16 kHz PCM WAV bytes
+
+    Response lines use the same event shapes as the interview WebSocket
+    (``saved``, ``evaluating``, ``transcript``, ``feedback``, ``error``).
+
+    Args:
+        request: FastAPI request object.
+        interview_id: Interview session UUID.
+        config_service: Provider configuration service.
+        provider: AI provider for multimodal evaluation.
+        question_id: Question ID from the active answer row.
+        file: Uploaded WAV audio answer.
+
+    Returns:
+        NDJSON stream of server events.
+
+    Raises:
+        HTTPException: When required fields are missing or WAV validation fails.
+    """
+    normalized_question_id = question_id.strip()
+    if not normalized_question_id:
+        raise HTTPException(status_code=400, detail="question_id is required")
+
+    wav_bytes = await file.read()
+    if not wav_bytes:
+        raise HTTPException(status_code=400, detail="Audio file is required")
+
+    try:
+        AnswerProcessingService.require_audio_answer_enabled()
+        validate_wav_bytes(wav_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    transcriber = await _resolve_speech_transcriber(request, config_service)
+    return StreamingResponse(
+        _stream_audio_answer_ndjson(
+            interview_id=interview_id,
+            question_id=normalized_question_id,
+            wav_bytes=wav_bytes,
+            provider=provider,
+            transcriber=transcriber,
+        ),
+        media_type="application/x-ndjson",
+    )
 
 
 @router.websocket("/{interview_id}/ws")

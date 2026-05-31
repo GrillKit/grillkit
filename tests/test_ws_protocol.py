@@ -8,6 +8,7 @@ from app.interview.services.events import (
     AnswerSavedEvent,
     EvaluatingEvent,
     InterviewCompletedEvent,
+    TranscriptEvent,
 )
 
 
@@ -30,6 +31,23 @@ def test_event_to_message_feedback():
     )
     assert message["type"] == "feedback"
     assert message["follow_up_question"] == "Why?"
+
+
+def test_event_to_message_transcript():
+    """Test TranscriptEvent maps to transcript message."""
+    message = event_to_message(
+        TranscriptEvent(
+            question_id="q1",
+            round=0,
+            text="spoken answer text",
+        )
+    )
+    assert message == {
+        "type": "transcript",
+        "question_id": "q1",
+        "round": 0,
+        "text": "spoken answer text",
+    }
 
 
 def test_events_to_messages_preserves_order():

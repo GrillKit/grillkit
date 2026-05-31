@@ -1,0 +1,128 @@
+category: RabbitMQ Fundamentals
+track: rabbitmq
+level: junior
+description: RabbitMQ basics, exchanges, routing, and queue properties
+questions:
+- id: rfund-j-001
+  type: knowledge
+  difficulty: 1
+  tags:
+  - rabbitmq
+  - message-broker
+  - amqp
+  - queue
+  question:
+    text:
+      en: What is RabbitMQ? What messaging protocols does it support (AMQP 0-9-1, AMQP 1.0, MQTT, STOMP)? How does it differ
+        from Kafka?
+      ru: Что такое RabbitMQ? Какие протоколы обмена сообщениями поддерживает (AMQP 0-9-1, AMQP 1.0, MQTT, STOMP)? Чем отличается
+        от Kafka?
+    code: '# AMQP 0-9-1 core components: Exchange, Queue, Binding
+
+      # Producer -> Exchange -> (binding) -> Queue -> Consumer
+
+      '
+  follow_ups:
+    en:
+    - When to choose RabbitMQ over Kafka?
+    - What is the main use case for each protocol?
+    ru:
+    - Когда выбрать RabbitMQ вместо Kafka?
+    - Каковы основные сценарии для каждого протокола?
+  expected_points:
+  - RabbitMQ is a traditional message broker (push model, queues, routing)
+  - Supports AMQP 0-9-1 (native), AMQP 1.0, MQTT, STOMP, HTTP via plugins
+  - 'Difference from Kafka: RabbitMQ usually deletes messages after read, supports complex routing (exchanges), better for
+    tasks and RPC'
+  - Kafka is a distributed log with replay and high throughput
+- id: rfund-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - rabbitmq
+  - exchange
+  - routing
+  - amqp
+  question:
+    text:
+      en: 'Explain RabbitMQ exchange types: direct, topic, fanout, headers. How do bindings and routing keys work? Give examples
+        of when to use each type.'
+      ru: 'Объясните типы обменников RabbitMQ: direct, topic, fanout, headers. Как работают привязки (bindings) и ключи маршрутизации?
+        Приведите примеры использования каждого типа.'
+    code: '# Direct exchange: routing key = binding key
+
+      channel.exchange_declare(exchange=''direct_logs'', exchange_type=''direct'')
+
+      channel.queue_bind(queue=''error_queue'', exchange=''direct_logs'', routing_key=''error'')
+
+
+      # Topic exchange: wildcards (* for one word, # for zero or more)
+
+      channel.exchange_declare(exchange=''topic_logs'', exchange_type=''topic'')
+
+      channel.queue_bind(queue=''all_queues'', exchange=''topic_logs'', routing_key=''#'')
+
+
+      # Fanout: ignores routing key, sends to all bound queues
+
+      channel.exchange_declare(exchange=''broadcast'', exchange_type=''fanout'')
+
+
+      # Headers: uses message header attributes instead of routing key
+
+      channel.exchange_declare(exchange=''header_exchange'', exchange_type=''headers'')
+
+      '
+  follow_ups:
+    en:
+    - Can multiple bindings exist with different routing keys?
+    - What is the default exchange and how is it used?
+    - What is the difference between topic and direct?
+    ru:
+    - Может ли быть несколько привязок с разными ключами?
+    - Что такое обменник по умолчанию и как он используется?
+    - В чём разница между topic и direct?
+  expected_points:
+  - 'Direct: exact routing key match — good for distributing tasks by type'
+  - 'Topic: dot-separated word patterns — flexible routing, logging'
+  - 'Fanout: broadcast to all bound queues — events, cache invalidation'
+  - 'Headers: match on headers (x-match: any/all) — when routing key is awkward'
+  - Default exchange ('' or amq.direct) — routing key equals queue name
+- id: rfund-j-003
+  type: knowledge
+  difficulty: 2
+  tags:
+  - rabbitmq
+  - queue
+  - durability
+  - exclusivity
+  - ttl
+  question:
+    text:
+      en: What queue properties exist in RabbitMQ? Explain durable, exclusive, auto-delete, TTL (per-queue and per-message),
+        max length, and lazy queues.
+      ru: Какие свойства очередей существуют в RabbitMQ? Объясните durable, exclusive, auto-delete, TTL (для очереди и сообщения),
+        максимальную длину и ленивые очереди (lazy queues).
+    code: "# Durable queue (survives broker restart)\nchannel.queue_declare(queue='task_queue', durable=True)\n\n# Exclusive\
+      \ queue (only for connection, deleted when connection closes)\nchannel.queue_declare(queue='temp', exclusive=True)\n\
+      \n# Auto-delete queue (deleted when last consumer unsubscribes)\nchannel.queue_declare(queue='ephemeral', auto_delete=True)\n\
+      \n# Per-message TTL (milliseconds)\nchannel.basic_publish(exchange='', routing_key='queue', \n                     \
+      \ properties=pika.BasicProperties(expiration='60000'))\n\n# Queue TTL (auto-delete queue after unused period)\nargs\
+      \ = {'x-expires': 1800000}  # 30 minutes\nchannel.queue_declare(queue='temp', arguments=args)\n\n# Lazy queue (messages\
+      \ stored on disk, not RAM)\nargs = {'x-queue-mode': 'lazy'}\n"
+  follow_ups:
+    en:
+    - What is the trade-off of lazy queues?
+    - When to use exclusive vs auto-delete?
+    - What happens when max-length is reached?
+    ru:
+    - Каков компромисс ленивых очередей?
+    - Когда использовать exclusive vs auto-delete?
+    - Что происходит при достижении max-length?
+  expected_points:
+  - 'Durable: queue and messages (with persistent delivery mode) survive broker restart'
+  - 'Exclusive: for temporary private queues (RPC reply-to)'
+  - 'Auto-delete: for dynamic queues that live while a consumer exists'
+  - 'TTL: limits message lifetime or unused queue lifetime'
+  - 'Max-length: drops oldest messages from queue head (dead-lettering possible)'
+  - 'Lazy queue: minimizes RAM but reduces performance'

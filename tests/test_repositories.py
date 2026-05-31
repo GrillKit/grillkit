@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.interview.repositories.answer import AnswerRepository
 from app.interview.repositories.interview import InterviewRepository
-from app.shared.domain.exceptions import AnswerNotFoundError
+from app.shared.exceptions import AnswerNotFoundError
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository

@@ -1,0 +1,71 @@
+category: Kubernetes Networking and Storage
+track: kubernetes
+level: middle
+description: Services, Ingress basics, persistent volumes, and storage classes
+questions:
+- id: knet-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kubernetes
+  - service
+  - networking
+  - ingress
+  - loadbalancer
+  question:
+    text:
+      en: 'Explain Kubernetes Service types: ClusterIP, NodePort, LoadBalancer, ExternalName. What is a headless service?
+        How does Ingress differ from LoadBalancer? Describe kube-proxy modes (iptables, IPVS).'
+      ru: 'Объясните типы Service в Kubernetes: ClusterIP, NodePort, LoadBalancer, ExternalName. Что такое headless service?
+        Чем Ingress отличается от LoadBalancer? Опишите режимы kube-proxy (iptables, IPVS).'
+    code: "# Headless service (no cluster IP)\nspec:\n  clusterIP: None\n  selector:\n    app: myapp\n\n# Ingress example\n\
+      apiVersion: networking.k8s.io/v1\nkind: Ingress\nspec:\n  rules:\n  - host: example.com\n    http:\n      paths:\n \
+      \     - path: /api\n        backend:\n          service:\n            name: api-service\n            port: 80\n"
+  follow_ups:
+    en:
+    - How to expose a TCP/UDP service via Ingress (e.g., database)?
+    - What is the difference between NodePort and LoadBalancer?
+    ru:
+    - Как открыть TCP/UDP сервис через Ingress (например, базу данных)?
+    - В чём разница между NodePort и LoadBalancer?
+  expected_points:
+  - 'ClusterIP: internal only (default). NodePort: exposes on static port on each node (30000-32767).'
+  - 'LoadBalancer: integrates with cloud provider’s LB (AWS NLB, GCP LB).'
+  - 'ExternalName: returns CNAME (no proxying).'
+  - 'Headless service (clusterIP: None): for StatefulSet direct pod DNS (pod-name.service-name).'
+  - 'Ingress: L7 HTTP/HTTPS routing (path/host based, TLS termination). Not all protocols.'
+  - 'kube-proxy iptables: default, scales to ~1000 services. IPVS: better for large clusters (hash table).'
+- id: knet-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kubernetes
+  - storage
+  - pv
+  - pvc
+  - storageclass
+  question:
+    text:
+      en: How does storage work in Kubernetes? Explain PersistentVolume (PV), PersistentVolumeClaim (PVC), StorageClass, and
+        volume modes (Filesystem, Block). What are the reclaim policies (Retain, Delete, Recycle)? How to use CSI drivers?
+      ru: Как работает хранение в Kubernetes? Объясните PersistentVolume (PV), PersistentVolumeClaim (PVC), StorageClass и
+        режимы томов (Filesystem, Block). Что такое политики возврата (Retain, Delete, Recycle)? Как использовать CSI драйверы?
+    code: "# StorageClass for dynamic provisioning\napiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: {name: fast}\n\
+      provisioner: kubernetes.io/aws-ebs\nparameters: {type: gp3}\n\n# PVC requesting storage\nkind: PersistentVolumeClaim\n\
+      spec:\n  accessModes: [ReadWriteOnce]\n  resources: {requests: {storage: 10Gi}}\n  storageClassName: fast\n\n# Pod using\
+      \ PVC\nspec:\n  volumes:\n  - name: data\n    persistentVolumeClaim: {claimName: mypvc}\n  containers:\n  - volumeMounts:\
+      \ [{mountPath: /data, name: data}]\n"
+  follow_ups:
+    en:
+    - What is the difference between ReadWriteOnce, ReadOnlyMany, ReadWriteMany?
+    - How to backup PVC data?
+    ru:
+    - В чём разница между ReadWriteOnce, ReadOnlyMany, ReadWriteMany?
+    - Как сделать резервное копирование данных PVC?
+  expected_points:
+  - 'PV: cluster storage resource provisioned by admin. PVC: user request for storage.'
+  - StorageClass enables dynamic provisioning (create PV automatically on demand).
+  - 'Access modes: RWO (single pod), ROX (many readers), RWX (many writers, requires shared storage).'
+  - 'Reclaim policies: Retain (keep PV for manual cleanup), Delete (delete underlying storage), Recycle (deprecated).'
+  - 'CSI (Container Storage Interface): standard for third-party storage drivers (EBS, EFS, Ceph, etc.).'
+  - 'Volume snapshots: backup/restore PVCs (CSI snapshotter).'

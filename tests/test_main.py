@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for FastAPI application factory."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 import pytest
@@ -19,7 +19,7 @@ class TestCreateApp:
         assert app is not None
         assert app.title == "GrillKit"
         assert app.description == "AI Interview Trainer"
-        assert app.version == "2026.5.24"
+        assert app.version == "2026.5.31"
 
     def test_static_files_mounted(self):
         """Test that static files are mounted."""
@@ -46,20 +46,38 @@ class TestLifespan:
     """Tests for lifespan context manager."""
 
     @pytest.mark.asyncio
-    async def test_lifespan_calls_init_db(self):
-        """Test that lifespan calls init_db on startup."""
-        with patch("app.main.init_db") as mock_init_db:
+    async def test_lifespan_calls_run_migrations(self):
+        """Test that lifespan runs database migrations on startup."""
+        with (
+            patch("app.main.run_migrations") as mock_run_migrations,
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            ),
+        ):
             mock_app = MagicMock()
 
             async with lifespan(mock_app):
                 pass
 
-            mock_init_db.assert_called_once()
+            mock_run_migrations.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_lifespan_yields_control(self):
         """Test that lifespan yields control to the app."""
-        with patch("app.main.init_db"):
+        with (
+            patch("app.main.run_migrations"),
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            ),
+        ):
             mock_app = MagicMock()
             entered = False
             exited = False
@@ -78,7 +96,16 @@ class TestAppIntegration:
     @pytest.fixture
     def client(self):
         """Create a test client."""
-        with patch("app.main.init_db"):
+        with (
+            patch("app.main.run_migrations"),
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            ),
+        ):
             app = create_app()
             with TestClient(app) as test_client:
                 yield test_client

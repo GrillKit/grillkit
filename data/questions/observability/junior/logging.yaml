@@ -1,0 +1,75 @@
+category: Loki Fundamentals
+track: observability
+level: junior
+description: Loki architecture and Grafana integration for logs
+questions:
+- id: oloki-j-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - loki
+  - logs
+  - promtail
+  - scalability
+  question:
+    text:
+      en: 'What is Loki? How does it differ from Elasticsearch (ELK)? Explain Loki architecture: distributor, ingester, querier,
+        compactor, index (boltdb-shipper or TSDB). What is the role of Promtail (or Grafana Agent)?'
+      ru: 'Что такое Loki? Чем он отличается от Elasticsearch (ELK)? Объясните архитектуру Loki: distributor, ingester, querier,
+        compactor, индекс (boltdb-shipper или TSDB). Какова роль Promtail (или Grafana Agent)?'
+    code: "# Simple loki-config.yaml\nauth_enabled: false\nserver:\n  http_listen_port: 3100\ningester:\n  lifecycler:\n \
+      \   ring: {kvstore: {store: inmemory}}\nstorage_config:\n  boltdb_shipper: {active_index_directory: /loki/index}\n \
+      \ filesystem: {directory: /loki/chunks}\nschema_config:\n  configs:\n    - from: 2020-01-01\n      store: boltdb-shipper\n\
+      \      object_store: filesystem\n      schema: v11\n      index: {prefix: index_, period: 24h}\n\n# Promtail config\
+      \ to tail logs and send to Loki\nscrape_configs:\n  - job_name: system\n    static_configs:\n      - targets: [localhost]\n\
+      \        labels: {job: syslog, __path__: /var/log/*.log}\n"
+  follow_ups:
+    en:
+    - Why doesn't Loki do full-text indexing like Elasticsearch?
+    - How does Loki handle high cardinality labels?
+    ru:
+    - Почему Loki не использует полнотекстовую индексацию, как Elasticsearch?
+    - Как Loki обрабатывает метки с высокой кардинальностью?
+  expected_points:
+  - Loki is horizontally scalable, multi-tenant log aggregation system (inspired by Prometheus).
+  - Unlike ELK, Loki doesn't index log content, only labels (low cost, faster).
+  - 'Distributor: receives logs, validates, forwards to ingesters.'
+  - 'Ingester: stores logs in chunks, indexes labels in in-memory or disk.'
+  - 'Querier: executes LogQL queries, fetches chunks from ingesters and storage.'
+  - 'Promtail / Grafana Agent: scrapes logs, adds labels, pushes to Loki.'
+  - 'Compactor: merges index shards, compresses chunks.'
+- id: oloki-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - loki
+  - grafana
+  - explore
+  - logs-to-metrics
+  question:
+    text:
+      en: How to integrate Loki with Grafana? Show how to add Loki data source, use Explore for log queries, and create a
+        dashboard with logs panel. How to switch from logs to metrics (and vice versa) using derived fields (extract trace_id
+        to link to Tempo).
+      ru: Как интегрировать Loki с Grafana? Покажите, как добавить источник данных Loki, использовать Explore для запросов
+        логов и создать дашборд с панелью логов. Как переключаться с логов на метрики (и обратно) с помощью производных полей
+        (извлечение trace_id для связи с Tempo).
+    code: "# Grafana datasource config (YAML provisioning)\napiVersion: 1\ndatasources:\n  - name: Loki\n    type: loki\n\
+      \    url: http://loki:3100\n    jsonData:\n      maxLines: 1000\n      derivedFields:\n        - name: trace_id\n  \
+      \        matcherRegex: \"trace_id=(\\\\w+)\"\n          url: \"$${__value.raw}\"\n          datasourceUid: tempo\n\n\
+      # Logs panel query in dashboard\n{namespace=\"prod\"} |= \"error\"\n\n# Switch to metrics (LogQL to metric query)\n\
+      sum(count_over_time({namespace=\"prod\"} |= \"error\" [5m]))\n"
+  follow_ups:
+    en:
+    - How to create an alert from logs (e.g., more than 5 errors per minute)?
+    - How to use labels from logs in Grafana variables?
+    ru:
+    - Как создать оповещение из логов (например, более 5 ошибок в минуту)?
+    - Как использовать метки из логов в переменных Grafana?
+  expected_points:
+  - Add Loki as data source via UI or provisioning.
+  - 'Explore mode: query logs with LogQL, switch between logs and metrics.'
+  - 'Logs panel: display log lines with highlighting, time range controls.'
+  - 'Derived fields: extract fields (like trace_id) and link to other data sources (Tempo, Jaeger).'
+  - 'Logs-to-metrics: use LogQL range aggregations (rate, count_over_time).'
+  - 'Alerting: create alert rules based on metric queries derived from logs.'

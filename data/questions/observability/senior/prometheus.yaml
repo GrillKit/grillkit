@@ -1,0 +1,74 @@
+category: Prometheus at Scale
+track: observability
+level: senior
+description: Federation, remote write, Thanos, and exemplars
+questions:
+- id: oprom-s-001
+  type: knowledge
+  difficulty: 4
+  tags:
+  - prometheus
+  - federation
+  - remote-write
+  - thanos
+  - victoriametrics
+  question:
+    text:
+      en: How to scale Prometheus for multi-cluster or long-term storage? Explain hierarchical federation (with pros/cons),
+        remote_write/remote_read, and Thanos/Cortex/VictoriaMetrics architecture. What are the limitations of federation and
+        when to use Thanos instead?
+      ru: Как масштабировать Prometheus для множества кластеров или долгосрочного хранения? Объясните иерархическую федерацию
+        (плюсы/минусы), remote_write/remote_read и архитектуру Thanos/Cortex/VictoriaMetrics. Каковы ограничения федерации
+        и когда использовать Thanos?
+    code: "# Federation scrape config (on central Prometheus)\nscrape_configs:\n  - job_name: 'federate'\n    honor_labels:\
+      \ true\n    metrics_path: '/federate'\n    params:\n      'match[]':\n        - '{__name__=~\"job:.*\"}'\n        -\
+      \ '{__name__=~\"node_.*\"}'\n    static_configs:\n      - targets: ['prometheus-east:9090', 'prometheus-west:9090']\n\
+      \n# Remote write configuration\nremote_write:\n  - url: \"http://thanos-receive:19291/api/v1/receive\"\n    queue_config:\n\
+      \      capacity: 10000\n"
+  follow_ups:
+    en:
+    - What is the problem with federation for high cardinality labels?
+    - How does Thanos store data in object storage?
+    ru:
+    - В чём проблема федерации для меток с высокой кардинальностью?
+    - Как Thanos хранит данные в объектном хранилище?
+  expected_points:
+  - 'Hierarchical federation: scrape from other Prometheus servers (simple but loses some labels, no cross-series join).'
+  - 'Federation limitations: high cardinality explosion, limited querying scope, single point of failure.'
+  - 'Remote_write: push data to long-term storage (Thanos/Cortex/VictoriaMetrics) — allows global querying.'
+  - 'Thanos: sidecar (uploads to S3), compactor, querier (deduplication).'
+  - 'Cortex: horizontally scalable, multi-tenant TSDB.'
+  - 'VictoriaMetrics: high-performance, single binary with clustering.'
+- id: oprom-s-002
+  type: knowledge
+  difficulty: 4
+  tags:
+  - prometheus
+  - exemplars
+  - trace
+  - opentelemetry
+  question:
+    text:
+      en: What are Prometheus exemplars? How do they link metrics with traces? Show an example of exemplar injection in client
+        library (OpenTelemetry) and querying with PromQL (exemplar $__rate_interval).
+      ru: Что такое Exemplars в Prometheus? Как они связывают метрики с трейсами? Покажите пример внедрения exemplar в клиентской
+        библиотеке (OpenTelemetry) и запрос с помощью PromQL (exemplar $__rate_interval).
+    code: "# In code (OpenTelemetry Python) - automatic exemplar injection\nfrom opentelemetry import metrics\nmeter = metrics.get_meter(\"\
+      myapp\")\nrequest_counter = meter.create_counter(\"http_requests_total\")\n# With trace context automatically attached\
+      \ as exemplar\n\n# PromQL query to show exemplars (Grafana)\nrate(http_requests_total[$__rate_interval])\n# In Grafana,\
+      \ exemplars appear as dots on time series\n\n# Exemplar JSON (stored alongside metric)\n{\n  \"trace_id\": \"4bf92f3577b34da6a3ce929d0e0e4736\"\
+      ,\n  \"span_id\": \"00f067aa0ba902b7\",\n  \"value\": 1.23,\n  \"timestamp\": 1600000000.123\n}\n"
+  follow_ups:
+    en:
+    - Which storage backends support exemplars?
+    - How to configure exemplars in Prometheus config?
+    ru:
+    - Какие хранилища поддерживают exemplars?
+    - Как настроить exemplars в конфигурации Prometheus?
+  expected_points:
+  - Exemplars link a metric sample to a trace (trace_id, span_id).
+  - 'Useful for debugging: from high latency metric to specific trace.'
+  - Injected automatically by OpenTelemetry SDK (no manual code).
+  - Prometheus TSDB stores exemplars separately (configurable storage).
+  - PromQL queries can retrieve exemplars via API or Grafana $__rate_interval.
+  - Requires Prometheus v2.26+ and remote_write support for exemplars.

@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Dictation session for buffered PCM audio."""
 
-import numpy as np
-
 from app.ai.speech_transcriber import SpeechTranscriber
+from app.shared.infrastructure.audio_wav import (
+    CANONICAL_AUDIO_SAMPLE_RATE_HZ,
+    pcm16le_to_float32,
+)
 
-DICTATION_SAMPLE_RATE_HZ: int = 16000
+DICTATION_SAMPLE_RATE_HZ: int = CANONICAL_AUDIO_SAMPLE_RATE_HZ
 
 
 class DictationSession:
@@ -41,8 +43,5 @@ class DictationSession:
         if not self._buffer:
             return ""
 
-        audio = (
-            np.frombuffer(bytes(self._buffer), dtype=np.int16).astype(np.float32)
-            / 32768.0
-        )
+        audio = pcm16le_to_float32(bytes(self._buffer))
         return await transcriber.transcribe(audio, locale)

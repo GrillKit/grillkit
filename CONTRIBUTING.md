@@ -16,7 +16,7 @@ uv run pytest
 uv run uvicorn app.main:app --reload
 ```
 
-Schema changes are applied via **Alembic** on application startup (`init_db()` → `alembic upgrade head`). To run migrations manually:
+Schema changes are applied via **Alembic** on application startup (`run_migrations()` → `alembic upgrade head`). To run migrations manually:
 
 ```bash
 uv run alembic upgrade head
@@ -44,7 +44,7 @@ docker compose up --build
 
 ### Adding Questions
 
-Questions live in YAML under `data/questions/{track}/{level}/{category}.yaml`, where **track** is the question bank slug (`python`, `database`, `system-design`, …). See **Terminology** in [ARCHITECTURE.md](ARCHITECTURE.md).
+Questions live in YAML under `data/questions/{track}/{level}/{category}.yaml`, where **track** is the question bank slug (`python`, `database`, `system-design`, `kafka`, …). See **Terminology** and **Question Banks** in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Example (`data/questions/python/junior/data-structures.yaml`):
 
@@ -108,7 +108,7 @@ uv run pytest
 ```
 
 - Type hints on public APIs; `mypy --strict` must pass
-- Follow layer boundaries in [ARCHITECTURE.md](ARCHITECTURE.md): `api/` → `services/` → `domain/` / `repositories/`
+- Follow layer boundaries in [ARCHITECTURE.md](ARCHITECTURE.md): `api/` → `services/` → `schemas/` / `repositories/`; API handlers use Pydantic read models, not SQLAlchemy ORM types
 
 ## Pull Request Process
 

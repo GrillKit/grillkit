@@ -259,6 +259,16 @@ python:
     - Why is ''.join(list) preferred over string concatenation in a loop?
     - How does Python handle Unicode and string encoding? What is the difference between str and bytes?
     - What are raw strings in Python? When would you use them?
+    Kafka Client Basics:
+    - What are the main Python libraries for Kafka? Compare kafka-python, confluent-kafka-python, and aiokafka (pros, cons,
+      performance, use cases).
+    - Write a Kafka producer in Python using confluent-kafka-python with JSON serialization, error handling, and callback.
+      How to send messages asynchronously?
+    RabbitMQ Client Basics:
+    - What are the main Python client libraries for RabbitMQ? Compare pika, aio-pika, and kombu. Which one is suitable for
+      sync, async, and production use?
+    - Write a RabbitMQ producer in Python using pika with mandatory flag and publisher confirms (asynchronous). Show how to
+      handle confirmation and return callbacks. Include message persistence and exchange declaration.
   middle:
     Architecture:
     - Explain the SOLID principles. How do they apply to Python development?
@@ -347,6 +357,24 @@ python:
     - How does mypy work? What are the benefits of static type checking in a Python project?
     - What are Literal, TypedDict, and Final types in Python? How do they improve type safety?
     - What tools does typing provide for type narrowing and debugging type hints?
+    Kafka Client Development:
+    - Implement a Kafka consumer in Python (confluent-kafka) reading messages from a topic with manual offset commit. Explain
+      auto commit vs manual commit, synchronous vs asynchronous commit.
+    - How to consume Kafka messages asynchronously using aiokafka inside a FastAPI application? Show proper startup/shutdown,
+      concurrency control, and backpressure handling.
+    - How to handle message processing failures and retries in Python Kafka consumer? Discuss dead-letter queue pattern, poison
+      pills, and exponential backoff. How to implement custom retry with commit control?
+    - 'What metrics and tools are essential for monitoring Python Kafka applications? How to measure consumer lag, producer
+      throughput, errors. How to debug common issues: ''message too large'', ''broker not available'', ''rebalance timeout''.'
+    RabbitMQ Client Development:
+    - Implement a RabbitMQ consumer using pika with manual acknowledgements, QoS prefetch count=1, and basic_cancel. Show
+      how to handle graceful shutdown and requeue on failure.
+    - Create an async RabbitMQ consumer using aio-pika with robust connection, manual ack, and backpressure handling. Show
+      integration with FastAPI startup/shutdown events. How to limit concurrent message processing?
+    - How to handle RabbitMQ connection failures and reconnections in Python? Discuss heartbeat settings, connection recovery
+      strategies (exponential backoff, retry limits), and channel recovery. Show a robust publisher with automatic reconnect.
+    - How to handle message serialization in RabbitMQ Python clients? Compare JSON, MessagePack, Avro, and Protobuf. Show
+      an example of using JSON with content_type header and custom serializer for complex objects.
   senior:
     System Design:
     - How do consensus algorithms like Raft and Paxos work? When would you need them in a Python system?
@@ -393,6 +421,20 @@ python:
     - How do you audit Python dependencies for security vulnerabilities? What tools exist?
     - What are the key security considerations for REST APIs and GraphQL in Python?
     - What are SSRF, insecure deserialization, and XXE vulnerabilities? How do they apply to Python?
+    Kafka Client Production:
+    - How to achieve exactly-once semantics in Python with confluent-kafka? Implement idempotent producer and transactional
+      producer/consumer. What are the configuration requirements?
+    - How to optimize Python Kafka producer and consumer for maximum throughput and low latency? Discuss batching (batch.size,
+      linger.ms), compression (gzip, snappy, lz4, zstd), fetch parameters, and multi-threading vs multi-processing.
+    - How to use Avro serialization with Kafka in Python? Describe integration with Confluent Schema Registry. Show producer
+      with AvroSerializer and consumer with AvroDeserializer. How to handle schema evolution (backward/forward compatibility)?
+    - 'How to parallelize Kafka message processing in Python using multiprocessing? Show a pattern: one consumer process that
+      distributes messages to worker processes via queue. Discuss rebalancing, commit coordination, and handling backpressure.'
+    RabbitMQ Client Production:
+    - 'Implement a classic RPC pattern over RabbitMQ in Python: client sends a request with correlation_id and reply_to queue,
+      server processes and sends response. Show timeout handling and concurrent requests.'
+    - How to implement a retry pattern with exponential backoff in RabbitMQ using Python (pika)? Use dead-letter exchange
+      with delayed retry queue. Show configuration of main queue, retry queue with TTL, and message flow.
 system-design:
   middle:
     System Design:
@@ -419,3 +461,206 @@ system-design:
     - What is a service mesh? How does it work (sidecar proxy, control plane)?
     - How do you handle idempotency and deduplication in distributed systems?
     - What is eventual consistency? How do you handle conflict resolution in distributed databases?
+kafka:
+  junior:
+    Kafka Fundamentals:
+    - What is Apache Kafka? What problems does it solve? Compare with traditional message brokers (RabbitMQ, ActiveMQ).
+    - Explain topic, partition, offset, broker, replica, leader, ISR (In-Sync Replicas). How does partitioning affect parallelism?
+  middle:
+    Kafka Messaging:
+    - What delivery semantics does Kafka provide (at-most-once, at-least-once, exactly-once)? How to achieve exactly-once
+      semantics (EOS) in Kafka?
+    - What is consumer group rebalancing? Describe the rebalance protocol (JoinGroup, SyncGroup). What are cooperative vs
+      eager rebalancing? How to avoid 'rebalance storm'?
+    - What is the acks parameter in Kafka producer? Explain acks=0, acks=1, acks=all. How does it affect durability and latency?
+      What is min.insync.replicas?
+    Kafka Storage:
+    - How does Kafka store messages on disk? What are log segments, rolling, retention policies (time, size), and log compaction?
+      What is the difference between deletion and compaction?
+  senior:
+    Kafka Architecture:
+    - What was the role of ZooKeeper in Kafka? What problems did it cause? How does KRaft (Kafka Raft) replace ZooKeeper?
+      Explain the new controller quorum and metadata topic.
+    - What is Kafka Streams and ksqlDB? How do they differ from ordinary consumers? Explain KStream, KTable, GlobalKTable,
+      and windowed joins. When to use ksqlDB vs Kafka Streams?
+rabbitmq:
+  junior:
+    RabbitMQ Fundamentals:
+    - What is RabbitMQ? What messaging protocols does it support (AMQP 0-9-1, AMQP 1.0, MQTT, STOMP)? How does it differ from
+      Kafka?
+    - 'Explain RabbitMQ exchange types: direct, topic, fanout, headers. How do bindings and routing keys work? Give examples
+      of when to use each type.'
+    - What queue properties exist in RabbitMQ? Explain durable, exclusive, auto-delete, TTL (per-queue and per-message), max
+      length, and lazy queues.
+  middle:
+    RabbitMQ Messaging:
+    - What delivery guarantees does RabbitMQ provide? Explain publisher confirms, mandatory/immediate flags, consumer acknowledgements
+      (auto, manual), prefetch count, and message persistence.
+    - What is Dead Letter Exchange (DLX) in RabbitMQ? How to configure it for queues? When do messages become dead-lettered?
+      Show a typical dead-letter queue pattern for failed messages.
+  senior:
+    RabbitMQ Architecture:
+    - 'How does RabbitMQ clustering work? Explain different high availability strategies: classic mirrored queues (HA policy)
+      vs quorum queues (based on Raft). What is the difference in data safety, performance, and failover behavior?'
+    - 'What are RabbitMQ Streams? How do they differ from classic queues? Explain stream features: non-destructive consumption,
+      time-based retention, offset tracking, super-streams, and use cases.'
+    - 'Name essential RabbitMQ plugins: management, shovel, federation, delayed message exchange. How to use shovel for moving
+      messages between clusters? What is federation for? Explain the use of rabbitmqadmin.'
+    RabbitMQ Operations:
+    - How to tune RabbitMQ for high throughput? Explain flow control (credit-based), memory alarms, disk free limit, prefetch
+      and batch get, TCP settings, and lazy queues vs in-memory.
+docker:
+  junior:
+    Docker Fundamentals:
+    - What is Docker? How does a container differ from a virtual machine (VM)? Explain the concept of images, containers,
+      and registries (Docker Hub).
+    - 'Explain key instructions in a Dockerfile: FROM, RUN, COPY, ADD, CMD, ENTRYPOINT, EXPOSE, ENV, WORKDIR. What is the
+      difference between CMD and ENTRYPOINT? Show a multi-stage build example.'
+    - How does Docker handle persistent data? Compare volumes, bind mounts, and tmpfs mounts. Explain volume lifecycle (creation,
+      backup, removal). When to use named volumes vs bind mounts?
+  middle:
+    Docker Operations:
+    - 'Explain Docker networking drivers: bridge (default), host, none, overlay, macvlan. How does container-to-container
+      communication work on the same host and across hosts? What is the difference between user-defined bridge and default
+      bridge?'
+    - 'What is Docker Compose? Explain version 3 syntax: services, networks, volumes, depends_on, healthcheck, environment.
+      How to scale services and handle environment-specific overrides (docker-compose.override.yml)?'
+    - 'How to inspect and debug Docker containers? Explain: docker logs, docker exec, docker stats, docker top, docker events.
+      What logging drivers are available (json-file, syslog, journald, fluentd)? How to limit log size?'
+  senior:
+    Docker Security:
+    - 'What are Docker security best practices? Explain: running as non-root user, dropping Linux capabilities, seccomp profiles,
+      AppArmor/SELinux, and rootless Docker. How to scan images for vulnerabilities (e.g., Trivy, Docker Scout)?'
+kubernetes:
+  junior:
+    Kubernetes Fundamentals:
+    - Describe the Kubernetes architecture. Explain control plane components (API server, etcd, scheduler, controller manager)
+      and node components (kubelet, kube-proxy, container runtime). What is a Pod?
+    - Explain the Pod lifecycle phases (Pending, Running, Succeeded, Failed, Unknown). What are init containers, postStart/preStop
+      hooks, and liveness/readiness/startup probes? How to define them?
+    - 'Explain Kubernetes workload resources: Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob. When to use each?
+      How does a RollingUpdate differ from Recreate strategy?'
+    - How to manage configuration in Kubernetes? Explain ConfigMap and Secret. How to inject them as environment variables
+      or volume mounts? What are the limitations of Secrets (size, etc.)? How to update config without restarting pods?
+  middle:
+    Kubernetes Networking and Storage:
+    - 'Explain Kubernetes Service types: ClusterIP, NodePort, LoadBalancer, ExternalName. What is a headless service? How
+      does Ingress differ from LoadBalancer? Describe kube-proxy modes (iptables, IPVS).'
+    - How does storage work in Kubernetes? Explain PersistentVolume (PV), PersistentVolumeClaim (PVC), StorageClass, and volume
+      modes (Filesystem, Block). What are the reclaim policies (Retain, Delete, Recycle)? How to use CSI drivers?
+    Kubernetes Scheduling and Scaling:
+    - How does pod scheduling work in Kubernetes? Explain nodeSelector, nodeAffinity (required/preferred), podAffinity/antiaffinity,
+      taints and tolerations. What is the role of priorityClassName and preemption?
+    - 'Explain autoscaling in Kubernetes: Horizontal Pod Autoscaler (HPA) based on CPU/memory and custom metrics. What is
+      Vertical Pod Autoscaler (VPA)? How does Cluster Autoscaler work? What are the prerequisites (metrics-server)?'
+  senior:
+    Kubernetes Production:
+    - 'What is an Ingress Controller? Compare NGINX Ingress, Traefik, and AWS ALB Ingress Controller. How to implement TLS
+      termination with cert-manager and Let''s Encrypt? Explain Ingress rules (path types: Exact, Prefix, ImplementationSpecific).'
+    - 'Explain Kubernetes security: RBAC (Roles, ClusterRoles, RoleBindings, ClusterRoleBindings), ServiceAccounts, PodSecurityStandards
+      (PSP deprecated) and PodSecurity admission. How to restrict container privileges (securityContext: runAsNonRoot, allowPrivilegeEscalation,
+      readOnlyRootFilesystem)?'
+observability:
+  junior:
+    Prometheus Fundamentals:
+    - Explain the Prometheus architecture. How does the pull model work? What components (Prometheus server, TSDB, exporters,
+      Pushgateway, Alertmanager) exist and what are their roles?
+    - What metric types does Prometheus support? Explain Counter, Gauge, Histogram, Summary. How to choose between Histogram
+      and Summary? Provide example metrics with _total, _bucket suffixes.
+    Grafana Basics:
+    - What is Grafana? Explain the concept of dashboards, panels, rows, and data sources (Prometheus, Loki, etc.). How to
+      create a simple graph panel with a Prometheus query and set basic visualization options (legend, axes, thresholds)?
+    - 'How to use Grafana variables (templating)? Explain variable types: query, interval, custom, constant. Show an example
+      of a variable that lists all instances from Prometheus, and use it in a panel query. How to use $__rate_interval and
+      $__interval?'
+    - What types of plugins exist in Grafana (data source, panel, app)? How to install a community plugin (e.g., Pie Chart,
+      Clock, or Infinity data source)? What are the risks of using custom plugins?
+    Loki Fundamentals:
+    - 'What is Loki? How does it differ from Elasticsearch (ELK)? Explain Loki architecture: distributor, ingester, querier,
+      compactor, index (boltdb-shipper or TSDB). What is the role of Promtail (or Grafana Agent)?'
+    - How to integrate Loki with Grafana? Show how to add Loki data source, use Explore for log queries, and create a dashboard
+      with logs panel. How to switch from logs to metrics (and vice versa) using derived fields (extract trace_id to link
+      to Tempo).
+  middle:
+    Prometheus Operations:
+    - 'Write PromQL queries to: (a) get current memory usage, (b) calculate per-second rate of HTTP requests over 5 minutes,
+      (c) get 95th percentile of request duration, (d) compare current CPU to 1 hour ago. Explain vector matching (on, ignoring,
+      group_left/right).'
+    - How to monitor infrastructure with Prometheus exporters? Explain node_exporter, blackbox_exporter, and cAdvisor. How
+      does Prometheus service discovery work in Kubernetes (kubernetes_sd_config)? Show relabel_configs to filter and rewrite
+      labels.
+    - 'How to define Prometheus alerting and recording rules? Show an example of alert rule (high CPU usage) and recording
+      rule (aggregate request rate). Explain Alertmanager configuration: routes, receivers, inhibition, group_by, group_wait/group_interval/repeat_interval.'
+    Grafana Operations:
+    - 'Explain Grafana Alerting (unified). How does it differ from legacy dashboard alerts? Describe the components: data
+      source queries, expressions (Reduce, Math, Resample), alert rule evaluation, contact points, notification policies,
+      silences.'
+    - What is Grafana provisioning (as code)? Explain how to provision data sources, dashboards (via JSON), and alerting resources
+      using YAML files. How to set up folder structure and dashboard version control with Git?
+    Loki Operations:
+    - 'Write LogQL queries for: (a) filter all logs with ''error'' in the message, (b) show error count per minute, (c) parse
+      JSON log and extract a field, (d) calculate rate of error logs over 5 minutes. Explain line filters (=, !=, =~, !~)
+      and label matchers.'
+    - How does Loki multitenancy work? How to configure tenant separation via X-Scope-OrgID header? How to set up Grafana
+      to send logs to a specific tenant (using custom HTTP headers)? Explain how to query across tenants (as admin).
+    - 'How to use Promtail pipeline stages? Explain docker_sd, file_targets, and stages: docker, regex, json, template, labels,
+      output, timestamp, replace. Show an example of extracting level and module from a log line and adding them as labels.'
+  senior:
+    Prometheus at Scale:
+    - How to scale Prometheus for multi-cluster or long-term storage? Explain hierarchical federation (with pros/cons), remote_write/remote_read,
+      and Thanos/Cortex/VictoriaMetrics architecture. What are the limitations of federation and when to use Thanos instead?
+    - What are Prometheus exemplars? How do they link metrics with traces? Show an example of exemplar injection in client
+      library (OpenTelemetry) and querying with PromQL (exemplar $__rate_interval).
+    Loki Storage:
+    - How does Loki store data in object storage (S3, GCS, MinIO)? Explain the boltdb-shipper and TSDB index modes. What are
+      the advantages of TSDB index over boltdb-shipper? How to run the compactor and what does it do?
+airflow:
+  junior:
+    Airflow Fundamentals:
+    - 'Explain Apache Airflow architecture. What are the core components: Scheduler, Webserver, Executor, Worker, Metadata
+      Database? How do they interact? What is a DAG and what is its purpose?'
+    - What are Operators, Sensors, and Hooks in Airflow? Name common operators (BashOperator, PythonOperator, SQLExecuteQueryOperator,
+      etc.). How do Sensors differ from Operators? What is the purpose of Hooks?
+    - How to define task dependencies in Airflow? Explain bitshift operators (>>, <<), set_upstream/set_downstream, and chaining.
+      What is the difference between cross-DAG dependencies (ExternalTaskSensor) and trigger DAGs (TriggerDagRunOperator)?
+    Airflow Configuration:
+    - How to manage configuration and secrets in Airflow? Explain Variables (using Airflow's UI or CLI) and Connections. How
+      to avoid hardcoding passwords? What is a secrets backend (e.g., HashiCorp Vault, AWS Secrets Manager)?
+    - How to pass data between tasks in Airflow? Explain XComs, their storage (backed by metadata DB), and limitations (size,
+      serialization). Compare classic XComs (xcom_push/xcom_pull) with TaskFlow API automatic passing (return values and @task
+      decorator).
+  middle:
+    Airflow Executors:
+    - 'Compare Airflow executors: SequentialExecutor, LocalExecutor, CeleryExecutor, KubernetesExecutor. How does CeleryExecutor
+      distribute tasks? What are the pros/cons of KubernetesExecutor vs CeleryExecutor? When to use LocalExecutor in production?'
+    Airflow Scheduling:
+    - How does Airflow scheduling work? Explain logical date (execution_date), start_date, schedule_interval, catchup, and
+      backfill. What is the difference between depends_on_past and wait_for_downstream? How to handle a backfill of historical
+      data without triggering downstream DAGs?
+    - 'What are Airflow best practices for writing production DAGs? Explain: avoiding top-level code that accesses DB, idempotency,
+      idempotent tasks, using idempotent operators, dynamic DAG generation (using Jinja or Python), and idempotent backfills.
+      Why should tasks be idempotent?'
+    Airflow Operations:
+    - 'How to test Airflow DAGs? Explain: DAG validation (airflow dags test), unit testing with pytest, mocking operators/hooks,
+      using DagBag for loading tests. How to test a DAG''s task dependencies without running external systems?'
+    - How to monitor Airflow health and performance? Explain metrics exposed via StatsD (with Prometheus sink), tracking DAG
+      duration, task failures, scheduler lag. How to set up alerts for stuck DAGs, scheduler heartbeat, and celery queue length?
+      What is the purpose of Airflow's health endpoint?
+    - 'How to secure an Airflow deployment? Explain built-in RBAC (Role-Based Access Control): roles (Admin, User, Op, Viewer),
+      permissions on DAGs and resources. How to integrate with LDAP, OAuth (Google, GitHub), or OpenID Connect? What is the
+      `fernet_key` used for?'
+    Airflow TaskFlow API:
+    - What is the TaskFlow API in Airflow 2.0? How does it simplify DAG authoring? Explain @dag and @task decorators, automatic
+      XCom passing, and how to use multiple outputs (MultipleOutputs, expand). When should you use TaskFlow vs traditional
+      operators?
+  senior:
+    Airflow Production:
+    - What are deferrable operators (or deferrable sensors) in Airflow 2.2+? How do they reduce worker utilization? Explain
+      the Trigger concept, Triggerer component, and the difference between classic poke_interval sensor and deferrable mode.
+      Show an example of a deferrable operator.
+    - 'How to deploy Airflow on Kubernetes? Explain the Helm chart (community or official). Describe the pods: scheduler,
+      webserver, workers (Celery), and optional components (Redis, Postgres, Flower). When to use KubernetesExecutor vs CeleryExecutor
+      on K8s? How to manage DAGs with GitSync or persistent volume?'
+    - 'What are the patterns for dynamic DAG generation in Airflow? Compare static DAGs (many files) vs dynamic generation
+      from a config (JSON/YAML). Explain the risks: scheduler performance and DAG parsing time. How to handle large number
+      of similar DAGs (e.g., per tenant) without overwhelming the scheduler?'

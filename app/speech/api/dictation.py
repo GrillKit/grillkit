@@ -9,9 +9,9 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.interview.api.access import get_interview_for_dictation
-from app.interview.domain.progress import require_active
+from app.interview.services.rules.progress import require_active
 from app.platform.api.deps import ConfigServiceDep
-from app.shared.domain.exceptions import InterviewNotActiveError
+from app.shared.exceptions import InterviewNotActiveError
 from app.speech.api.dictation_protocol import (
     DICTATION_CLIENT_START,
     DICTATION_CLIENT_STOP,

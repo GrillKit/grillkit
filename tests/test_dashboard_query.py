@@ -9,7 +9,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.interview.repositories.interview import InterviewRepository
-from app.interview.services.dashboard import DashboardBuilder, DashboardInterviewRow
+from app.interview.schemas.dashboard import DashboardRowRead
+from app.interview.schemas.mappers import interview_read_from_orm
+from app.interview.services.dashboard import DashboardBuilder
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
 from tests.helpers.selection import minimal_selection_spec
@@ -47,7 +49,8 @@ def test_interview_display_title():
         id="x",
         selection_spec=minimal_selection_spec(categories=["data-structures"]),
     )
-    assert DashboardBuilder.interview_display_title(interview) == "Python Interview"
+    read_model = interview_read_from_orm(interview)
+    assert DashboardBuilder.interview_display_title(read_model) == "Python Interview"
 
 
 def test_list_recent_ordering(db_session):
@@ -127,4 +130,4 @@ def test_list_dashboard_rows(monkeypatch):
     assert rows[1].score_display == "—"
     assert rows[1].status_label == "Active"
     assert rows[0].url == "/interview/done-1"
-    assert isinstance(rows[0], DashboardInterviewRow)
+    assert isinstance(rows[0], DashboardRowRead)

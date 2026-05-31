@@ -7,9 +7,9 @@ import json
 
 from app.ai.base import GenerationResult, Message
 from app.interview.api.deps import get_ai_provider
-from app.interview.domain.timer import TIME_EXPIRED_ANSWER_TEXT
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
+from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import FakeProvider, answer_evaluation_json
 from tests.helpers.selection import minimal_selection_spec

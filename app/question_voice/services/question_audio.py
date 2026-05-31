@@ -5,12 +5,12 @@
 from pathlib import Path
 
 from app.interview.api.access import get_current_unanswered, load_interview_or_raise
-from app.interview.domain.interview import interview_view
-from app.interview.domain.progress import require_active
-from app.platform.api.config_access import get_question_voice_settings
-from app.question_voice.domain.tts_exceptions import QuestionVoiceDisabledError
+from app.interview.schemas.interview import AnswerRead, InterviewRead
+from app.interview.services.rules.progress import require_active
+from app.platform.services.config import ConfigService
+from app.platform.services.speech_settings import question_voice_settings_from_config
 from app.question_voice.services.tts_cache import TtsCacheService
-from app.shared.infrastructure.models import Answer, Interview
+from app.question_voice.services.tts_exceptions import QuestionVoiceDisabledError
 
 
 async def get_question_audio_path(
@@ -33,12 +33,15 @@ async def get_question_audio_path(
         ValueError: When no suitable unanswered answer exists.
         QuestionVoiceSynthesisError: When synthesis cannot complete.
     """
-    voice_settings = get_question_voice_settings()
-    if voice_settings is None:
+    config = ConfigService.get_config()
+    if config is None:
+        raise QuestionVoiceDisabledError()
+    voice_settings = question_voice_settings_from_config(config)
+    if not voice_settings.enabled:
         raise QuestionVoiceDisabledError()
 
     interview = load_interview_or_raise(interview_id)
-    require_active(interview_view(interview))
+    require_active(interview)
     answer = _resolve_answer(interview, answer_id)
     return await TtsCacheService.get_or_fetch(
         voice_settings.voice_id,
@@ -48,17 +51,17 @@ async def get_question_audio_path(
 
 
 def _resolve_answer(
-    interview: Interview,
+    interview: InterviewRead,
     answer_id: int | None,
-) -> Answer:
+) -> AnswerRead:
     """Pick the target answer row for audio synthesis.
 
     Args:
-        interview: Interview with loaded answers.
+        interview: Interview read model with answers.
         answer_id: Optional answer primary key; defaults to first unanswered.
 
     Returns:
-        Answer row with ``question_text`` to synthesize.
+        Answer read model with ``question_text`` to synthesize.
 
     Raises:
         ValueError: If no suitable unanswered answer exists.
@@ -76,9 +79,6 @@ def _resolve_answer(
     current = get_current_unanswered(interview)
     if current is None:
         raise ValueError("No unanswered question in this interview")
-    for answer in interview.answers:
-        if answer.question_id == current.question_id and answer.round == current.round:
-            if not answer.question_text.strip():
-                raise ValueError("Question text is empty")
-            return answer
-    raise ValueError("No unanswered question in this interview")
+    if not current.question_text.strip():
+        raise ValueError("Question text is empty")
+    return current

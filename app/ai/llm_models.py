@@ -24,6 +24,7 @@ class LLMModelEntry:
         base_url: OpenAI-compatible API base URL.
         api_key_required: Whether the UI should prompt for an API key.
         api_key: Stored API key for catalog entries (optional).
+        accepts_audio_input: Whether the model supports multimodal audio answers.
     """
 
     id: str
@@ -33,6 +34,7 @@ class LLMModelEntry:
     base_url: str
     api_key_required: bool
     api_key: str | None = None
+    accepts_audio_input: bool = False
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,7 @@ class LLMCatalog:
     models: dict[str, LLMModelEntry]
 
 
-def normalize_model_id(model_id: str | None, catalog: LLMCatalog) -> str:
+def normalize_model_id(model_id: str, catalog: LLMCatalog) -> str:
     """Return a supported catalog model id.
 
     Args:
@@ -59,10 +61,8 @@ def normalize_model_id(model_id: str | None, catalog: LLMCatalog) -> str:
         Normalized model id.
 
     Raises:
-        ValueError: If ``model_id`` is missing or unknown.
+        ValueError: If ``model_id`` is empty/invalid or unknown.
     """
-    if not model_id:
-        raise ValueError("Interview model is required")
     value = model_id.strip()
     if not value or value == CUSTOM_PRESET_ID:
         raise ValueError("Interview model is required")

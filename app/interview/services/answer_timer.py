@@ -4,15 +4,15 @@
 
 from typing import Any
 
-from app.interview.domain.interview import interview_view
-from app.interview.domain.timer import (
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.mappers import interview_read_from_orm
+from app.interview.services.events import AnswerFeedbackEvent
+from app.interview.services.query import InterviewQuery
+from app.interview.services.rules.timer import (
     TIME_EXPIRED_ANSWER_TEXT,
     remaining_seconds,
     timeout_feedback,
 )
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.events import AnswerFeedbackEvent
-from app.interview.services.query import InterviewQuery
 from app.interview.services.session_navigation import SessionNavigationService
 from app.shared.infrastructure.models import Answer, Interview
 
@@ -78,8 +78,8 @@ class RoundTimerService:
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            session = interview_view(db_interview)
+            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            session = interview_read_from_orm(db_interview)
 
             db_answer = uow.answers.get_by_interview_question_round(
                 interview_id=interview_id,

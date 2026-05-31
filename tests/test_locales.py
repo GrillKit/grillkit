@@ -4,7 +4,7 @@
 
 import pytest
 
-from app.shared.domain.locales import (
+from app.shared.locales import (
     DEFAULT_LOCALE,
     SUPPORTED_LOCALES,
     TIMEOUT_CHAT_LABELS,

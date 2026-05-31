@@ -809,6 +809,17 @@ textarea.form-control {
     color: var(--error-text);
 }
 
+.composer-footer .btn-audio-record,
+.composer-footer .btn-audio-cancel,
+.composer-footer .btn-audio-send {
+    flex-shrink: 0;
+}
+
+.audio-record-hint {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
 .dictation-hint {
     font-size: 0.8125rem;
     color: var(--text-muted);

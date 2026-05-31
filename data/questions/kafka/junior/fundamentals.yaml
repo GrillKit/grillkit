@@ -1,0 +1,80 @@
+category: Kafka Fundamentals
+track: kafka
+level: junior
+description: Apache Kafka basics, architecture, topics, partitions, and brokers
+questions:
+- id: kfund-j-001
+  type: knowledge
+  difficulty: 1
+  tags:
+  - kafka
+  - basics
+  - pub-sub
+  question:
+    text:
+      en: What is Apache Kafka? What problems does it solve? Compare with traditional message brokers (RabbitMQ, ActiveMQ).
+      ru: Что такое Apache Kafka? Какие проблемы решает? Сравните с традиционными брокерами сообщений (RabbitMQ, ActiveMQ).
+    code: '# Traditional queue: message deleted after consumption
+
+      # Kafka: messages persisted for a retention period
+
+      # Kafka use cases: event sourcing, log aggregation, stream processing, metrics
+
+      '
+  follow_ups:
+    en:
+    - When would you NOT use Kafka?
+    - What is the difference between a queue and a log?
+    ru:
+    - Когда НЕ стоит использовать Kafka?
+    - В чём разница между очередью и логом?
+  expected_points:
+  - Distributed log with message retention (not deleted after consumption)
+  - High throughput (hundreds of MB/s)
+  - Ordered events within partitions
+  - Event replay support
+  - 'Difference from RabbitMQ: Kafka offers horizontal scaling, message persistence, and a pull model'
+- id: kfund-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - kafka
+  - architecture
+  - topic
+  - partition
+  - broker
+  question:
+    text:
+      en: Explain topic, partition, offset, broker, replica, leader, ISR (In-Sync Replicas). How does partitioning affect
+        parallelism?
+      ru: Объясните topic, partition, offset, broker, replica, leader, ISR (In-Sync Replicas). Как партиционирование влияет
+        на параллелизм?
+    code: '# Topic "orders" with 3 partitions
+
+      # Partition 0: offsets 0,1,2,3...
+
+      # Partition 1: offsets 0,1,2...
+
+      # Partition 2: offsets 0,1...
+
+
+      # Consumer group reading in parallel: each partition assigned to one consumer
+
+      # Max parallelism = number of partitions
+
+      '
+  follow_ups:
+    en:
+    - What is an offset? Can I rewind to a previous offset?
+    - What happens if ISR is empty?
+    ru:
+    - Что такое offset? Можно ли откатиться к старому offset?
+    - Что будет, если ISR пуст?
+  expected_points:
+  - Topic — logical group of partitions
+  - Partition — physical log segment with ordered messages
+  - Offset — unique message ID within a partition
+  - Broker — Kafka server that stores partitions
+  - Replica — copy of a partition (leader + followers)
+  - ISR — followers synchronized with the leader
+  - Parallelism is limited by partition count (one consumer per partition in a group)

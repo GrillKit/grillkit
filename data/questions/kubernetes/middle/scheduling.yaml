@@ -1,0 +1,76 @@
+category: Kubernetes Scheduling and Scaling
+track: kubernetes
+level: middle
+description: Pod scheduling, affinity, taints, HPA, and cluster autoscaling
+questions:
+- id: ksched-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kubernetes
+  - scheduling
+  - node-selector
+  - affinity
+  - taints
+  question:
+    text:
+      en: How does pod scheduling work in Kubernetes? Explain nodeSelector, nodeAffinity (required/preferred), podAffinity/antiaffinity,
+        taints and tolerations. What is the role of priorityClassName and preemption?
+      ru: Как работает планирование подов в Kubernetes? Объясните nodeSelector, nodeAffinity (required/preferred), podAffinity/antiaffinity,
+        taints и tolerations. Какова роль priorityClassName и вытеснения (preemption)?
+    code: "# Node affinity (hard requirement)\naffinity:\n  nodeAffinity:\n    requiredDuringSchedulingIgnoredDuringExecution:\n\
+      \      nodeSelectorTerms:\n      - matchExpressions:\n        - key: disktype\n          operator: In\n          values:\
+      \ [ssd]\n\n# Taint on node\nkubectl taint nodes node1 key=value:NoSchedule\n\n# Toleration on pod\ntolerations:\n- key:\
+      \ key\n  operator: Equal\n  value: value\n  effect: NoSchedule\n\n# Pod anti-affinity (avoid co-location)\npodAntiAffinity:\n\
+      \  preferredDuringSchedulingIgnoredDuringExecution:\n  - podAffinityTerm:\n      labelSelector: {matchLabels: {app:\
+      \ web}}\n      topologyKey: kubernetes.io/hostname\n"
+  follow_ups:
+    en:
+    - What is the difference between requiredDuringScheduling and preferredDuringScheduling?
+    - How to dedicate a node for specific pods only?
+    ru:
+    - В чём разница между requiredDuringScheduling и preferredDuringScheduling?
+    - Как выделить узел только для определённых подов?
+  expected_points:
+  - 'nodeSelector: simple key-value match. nodeAffinity: expressive (In, NotIn, Exists, Gt, Lt).'
+  - 'requiredDuringScheduling: hard constraint. preferredDuringScheduling: soft (weighted).'
+  - 'podAffinity: schedule pods together (low latency). podAntiAffinity: separate (high availability).'
+  - 'Taints (on nodes): repel pods. Tolerations (on pods): allow scheduling on tainted nodes.'
+  - 'Priority: higher priority pods preempt lower priority ones when resources insufficient.'
+  - 'Topology keys: hostname, zone, region.'
+- id: ksched-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - kubernetes
+  - hpa
+  - vpa
+  - cluster-autoscaler
+  - metrics
+  question:
+    text:
+      en: 'Explain autoscaling in Kubernetes: Horizontal Pod Autoscaler (HPA) based on CPU/memory and custom metrics. What
+        is Vertical Pod Autoscaler (VPA)? How does Cluster Autoscaler work? What are the prerequisites (metrics-server)?'
+      ru: 'Объясните автоматическое масштабирование в Kubernetes: Horizontal Pod Autoscaler (HPA) на основе CPU/памяти и пользовательских
+        метрик. Что такое Vertical Pod Autoscaler (VPA)? Как работает Cluster Autoscaler? Каковы предварительные требования
+        (metrics-server)?'
+    code: "# HPA based on CPU\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nspec:\n  scaleTargetRef: {apiVersion:\
+      \ apps/v1, kind: Deployment, name: myapp}\n  minReplicas: 2\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n   \
+      \ resource: {name: cpu, target: {type: Utilization, averageUtilization: 50}}\n\n# HPA with custom metric (Prometheus\
+      \ adapter)\n- type: Pods\n  pods: {metric: {name: http_requests_per_sec}, target: {type: AverageValue, averageValue:\
+      \ 100}}\n\n# Cluster Autoscaler (cloud provider)\n# Adds/removes nodes based on pending pods\n"
+  follow_ups:
+    en:
+    - What is the difference between averageUtilization and averageValue?
+    - How to avoid thrashing (frequent scaling)?
+    ru:
+    - В чём разница между averageUtilization и averageValue?
+    - Как избежать частого масштабирования (thrashing)?
+  expected_points:
+  - HPA scales replicas based on observed metrics (CPU, memory, custom).
+  - 'Target: Utilization (percentage of request) or AverageValue (absolute).'
+  - Metrics-server required for resource metrics; Prometheus adapter for custom.
+  - VPA adjusts CPU/memory requests (may require pod restart).
+  - 'Cluster Autoscaler: interacts with cloud provider to add/remove nodes.'
+  - 'Avoid thrashing: cooldown periods (default 5 min for upscale, 10 min for downscale).'
+  - 'Pod priority matters: Cluster Autoscaler removes low-priority pods first.'

@@ -2,37 +2,301 @@
 # SPDX-License-Identifier: Apache-2.0
 """Answer processing service.
 
-Orchestrates answer submission and timeout flows via timer and evaluation services.
+Orchestrates text and audio answer submission, timeout flows, and event streaming.
 """
 
 import asyncio
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
+import logging
 
 from app.ai.base import AIProvider
-from app.interview.domain.interview import interview_view
-from app.interview.domain.progress import find_unanswered_for_question, require_active
-from app.interview.domain.timer import client_timeout_due, is_expired
+from app.ai.speech_transcriber import SpeechTranscriber
 from app.interview.repositories.uow import InterviewUnitOfWork
+from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_evaluation_persistence import (
     AnswerEvaluationPersistenceService,
 )
 from app.interview.services.answer_timer import RoundTimerService
+from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
     AnswerSavedEvent,
     EvaluatingEvent,
     InterviewEvent,
+    TranscriptEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.shared.domain.exceptions import (
+from app.interview.services.rules.progress import (
+    find_unanswered_for_question,
+    require_active,
+)
+from app.interview.services.rules.timer import client_timeout_due, is_expired
+from app.platform.services.config import ConfigService
+from app.platform.services.llm_catalog import LLMCatalogService
+from app.shared.exceptions import (
     QuestionTimerNotEnabledError,
     QuestionTimerNotExpiredError,
 )
+from app.shared.infrastructure.audio_wav import (
+    validate_wav_bytes,
+    wav_bytes_to_float32,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class AnswerSubmissionContext:
+    """Shared state after an answer row is opened for submission.
+
+    Attributes:
+        question_id: YAML question ID.
+        round_num: Follow-up round (0 = initial).
+        order: Display order of the answer.
+        question_text: Text of the question being answered.
+        question_code: Optional code snippet for the question.
+        initial_question_text: Original question text (round 0).
+        initial_answer_text: User's initial answer text (round 0).
+        locale: Interview locale for AI and speech.
+        answer_text: Text persisted on the answer row (may be empty for audio).
+    """
+
+    question_id: str
+    round_num: int
+    order: int
+    question_text: str
+    question_code: str | None
+    initial_question_text: str
+    initial_answer_text: str
+    locale: str
+    answer_text: str
+
+
+async def _evaluate_last_follow_up_in_background(
+    *,
+    interview_id: str,
+    question_id: str,
+    round_num: int,
+    question_text: str,
+    question_code: str | None,
+    answer_text: str,
+    initial_question_text: str,
+    initial_answer_text: str,
+    provider: AIProvider,
+    locale: str,
+    audio_wav: bytes | None = None,
+) -> None:
+    """Run AI evaluation for the last follow-up round and persist score only.
+
+    Args:
+        interview_id: The session UUID.
+        question_id: The question ID.
+        round_num: The follow-up round that was submitted.
+        question_text: Text of the follow-up question.
+        question_code: Optional code snippet for the question.
+        answer_text: The user's answer text (transcript when audio was submitted).
+        initial_question_text: Original question text (round 0).
+        initial_answer_text: User's initial answer text (round 0).
+        provider: AI provider for evaluation.
+        locale: Locale for AI feedback.
+        audio_wav: Optional spoken answer WAV for multimodal evaluation.
+    """
+    try:
+        if audio_wav is not None:
+            evaluation, _, _ = await AnswerAiEvaluationService.evaluate_with_audio(
+                answer_round=round_num,
+                question_text=question_text,
+                question_code=question_code,
+                audio_wav=audio_wav,
+                initial_question_text=initial_question_text,
+                initial_answer_text=initial_answer_text,
+                provider=provider,
+                locale=locale,
+            )
+        else:
+            evaluation, _, _ = await AnswerAiEvaluationService.evaluate(
+                answer_round=round_num,
+                question_text=question_text,
+                question_code=question_code,
+                answer_text=answer_text,
+                initial_question_text=initial_question_text,
+                initial_answer_text=initial_answer_text,
+                provider=provider,
+                locale=locale,
+            )
+        AnswerEvaluationPersistenceService.persist_evaluation_only(
+            interview_id=interview_id,
+            question_id=question_id,
+            round_num=round_num,
+            evaluation=evaluation,
+        )
+    except Exception:
+        logger.exception(
+            "Background evaluation failed for interview=%s question=%s round=%s",
+            interview_id,
+            question_id,
+            round_num,
+        )
 
 
 class AnswerProcessingService:
     """Orchestrates answer submission, timeout handling, and event streaming."""
+
+    @staticmethod
+    def require_audio_answer_enabled() -> None:
+        """Ensure the selected catalog model accepts audio input.
+
+        Raises:
+            ValueError: When configuration or catalog flags disallow audio answers.
+        """
+        config = ConfigService.get_config()
+        if config is None or not config.llm_preset_id:
+            raise ValueError("Interview model is not configured")
+        entry = LLMCatalogService.get_model(config.llm_preset_id)
+        if entry is None or not entry.accepts_audio_input:
+            raise ValueError("Selected interview model does not accept audio input")
+
+    @staticmethod
+    async def _open_submission(
+        interview_id: str,
+        question_id: str,
+        answer_text: str,
+    ) -> AsyncIterator[AnswerSubmissionContext | InterviewEvent]:
+        """Validate the session and persist answer text before evaluation.
+
+        Yields timeout events when the round expired, otherwise one
+        :class:`AnswerSubmissionContext`.
+
+        Args:
+            interview_id: The session UUID.
+            question_id: The question ID.
+            answer_text: Text to store on the answer row (empty for audio).
+
+        Yields:
+            Timeout feedback events or a single submission context.
+        """
+        timed_out_round: int | None = None
+        submission: AnswerSubmissionContext | None = None
+
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            interview_dto = interview_read_from_orm(interview_orm)
+            require_active(interview_dto)
+
+            current_answer = find_unanswered_for_question(interview_dto, question_id)
+            round_num = current_answer.round
+            limit = interview_dto.question_time_limit_seconds
+
+            if limit and is_expired(current_answer.started_at, limit, grace_seconds=0):
+                timed_out_round = round_num
+            else:
+                db_answer = uow.answers.get_by_interview_question_round(
+                    interview_id, question_id, round_num
+                )
+                uow.answers.set_answer_text(db_answer, answer_text)
+
+                initial_question_text = current_answer.question_text
+                initial_answer_text = ""
+                if round_num > 0:
+                    initial = uow.answers.get_by_interview_question_round(
+                        interview_id, question_id, 0
+                    )
+                    initial_question_text = initial.question_text
+                    initial_answer_text = initial.answer_text or ""
+
+                submission = AnswerSubmissionContext(
+                    question_id=question_id,
+                    round_num=round_num,
+                    order=current_answer.order,
+                    question_text=current_answer.question_text,
+                    question_code=current_answer.question_code,
+                    initial_question_text=initial_question_text,
+                    initial_answer_text=initial_answer_text,
+                    locale=interview_dto.locale,
+                    answer_text=answer_text,
+                )
+
+        if timed_out_round is not None:
+            async for event in AnswerProcessingService.stream_timeout_submission(
+                interview_id=interview_id,
+                question_id=question_id,
+                round_num=timed_out_round,
+            ):
+                yield event
+            return
+
+        if submission is not None:
+            yield submission
+
+    @staticmethod
+    async def _transcribe_and_persist(
+        *,
+        interview_id: str,
+        question_id: str,
+        round_num: int,
+        wav_bytes: bytes,
+        transcriber: SpeechTranscriber,
+        locale: str,
+    ) -> str:
+        """Transcribe WAV audio and persist the answer text.
+
+        Args:
+            interview_id: Interview UUID.
+            question_id: Question ID from the answer row.
+            round_num: Follow-up round being answered.
+            wav_bytes: Canonical WAV payload.
+            transcriber: Loaded speech transcriber.
+            locale: Interview locale for recognition.
+
+        Returns:
+            Final transcript text (may be empty).
+        """
+        samples = wav_bytes_to_float32(wav_bytes)
+        transcript = await transcriber.transcribe(samples, locale)
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            db_answer = uow.answers.get_by_interview_question_round(
+                interview_id, question_id, round_num
+            )
+            uow.answers.set_answer_text(db_answer, transcript)
+        return transcript
+
+    @staticmethod
+    def _schedule_last_follow_up_evaluation(
+        *,
+        interview_id: str,
+        ctx: AnswerSubmissionContext,
+        provider: AIProvider,
+        audio_wav: bytes | None = None,
+    ) -> None:
+        """Run last-round AI evaluation in the background.
+
+        Args:
+            interview_id: Interview UUID.
+            ctx: Open submission context.
+            provider: AI provider for evaluation.
+            audio_wav: Optional spoken answer WAV for multimodal evaluation.
+        """
+        asyncio.create_task(
+            _evaluate_last_follow_up_in_background(
+                interview_id=interview_id,
+                question_id=ctx.question_id,
+                round_num=ctx.round_num,
+                question_text=ctx.question_text,
+                question_code=ctx.question_code,
+                answer_text=ctx.answer_text,
+                initial_question_text=ctx.initial_question_text,
+                initial_answer_text=ctx.initial_answer_text,
+                provider=provider,
+                locale=ctx.locale,
+                audio_wav=audio_wav,
+            ),
+            name=(
+                f"bg-{'audio-' if audio_wav is not None else ''}eval-"
+                f"{interview_id}-{ctx.question_id}-r{ctx.round_num}"
+            ),
+        )
 
     @staticmethod
     async def stream_timeout_submission(
@@ -58,11 +322,11 @@ class AnswerProcessingService:
             UnansweredAnswerNotFoundError: If the round is not open.
         """
         with InterviewUnitOfWork() as uow:
-            interview_orm = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            interview_dto = interview_view(interview_orm)
-            require_active(interview_dto)
+            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            interview = interview_read_from_orm(interview_orm)
+            require_active(interview)
 
-            limit = interview_dto.question_time_limit_seconds
+            limit = interview.question_time_limit_seconds
             if not limit:
                 raise QuestionTimerNotEnabledError(interview_id)
 
@@ -78,7 +342,7 @@ class AnswerProcessingService:
                 raise QuestionTimerNotExpiredError(interview_id, question_id)
 
             order = db_answer.order
-            locale = interview_dto.locale
+            locale = interview.locale
 
         yield RoundTimerService.persist_timed_out_round(
             interview_id=interview_id,
@@ -95,10 +359,7 @@ class AnswerProcessingService:
         answer_text: str,
         provider: AIProvider,
     ) -> AsyncIterator[InterviewEvent]:
-        """Submit an answer, yield events as each step completes.
-
-        Yields ``AnswerSavedEvent`` and ``EvaluatingEvent`` immediately after the
-        answer text is persisted, then runs AI evaluation, then yields feedback.
+        """Submit a text answer and yield events as each step completes.
 
         Args:
             interview_id: The session UUID.
@@ -115,42 +376,31 @@ class AnswerProcessingService:
             UnansweredAnswerNotFoundError: If the question has no open answer row.
             AnswerNotFoundError: If the answer row is missing in the database.
         """
-        with InterviewUnitOfWork(auto_commit=True) as uow:
-            interview_orm = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            interview_dto = interview_view(interview_orm)
-            require_active(interview_dto)
+        ctx: AnswerSubmissionContext | None = None
+        async for item in AnswerProcessingService._open_submission(
+            interview_id, question_id, answer_text
+        ):
+            if isinstance(item, AnswerSubmissionContext):
+                ctx = item
+                break
+            yield item
+        if ctx is None:
+            return
 
-            current_answer = find_unanswered_for_question(interview_dto, question_id)
-            round_num = current_answer.round
-            limit = interview_orm.question_time_limit_seconds
-
-            if limit and is_expired(current_answer.started_at, limit, grace_seconds=0):
-                async for event in AnswerProcessingService.stream_timeout_submission(
-                    interview_id=interview_id,
-                    question_id=question_id,
-                    round_num=round_num,
-                ):
-                    yield event
-                return
-
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id, question_id, round_num
+        if ctx.round_num >= InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH:
+            yield AnswerSavedEvent()
+            yield AnswerEvaluationPersistenceService.advance_without_evaluation(
+                interview_id=interview_id,
+                question_id=ctx.question_id,
+                round_num=ctx.round_num,
+                order=ctx.order,
             )
-            uow.answers.set_answer_text(db_answer, answer_text)
-
-            initial_question_text = current_answer.question_text
-            initial_answer_text = ""
-            if round_num > 0:
-                initial = uow.answers.get_by_interview_question_round(
-                    interview_id, question_id, 0
-                )
-                initial_question_text = initial.question_text
-                initial_answer_text = initial.answer_text or ""
-
-            question_text = current_answer.question_text
-            question_code = current_answer.question_code
-            order = current_answer.order
-            locale = interview_dto.locale
+            AnswerProcessingService._schedule_last_follow_up_evaluation(
+                interview_id=interview_id,
+                ctx=ctx,
+                provider=provider,
+            )
+            return
 
         yield AnswerSavedEvent()
         yield EvaluatingEvent()
@@ -161,23 +411,151 @@ class AnswerProcessingService:
             follow_up_text,
         ) = await asyncio.shield(
             AnswerAiEvaluationService.evaluate(
-                question_id=question_id,
-                answer_round=round_num,
-                question_text=question_text,
-                question_code=question_code,
-                answer_text=answer_text,
-                initial_question_text=initial_question_text,
-                initial_answer_text=initial_answer_text,
+                answer_round=ctx.round_num,
+                question_text=ctx.question_text,
+                question_code=ctx.question_code,
+                answer_text=ctx.answer_text,
+                initial_question_text=ctx.initial_question_text,
+                initial_answer_text=ctx.initial_answer_text,
                 provider=provider,
-                locale=locale,
+                locale=ctx.locale,
             )
         )
 
         yield AnswerEvaluationPersistenceService.persist(
             interview_id=interview_id,
-            question_id=question_id,
-            round_num=round_num,
-            order=order,
+            question_id=ctx.question_id,
+            round_num=ctx.round_num,
+            order=ctx.order,
+            evaluation=evaluation,
+            follow_up_needed=follow_up_needed,
+            follow_up_text=follow_up_text,
+        )
+
+    @staticmethod
+    async def stream_audio_answer_submission(
+        interview_id: str,
+        question_id: str,
+        wav_bytes: bytes,
+        provider: AIProvider,
+        transcriber: SpeechTranscriber,
+    ) -> AsyncIterator[InterviewEvent]:
+        """Submit an audio answer and yield NDJSON-compatible service events.
+
+        Whisper transcription and LLM audio evaluation run in parallel after the
+        answer row is saved. On the last allowed follow-up round, navigation
+        happens immediately and LLM evaluation continues in the background.
+
+        Args:
+            interview_id: The session UUID.
+            question_id: The question ID.
+            wav_bytes: Canonical mono 16 kHz PCM WAV bytes.
+            provider: AI provider for multimodal evaluation.
+            transcriber: Loaded speech transcriber for transcript persistence.
+
+        Yields:
+            Semantic events for HTTP NDJSON or WebSocket delivery.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+            InterviewNotActiveError: If the interview is already completed.
+            UnansweredAnswerNotFoundError: If the question has no open answer row.
+            AnswerNotFoundError: If the answer row is missing in the database.
+            ValueError: If WAV validation or audio capability checks fail.
+        """
+        AnswerProcessingService.require_audio_answer_enabled()
+        validate_wav_bytes(wav_bytes)
+
+        ctx: AnswerSubmissionContext | None = None
+        async for item in AnswerProcessingService._open_submission(
+            interview_id, question_id, ""
+        ):
+            if isinstance(item, AnswerSubmissionContext):
+                ctx = item
+                break
+            yield item
+        if ctx is None:
+            return
+
+        yield AnswerSavedEvent()
+
+        if ctx.round_num >= InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH:
+            yield AnswerEvaluationPersistenceService.advance_without_evaluation(
+                interview_id=interview_id,
+                question_id=ctx.question_id,
+                round_num=ctx.round_num,
+                order=ctx.order,
+            )
+            transcript_task = asyncio.create_task(
+                AnswerProcessingService._transcribe_and_persist(
+                    interview_id=interview_id,
+                    question_id=ctx.question_id,
+                    round_num=ctx.round_num,
+                    wav_bytes=wav_bytes,
+                    transcriber=transcriber,
+                    locale=ctx.locale,
+                ),
+                name=f"audio-transcript-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
+            )
+            AnswerProcessingService._schedule_last_follow_up_evaluation(
+                interview_id=interview_id,
+                ctx=ctx,
+                provider=provider,
+                audio_wav=wav_bytes,
+            )
+            transcript = await transcript_task
+            yield TranscriptEvent(
+                question_id=ctx.question_id,
+                round=ctx.round_num,
+                text=transcript,
+            )
+            return
+
+        yield EvaluatingEvent()
+
+        transcript_task = asyncio.create_task(
+            AnswerProcessingService._transcribe_and_persist(
+                interview_id=interview_id,
+                question_id=ctx.question_id,
+                round_num=ctx.round_num,
+                wav_bytes=wav_bytes,
+                transcriber=transcriber,
+                locale=ctx.locale,
+            ),
+            name=f"audio-transcript-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
+        )
+        evaluation_task = asyncio.create_task(
+            AnswerAiEvaluationService.evaluate_with_audio(
+                answer_round=ctx.round_num,
+                question_text=ctx.question_text,
+                question_code=ctx.question_code,
+                audio_wav=wav_bytes,
+                initial_question_text=ctx.initial_question_text,
+                initial_answer_text=ctx.initial_answer_text,
+                provider=provider,
+                locale=ctx.locale,
+            ),
+            name=f"audio-eval-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
+        )
+
+        transcript = await transcript_task
+        yield TranscriptEvent(
+            question_id=ctx.question_id,
+            round=ctx.round_num,
+            text=transcript,
+        )
+
+        (
+            evaluation,
+            follow_up_needed,
+            follow_up_text,
+        ) = await asyncio.shield(evaluation_task)
+
+        yield AnswerEvaluationPersistenceService.persist(
+            interview_id=interview_id,
+            question_id=ctx.question_id,
+            round_num=ctx.round_num,
+            order=ctx.order,
             evaluation=evaluation,
             follow_up_needed=follow_up_needed,
             follow_up_text=follow_up_text,
@@ -190,10 +568,7 @@ class AnswerProcessingService:
         answer_text: str,
         provider: AIProvider,
     ) -> list[InterviewEvent]:
-        """Submit an answer and evaluate it with AI.
-
-        Collects all events from ``stream_answer_submission`` for tests and callers
-        that need a list.
+        """Submit a text answer and collect all stream events.
 
         Args:
             interview_id: The session UUID.
@@ -203,12 +578,6 @@ class AnswerProcessingService:
 
         Returns:
             Semantic events in delivery order.
-
-        Raises:
-            InterviewNotFoundError: If the interview does not exist.
-            InterviewNotActiveError: If the interview is already completed.
-            UnansweredAnswerNotFoundError: If the question has no open answer row.
-            AnswerNotFoundError: If the answer row is missing in the database.
         """
         return [
             event
@@ -217,6 +586,37 @@ class AnswerProcessingService:
                 question_id=question_id,
                 answer_text=answer_text,
                 provider=provider,
+            )
+        ]
+
+    @staticmethod
+    async def process_audio_answer_submission(
+        interview_id: str,
+        question_id: str,
+        wav_bytes: bytes,
+        provider: AIProvider,
+        transcriber: SpeechTranscriber,
+    ) -> list[InterviewEvent]:
+        """Submit an audio answer and collect all stream events.
+
+        Args:
+            interview_id: The session UUID.
+            question_id: The question ID.
+            wav_bytes: Canonical mono 16 kHz PCM WAV bytes.
+            provider: AI provider for multimodal evaluation.
+            transcriber: Loaded speech transcriber.
+
+        Returns:
+            Semantic events in delivery order.
+        """
+        return [
+            event
+            async for event in AnswerProcessingService.stream_audio_answer_submission(
+                interview_id=interview_id,
+                question_id=question_id,
+                wav_bytes=wav_bytes,
+                provider=provider,
+                transcriber=transcriber,
             )
         ]
 

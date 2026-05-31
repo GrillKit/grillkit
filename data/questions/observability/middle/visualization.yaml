@@ -1,0 +1,78 @@
+category: Grafana Operations
+track: observability
+level: middle
+description: Unified alerting and provisioning as code
+questions:
+- id: ograf-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - grafana
+  - alerting
+  - notifications
+  - contact-points
+  question:
+    text:
+      en: 'Explain Grafana Alerting (unified). How does it differ from legacy dashboard alerts? Describe the components: data
+        source queries, expressions (Reduce, Math, Resample), alert rule evaluation, contact points, notification policies,
+        silences.'
+      ru: 'Объясните систему оповещения Grafana (unified). Чем она отличается от старых оповещений дашбордов? Опишите компоненты:
+        запросы к источникам данных, выражения (Reduce, Math, Resample), вычисление правила оповещения, точки контакта, политики
+        уведомлений, заглушки (silences).'
+    code: "# Grafana alert rule (via API or UI)\n{\n  \"title\": \"High CPU Alert\",\n  \"condition\": \"C\",\n  \"data\"\
+      : [\n    { \"refId\": \"A\", \"queryType\": \"range\", \"datasourceUid\": \"prometheus\",\n      \"model\": { \"expr\"\
+      : \"node_cpu_seconds_total{mode='user'}\" } },\n    { \"refId\": \"B\", \"type\": \"reduce\", \"reducer\": \"mean\"\
+      \ },\n    { \"refId\": \"C\", \"type\": \"threshold\", \"conditions\": [{ \"evaluator\": { \"type\": \"gt\", \"params\"\
+      : [0.8] } }] }\n  ],\n  \"for\": \"5m\",\n  \"annotations\": { \"summary\": \"CPU high on {{ $labels.instance }}\" }\n\
+      }\n\n# Contact point (Slack)\n{\n  \"type\": \"slack\",\n  \"settings\": { \"url\": \"https://hooks.slack.com/...\"\
+      , \"text\": \"Alert: {{ .Annotations.summary }}\" }\n}\n"
+  follow_ups:
+    en:
+    - How to handle multi-dimensional alerts (one alert per series)?
+    - What is the evaluation interval and how to avoid alert fatigue?
+    ru:
+    - Как обрабатывать многомерные оповещения (по одному оповещению на серию)?
+    - Что такое интервал вычисления и как избежать усталости от оповещений?
+  expected_points:
+  - Unified alerting replaces legacy dashboard alerts (single source, multi-data source).
+  - 'Expressions: Reduce (aggregate), Math (transform), Resample (align time).'
+  - 'Alert rule evaluation: runs periodically, checks condition (e.g., threshold).'
+  - 'Contact points: Slack, PagerDuty, email, webhook, etc.'
+  - 'Notification policies: route alerts based on labels (similar to Prometheus Alertmanager).'
+  - 'Silences: temporarily mute alerts (maintenance periods).'
+  - 'Mute timings: recurring schedules (e.g., weekends).'
+- id: ograf-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - grafana
+  - provisioning
+  - infrastructure-as-code
+  - dashboards
+  question:
+    text:
+      en: What is Grafana provisioning (as code)? Explain how to provision data sources, dashboards (via JSON), and alerting
+        resources using YAML files. How to set up folder structure and dashboard version control with Git?
+      ru: Что такое provisioning в Grafana (как код)? Объясните, как настроить источники данных, дашборды (через JSON) и ресурсы
+        оповещения с помощью YAML файлов. Как настроить структуру папок и версионирование дашбордов с Git?
+    code: "# provisioning/datasources/prometheus.yaml\napiVersion: 1\ndatasources:\n  - name: Prometheus\n    type: prometheus\n\
+      \    access: proxy\n    url: http://prometheus:9090\n    isDefault: true\n\n# provisioning/dashboards/default.yaml\n\
+      apiVersion: 1\nproviders:\n  - name: 'default'\n    folder: 'General'\n    type: file\n    options:\n      path: /var/lib/grafana/dashboards\n\
+      \n# provisioning/alerting/contact-points.yaml\napiVersion: 1\ncontactPoints:\n  - name: slack\n    receivers:\n    \
+      \  - type: slack\n        settings:\n          url: https://hooks.slack.com/...\n\n# Dashboard JSON file (exported from\
+      \ UI)\n# store in git, then synced to /dashboards folder\n"
+  follow_ups:
+    en:
+    - How to handle dashboard changes without overwriting user modifications?
+    - What is the difference between provisioning and API-based configuration?
+    ru:
+    - Как отслеживать изменения дашбордов без перезаписи пользовательских правок?
+    - В чём разница между provisioning и конфигурацией через API?
+  expected_points:
+  - Provisioning allows declarative configuration (data sources, dashboards, alerting).
+  - Useful for infrastructure as code, version control (Git), and automation.
+  - 'Data sources provisioning: supports variables, secure JSON fields.'
+  - 'Dashboard provisioning: from JSON files (exported via UI or generated).'
+  - 'Version control: store dashboards in Git, use CI/CD to sync to Grafana.'
+  - 'Avoid overwriting: allow overwrite: false (for user-modified dashboards).'
+  - 'Alerting provisioning: contact points, notification policies, mute timings.'
