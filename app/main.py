@@ -46,7 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="GrillKit",
         description="AI Interview Trainer",
-        version="2026.5.24",
+        version="2026.5.31",
         lifespan=lifespan,
     )
 

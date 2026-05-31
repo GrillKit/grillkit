@@ -26,6 +26,7 @@ def mock_provider_factory():
     with patch("app.platform.services.config.ProviderFactory") as mock_factory:
         mock_provider = AsyncMock()
         mock_provider.validate.return_value = True
+        mock_provider.close = AsyncMock()
         mock_factory.from_config.return_value = mock_provider
         yield mock_factory
 
@@ -405,3 +406,59 @@ class TestConfigService:
             mock_config_path.unlink()  # Ensure no config file exists
         with pytest.raises(ValueError, match="No configuration found"):
             ConfigService.create_provider_from_config()
+
+    def test_check_whisper_ready_when_missing(self, monkeypatch):
+        """Audio-enabled save is blocked when Whisper is not installed."""
+        monkeypatch.setattr(
+            "app.platform.services.config.is_installed",
+            lambda _size: False,
+        )
+        ok, message = ConfigService.check_whisper_ready("small")
+        assert ok is False
+        assert "not installed" in message
+
+    @pytest.mark.asyncio
+    async def test_test_audio_connection_success(
+        self, mock_provider_factory, monkeypatch
+    ):
+        """Audio probe succeeds when the provider accepts WAV input."""
+        mock_provider = AsyncMock()
+        mock_provider.probe_audio_input.return_value = True
+        mock_provider.close = AsyncMock()
+        mock_provider_factory.from_config.return_value = mock_provider
+        config = AppConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4o",
+            api_key="test_key",
+        )
+        success, message = await ConfigService.test_audio_connection(config)
+        assert success is True
+        assert message == "Audio connection successful"
+        mock_provider.probe_audio_input.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_test_interview_model_audio_requires_whisper(
+        self, mock_provider_factory, monkeypatch
+    ):
+        """Audio catalog entries require an installed Whisper model."""
+        mock_provider_factory.from_config.return_value.validate = AsyncMock(
+            return_value=True
+        )
+        mock_provider_factory.from_config.return_value.close = AsyncMock()
+        monkeypatch.setattr(
+            "app.platform.services.config.is_installed",
+            lambda _size: False,
+        )
+        config = AppConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4o",
+            api_key="test_key",
+        )
+        success, message = await ConfigService.test_interview_model(
+            config,
+            accepts_audio_input=True,
+        )
+        assert success is False
+        assert "Whisper" in message

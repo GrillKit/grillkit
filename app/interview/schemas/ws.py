@@ -23,6 +23,17 @@ class EvaluatingMessage(BaseModel):
     type: Literal["evaluating"] = "evaluating"
 
 
+class TranscriptMessage(BaseModel):
+    """Server message with Whisper transcript for an audio answer."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["transcript"] = "transcript"
+    question_id: str
+    round: int
+    text: str
+
+
 class AnswerFeedbackMessage(BaseModel):
     """Server message with evaluation feedback for one answer round."""
 

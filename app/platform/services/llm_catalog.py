@@ -108,6 +108,7 @@ class LLMCatalogService:
             base_url=payload.base_url,
             api_key_required=api_key_required,
             api_key=api_key,
+            accepts_audio_input=payload.accepts_audio_input,
         )
         models[model_id] = entry_dict
         data["models"] = models
@@ -159,6 +160,7 @@ def _model_dict(
     api_key_required: bool,
     api_key: str | None = None,
     provider_type: str = "openai-compatible",
+    accepts_audio_input: bool = False,
 ) -> dict[str, Any]:
     """Build a catalog entry dictionary for persistence."""
     entry: dict[str, Any] = {
@@ -167,6 +169,7 @@ def _model_dict(
         "model": model_name,
         "base_url": base_url,
         "api_key_required": api_key_required,
+        "accepts_audio_input": accepts_audio_input,
     }
     if api_key:
         entry["api_key"] = api_key
@@ -218,4 +221,5 @@ def _parse_model(model_id: str, item: dict[str, Any]) -> LLMModelEntry:
         base_url=base_url,
         api_key_required=bool(item.get("api_key_required", False)),
         api_key=api_key,
+        accepts_audio_input=bool(item.get("accepts_audio_input", False)),
     )

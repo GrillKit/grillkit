@@ -121,8 +121,13 @@
 
     function selectedTopicCount() {
         let count = 0;
-        document.querySelectorAll(".topic-checkbox:checked").forEach(function () {
-            count += 1;
+        document.querySelectorAll(".setup-track-block").forEach(function (block) {
+            const enable = block.querySelector(".track-enable");
+            if (enable && enable.checked) {
+                block.querySelectorAll(".topic-checkbox:checked").forEach(function () {
+                    count += 1;
+                });
+            }
         });
         return count;
     }

@@ -7,6 +7,7 @@ from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.query import InterviewQuery
 from app.interview.services.rules.selection import get_interview_selection
 from app.platform.services.config import AppConfig
+from app.platform.services.llm_catalog import LLMCatalogService
 from app.shared.locales import (
     SUPPORTED_LOCALES,
     TIMEOUT_CHAT_LABELS,
@@ -65,6 +66,12 @@ class InterviewPageService:
         selection = get_interview_selection(interview)
         selection_lines = DashboardBuilder.selection_summary_lines(selection)
         interview_title = DashboardBuilder.interview_display_title(interview)
+        interview_model_accepts_audio = False
+        if config is not None and config.llm_preset_id:
+            entry = LLMCatalogService.get_model(config.llm_preset_id)
+            interview_model_accepts_audio = (
+                entry is not None and entry.accepts_audio_input
+            )
 
         return InterviewPageContext(
             interview=interview,
@@ -83,4 +90,5 @@ class InterviewPageService:
             current_round=current_round,
             timeout_chat_label=localized_string(interview.locale, TIMEOUT_CHAT_LABELS),
             llm_request_timeout_seconds=int(config.timeout) if config else 60,
+            interview_model_accepts_audio=interview_model_accepts_audio,
         )

@@ -86,6 +86,51 @@ class InterviewEvaluatorService:
         return parse_json_response(result.content, AnswerEvaluation)
 
     @staticmethod
+    async def evaluate_answer_with_audio(
+        provider: AIProvider,
+        question_text: str,
+        audio_wav: bytes,
+        question_code: str | None = None,
+        locale: str = DEFAULT_LOCALE,
+    ) -> AnswerEvaluation:
+        """Evaluate a user's initial spoken answer (round=0).
+
+        Args:
+            provider: Configured AI provider instance.
+            question_text: The question text.
+            audio_wav: The user's spoken answer as WAV bytes.
+            question_code: Optional code snippet from the question.
+            locale: Locale for AI feedback and follow-up questions.
+
+        Returns:
+            AnswerEvaluation with score, feedback, and follow-up decision.
+
+        Raises:
+            ValueError: If AI response is invalid or connection fails.
+        """
+        question = question_text
+        if question_code:
+            question += f"\n\nCode:\n{question_code}"
+
+        instructions = build_evaluator_instructions(
+            locale, ANSWER_EVALUATION_INSTRUCTIONS
+        )
+        system_prompt = build_prompt_with_schema(instructions, AnswerEvaluation)
+
+        messages = [Message(role="system", content=system_prompt)]
+        user_text = f"Question:\n{question}"
+
+        result = await provider.generate_with_audio(
+            messages=messages,
+            audio_wav=audio_wav,
+            user_text=user_text,
+            temperature=0.3,
+            max_tokens=1000,
+        )
+
+        return parse_json_response(result.content, AnswerEvaluation)
+
+    @staticmethod
     async def evaluate_follow_up(
         provider: AIProvider,
         question_text: str,
@@ -136,6 +181,59 @@ class InterviewEvaluatorService:
 
         result = await provider.generate(
             messages=messages, temperature=0.3, max_tokens=1000
+        )
+
+        return parse_json_response(result.content, FollowUpEvaluation)
+
+    @staticmethod
+    async def evaluate_follow_up_with_audio(
+        provider: AIProvider,
+        question_text: str,
+        initial_answer: str,
+        follow_up_question: str,
+        audio_wav: bytes,
+        question_code: str | None = None,
+        locale: str = DEFAULT_LOCALE,
+    ) -> FollowUpEvaluation:
+        """Evaluate a user's spoken follow-up answer (round >= 1).
+
+        Args:
+            provider: Configured AI provider instance.
+            question_text: The original question text.
+            initial_answer: The user's initial answer text (transcript).
+            follow_up_question: The follow-up question text.
+            audio_wav: The user's spoken follow-up answer as WAV bytes.
+            question_code: Optional code snippet from the question.
+            locale: Locale for AI feedback and follow-up questions.
+
+        Returns:
+            FollowUpEvaluation with score and further follow-up decision.
+
+        Raises:
+            ValueError: If AI response is invalid or connection fails.
+        """
+        question = question_text
+        if question_code:
+            question += f"\n\nCode:\n{question_code}"
+
+        instructions = build_evaluator_instructions(
+            locale, FOLLOW_UP_EVALUATION_INSTRUCTIONS
+        )
+        system_prompt = build_prompt_with_schema(instructions, FollowUpEvaluation)
+
+        messages = [Message(role="system", content=system_prompt)]
+        user_text = (
+            f"Original Question:\n{question}\n\n"
+            f"Initial Answer:\n{initial_answer}\n\n"
+            f"Follow-up Question:\n{follow_up_question}"
+        )
+
+        result = await provider.generate_with_audio(
+            messages=messages,
+            audio_wav=audio_wav,
+            user_text=user_text,
+            temperature=0.3,
+            max_tokens=1000,
         )
 
         return parse_json_response(result.content, FollowUpEvaluation)

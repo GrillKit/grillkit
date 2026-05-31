@@ -92,6 +92,7 @@ class InterviewPageContext(BaseModel):
         current_round: Follow-up round number for the active question.
         timeout_chat_label: Localized timeout message for the UI.
         llm_request_timeout_seconds: LLM request timeout from config.
+        interview_model_accepts_audio: Whether the configured LLM accepts audio answers.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -112,3 +113,4 @@ class InterviewPageContext(BaseModel):
     current_round: int
     timeout_chat_label: str
     llm_request_timeout_seconds: int = Field(default=60)
+    interview_model_accepts_audio: bool = False

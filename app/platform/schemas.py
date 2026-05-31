@@ -58,6 +58,7 @@ class LLMPresetOptionRead(BaseModel):
         model: Provider model name.
         base_url: OpenAI-compatible base URL.
         api_key_required: Whether the form should require an API key.
+        accepts_audio_input: Whether the model supports audio answer submission.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -68,6 +69,7 @@ class LLMPresetOptionRead(BaseModel):
     model: str
     base_url: str
     api_key_required: bool
+    accepts_audio_input: bool = False
 
 
 class SpeechModelSpecRead(BaseModel):
@@ -138,6 +140,7 @@ class NewLLMModel(BaseModel):
         model: Provider model name.
         api_key_required: Whether an API key is required for this endpoint.
         api_key: Optional API key stored with the catalog entry.
+        accepts_audio_input: Whether the model supports multimodal audio answers.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True, frozen=True)
@@ -148,6 +151,7 @@ class NewLLMModel(BaseModel):
     model: str
     api_key_required: bool = False
     api_key: str | None = None
+    accepts_audio_input: bool = False
 
     @field_validator("model_id")
     @classmethod

@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 import json
 from typing import Any
 
+from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
 from app.paths import CONFIG_PATH, DATA_DIR
@@ -24,6 +25,7 @@ from app.speech.services.rules.speech_models import (
     DEFAULT_SPEECH_MODEL_SIZE,
     normalize_speech_model_size,
 )
+from app.speech.services.whisper_storage import is_installed
 
 MASKED_API_KEY_PLACEHOLDER = "***"
 
@@ -184,6 +186,25 @@ class ConfigService:
         return app_config
 
     @staticmethod
+    def _config_for_provider_test(config: AppConfig) -> AppConfig:
+        """Return settings used for connectivity probes.
+
+        Args:
+            config: Submitted or catalog-backed configuration.
+
+        Returns:
+            Configuration with catalog fields applied when ``llm_preset_id`` is set.
+
+        Raises:
+            ValueError: When provider settings are incomplete.
+        """
+        if config.llm_preset_id:
+            return ConfigService.resolve_effective_config(config)
+        if not config.base_url.strip() or not config.model.strip():
+            raise ValueError("No interview model selected")
+        return config
+
+    @staticmethod
     def resolve_effective_config(config: AppConfig) -> AppConfig:
         """Apply catalog entry fields to a configuration copy.
 
@@ -233,23 +254,108 @@ class ConfigService:
         Returns:
             Tuple of (success: bool, message: str).
         """
+        provider: AIProvider | None = None
         try:
-            effective = config.effective()
+            probe = ConfigService._config_for_provider_test(config)
             provider = ProviderFactory.from_config(
-                api_type=effective.provider_type,
-                base_url=effective.base_url,
-                model=effective.model,
-                api_key=effective.api_key,
-                timeout=effective.timeout,
+                api_type=probe.provider_type,
+                base_url=probe.base_url,
+                model=probe.model,
+                api_key=probe.api_key,
+                timeout=probe.timeout,
             )
             is_valid = await provider.validate()
             if is_valid:
                 return True, "Connection successful"
             return False, "Invalid API key or unreachable endpoint"
-        except ValueError as e:
-            return False, str(e)
-        except Exception as e:
-            return False, f"Connection failed: {e}"
+        except ValueError as exc:
+            return False, str(exc)
+        except Exception as exc:
+            return False, f"Connection failed: {exc}"
+        finally:
+            if provider is not None:
+                await provider.close()
+
+    @staticmethod
+    def check_whisper_ready(speech_model_size: str) -> tuple[bool, str]:
+        """Return whether the configured Whisper model is installed on disk.
+
+        Args:
+            speech_model_size: Whisper size slug from application settings.
+
+        Returns:
+            Tuple of success flag and error message when not ready.
+        """
+        size = normalize_speech_model_size(speech_model_size)
+        if is_installed(size):
+            return True, ""
+        return (
+            False,
+            f"Whisper model '{size}' is not installed. Download it on Configuration "
+            "before saving a model that accepts audio input.",
+        )
+
+    @staticmethod
+    async def test_audio_connection(config: AppConfig) -> tuple[bool, str]:
+        """Probe multimodal audio support via the configured provider.
+
+        Args:
+            config: Configuration to test (text settings must already be valid).
+
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
+        provider: AIProvider | None = None
+        try:
+            probe = ConfigService._config_for_provider_test(config)
+            provider = ProviderFactory.from_config(
+                api_type=probe.provider_type,
+                base_url=probe.base_url,
+                model=probe.model,
+                api_key=probe.api_key,
+                timeout=probe.timeout,
+            )
+            is_valid = await provider.probe_audio_input(minimal_wav_bytes())
+            if is_valid:
+                return True, "Audio connection successful"
+            return (
+                False,
+                "Model does not accept audio input or rejected the audio probe.",
+            )
+        except ValueError as exc:
+            return False, str(exc)
+        except Exception as exc:
+            return False, f"Audio connection failed: {exc}"
+        finally:
+            if provider is not None:
+                await provider.close()
+
+    @staticmethod
+    async def test_interview_model(
+        config: AppConfig,
+        *,
+        accepts_audio_input: bool,
+    ) -> tuple[bool, str]:
+        """Run text and optional audio readiness checks for an interview model.
+
+        Args:
+            config: Effective provider settings to probe.
+            accepts_audio_input: Whether the catalog entry supports audio answers.
+
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
+        success, message = await ConfigService.test_connection(config)
+        if not success:
+            return False, message
+        if not accepts_audio_input:
+            return True, message
+        whisper_ok, whisper_message = ConfigService.check_whisper_ready(
+            config.speech_model_size
+        )
+        if not whisper_ok:
+            return False, whisper_message
+        return await ConfigService.test_audio_connection(config)
 
     @staticmethod
     def create_provider_from_config() -> AIProvider:

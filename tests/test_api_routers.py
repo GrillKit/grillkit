@@ -35,7 +35,16 @@ def client():
     async def _fake_ai_provider():
         yield FakeProvider([])
 
-    with patch("app.main.run_migrations"):
+    with (
+        patch("app.main.run_migrations"),
+        patch(
+            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+        ),
+    ):
         app = create_app()
         app.dependency_overrides[get_ai_provider] = _fake_ai_provider
         with TestClient(app) as test_client:

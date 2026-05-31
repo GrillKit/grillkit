@@ -1,13 +1,29 @@
 # GrillKit
 
-
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-2026.5.24-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.5.31-blue.svg)](CHANGELOG.md)
 
-Open-source AI technical interview trainer. Configure an OpenAI-compatible model, practice from YAML question banks, and get real-time scoring with optional voice input and question audio.
+Open-source AI technical interview trainer. Practice from curated YAML question banks, get structured scoring and follow-ups, and optionally use voice — with your own LLM (cloud or local).
 
-[Quick start](#quick-start) · [Changelog](CHANGELOG.md) · [Architecture](ARCHITECTURE.md)
+[Why GrillKit](#why-grillkit-not-just-chatgpt) · [Quick start](#quick-start) · [Changelog](CHANGELOG.md) · [Architecture](ARCHITECTURE.md)
+
+## Why GrillKit (not just ChatGPT)
+
+A general chat assistant is flexible, but it does not run an **interview** for you.
+
+| What you need | ChatGPT-style chat | GrillKit |
+|---------------|-------------------|----------|
+| Curated technical questions | You prompt each time | Built-in **tracks** (Python, Kafka, System Design, …), **levels**, and **topics** |
+| Interview flow | Free-form thread | Fixed session: N questions, up to **2 AI follow-ups** per question, **1–5 scoring**, session summary |
+| Practice history | Scattered chats | **Dashboard** with past sessions stored locally |
+| Time pressure | None | Optional **per-round timer** (expired round → 0, move on) |
+| Voice practice | Depends on product | Offline **Whisper** dictation; optional **Piper** question audio; **audio answers** when your model supports it |
+| Where data lives | Vendor cloud | **Self-hosted**: SQLite + `data/` on your machine; use **Ollama**, vLLM, or any OpenAI-compatible API |
+
+**Structured practice** — You pick tracks, difficulty, and topics; GrillKit builds a question plan and keeps score across the whole session, not a single ad-hoc prompt.
+
+**Privacy and control** — Run via Docker on your laptop or server. API keys and interview history stay under `./data` (gitignored). No account or subscription required beyond your LLM provider (if you use a cloud model).
 
 ## Screenshots & demo
 
@@ -35,25 +51,16 @@ Open-source AI technical interview trainer. Configure an OpenAI-compatible model
   <img src="./assets/interview-session.png" alt="Completed interview with evaluation" width="900" />
 </p>
 
-
 ## Features
 
-- **Interviews** — multi-track setup (Python, Database, System Design, …), several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
+- **Interviews** — multi-track setup, several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
+- **Question banks** — Python, Database/SQL, System Design, Kafka, RabbitMQ, Docker, Kubernetes, Observability, Airflow, and more under `data/questions/{track}/` (junior / middle / senior where applicable)
 - **Timer** — optional per-round time limit; expired rounds score 0 and the session moves on
-- **Voice** — offline Whisper dictation for answers; optional Piper TTS to read questions aloud
-- **Question banks** — Python, Database/SQL, and System Design (`data/questions/{track}/`), junior / middle / senior
+- **Voice** — offline Whisper dictation for typed answers; optional Piper TTS to read questions aloud
+- **Audio answers** — when the configured model supports audio input and Whisper is ready, record and send a WAV answer from the interview page
 - **Setup** — model catalog on `/config`, interview locale (AI feedback language), Whisper/Piper downloads from the UI
 - **Dashboard** — recent interview history on the home page
-- **Persistence** — SQLite (`data/db/grillkit.db`); Docker Compose on port 8000 with `./data` volume
-
-## Roadmap
-
-**Planned**
-
-- Session-wide time limit (total interview duration)
-- More question banks (Go, JavaScript, Java, C++, …)
-- Code editor in the interview UI
-- Custom question banks, PWA / standalone frontend
+- **Deployment** — Docker Compose on port 8000 with `./data` volume for config, DB, and models
 
 ## Quick start
 
@@ -79,7 +86,7 @@ Optional **question voice** (Piper TTS, same `app` container):
 3. On the Configuration page, use **Download question voice** when prompted (~60 MB per locale voice from Hugging Face).
 4. Start an interview — questions can play aloud; WAV cache lives under `data/tts-cache/v2/{locale}/`.
 
-`./data` on the host holds SQLite, `config.json`, `llm_models.json`, Whisper/Piper models, and TTS cache. Question banks, templates, and static files are in the image.
+`./data` on the host holds SQLite, `config.json`, `llm_models.json`, Whisper/Piper models, and TTS cache. Question banks, templates, and static files ship in the image.
 
 If bind-mounted `data/` is not writable (Linux UID mismatch):
 
@@ -91,11 +98,13 @@ PUID=$(id -u) PGID=$(id -g) docker compose up --build
 
 1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save.
 2. **New interview** (`/setup`) — enable one or more question-bank tracks (level per track), select multiple topics, set total question count (at least one per selected topic; interview locale is read-only from config).
-3. **Interview** (`/interview/{id}`) — page loads history; answers and completion go over WebSocket.
+3. **Interview** (`/interview/{id}`) — page loads history; text answers and completion go over WebSocket.
 
 Without saved provider config, `/setup` redirects to `/config`.
 
 ### Local development
+
+For contributors: see [CONTRIBUTING.md](CONTRIBUTING.md). Quick run:
 
 ```bash
 uv sync --extra dev
@@ -104,9 +113,9 @@ uv run uvicorn app.main:app --reload
 
 Same first-time flow at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-## Configuration
+## Configuration (essentials)
 
-Any **OpenAI-compatible** HTTP API works (single adapter in code):
+Any **OpenAI-compatible** HTTP API works:
 
 | Provider | Example base URL |
 |----------|------------------|
@@ -114,70 +123,41 @@ Any **OpenAI-compatible** HTTP API works (single adapter in code):
 | Ollama | `http://localhost:11434/v1` |
 | vLLM / others | your endpoint + `/v1` |
 
-### Model catalog
+On `/config`:
 
-On `/config`, use **Add model to catalog** to save OpenAI-compatible providers (base URL, model name, optional API key). Entries are stored in [`data/llm_models.json`](data/llm_models.json) (gitignored). Select an interview model from the list, run **Test Connection**, then save.
+- **Add model to catalog** — base URL, model name, optional API key; enable **Accepts audio input** only if the model supports multimodal audio (and download Whisper for transcription).
+- **Interview model** — pick from the catalog, **Test Connection**, save.
+- **Locale** — language for AI feedback and speech (stored in `data/config.json`, gitignored).
+- **Whisper** — choose size (`small`, `medium`, `large`), download from the UI for dictation and audio answers.
+- **Read questions aloud** — enable Piper, download a voice (~60 MB).
 
-Application settings and interview **locale** (AI feedback and dictation language) live in `data/config.json` (gitignored). Do not commit secrets.
+Do not commit `data/config.json`, `data/llm_models.json`, or API keys.
 
-After saving configuration, choose a **Whisper** model size (`small`, `medium`, or `large`) and download it from the Configuration page (stored under `data/whisper-models/<size>/`). Dictation uses the locale snapshot from config. The app loads the model into memory when the download finishes or on the next startup.
-
-**Read questions aloud** (`question_voice_enabled`) requests synthesized audio for question text only (never code blocks). Download the Piper voice on `/config` after enabling the option (~60 MB per voice from Hugging Face).
-
-Optional environment variables:
+Optional environment variables (full list in [ARCHITECTURE.md](ARCHITECTURE.md#persistence--configuration)):
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | SQLAlchemy database URL (default: `sqlite:///<project>/data/db/grillkit.db`; Docker Compose sets `sqlite:////app/data/db/grillkit.db`) |
-| `HF_TOKEN` | Hugging Face read token for faster, more reliable Whisper and Piper model downloads ([create token](https://huggingface.co/settings/tokens)). Passed through in `docker compose` when set on the host. |
-| `WHISPER_DEVICE` | `cpu` or `cuda` (default `cpu`) |
-| `WHISPER_COMPUTE_TYPE` | `int8` or `float16` (default `int8` on CPU) |
+| `DATABASE_URL` | SQLAlchemy URL (default: SQLite under `data/db/`) |
+| `HF_TOKEN` | Hugging Face token for faster Whisper/Piper downloads |
+| `WHISPER_DEVICE` | `cpu` or `cuda` |
+| `WHISPER_COMPUTE_TYPE` | `int8` or `float16` |
 
-## Data layout
+## Roadmap
 
-```
-data/
-├── config.json              # Locale, speech/TTS flags, timer defaults (gitignored)
-├── llm_models.json          # Interview model catalog (gitignored)
-├── db/grillkit.db           # SQLite (gitignored, created on startup)
-├── whisper-models/          # Offline Whisper models per size (gitignored content)
-├── piper-voices/            # Piper ONNX voices for question TTS (gitignored content)
-├── tts-cache/               # Cached question WAVs per locale (gitignored content)
-└── questions/               # YAML banks: {track}/{level}/{category}.yaml
-```
+**Planned**
 
-Schema and `selection_spec` data migrations run automatically on startup via **Alembic** (`uv run alembic upgrade head`). For a clean dev DB, remove `data/db/grillkit.db` and restart the app.
+- Session-wide time limit (total interview duration)
+- More question banks and categories
+- Code editor in the interview UI
+- Custom question banks, PWA / standalone frontend
 
-## Project layout
+## For developers
 
-```
-app/
-├── main.py              # FastAPI app, routers, lifespan
-├── interview/           # Sessions, WebSocket chat, scoring, timer
-├── speech/              # Whisper download + dictation
-├── question_voice/      # Piper TTS, cache, question audio API
-├── platform/            # Provider config, LLM catalog (/config)
-├── shared/              # DB, UoW, locales, artifact download helpers
-└── ai/                  # OpenAI-compatible + faster-whisper adapters
-templates/               # Jinja2 UI
-static/                  # CSS, JS (dictation, timer, question voice)
-tests/
-ARCHITECTURE.md          # Layers, routes, data flows
-```
-
-## Development
-
-CI runs on every pull request and on pushes to `main` (ruff, mypy, pytest). See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-```bash
-uv sync --frozen --extra dev
-uv run pytest
-uv run ruff check --fix .
-uv run ruff format .
-uv run mypy .
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+| Document | Contents |
+|----------|----------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, HTTP/WebSocket routes, data flows, persistence, question banks |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, tests, ruff/mypy/pytest, contribution workflow |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Security
 
