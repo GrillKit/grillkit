@@ -1,0 +1,40 @@
+category: Airflow Executors
+track: airflow
+level: middle
+description: Executor types, Celery, KubernetesExecutor, and scaling
+questions:
+- id: aexec-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - executors
+  - celery
+  - kubernetes
+  - scaling
+  question:
+    text:
+      en: 'Compare Airflow executors: SequentialExecutor, LocalExecutor, CeleryExecutor, KubernetesExecutor. How does CeleryExecutor
+        distribute tasks? What are the pros/cons of KubernetesExecutor vs CeleryExecutor? When to use LocalExecutor in production?'
+      ru: 'Сравните исполнители Airflow: SequentialExecutor, LocalExecutor, CeleryExecutor, KubernetesExecutor. Как CeleryExecutor
+        распределяет задачи? Каковы плюсы/минусы KubernetesExecutor по сравнению с CeleryExecutor? Когда использовать LocalExecutor
+        в продакшене?'
+    code: "# airflow.cfg\nexecutor = CeleryExecutor\ncelery_app_name = airflow.executors.celery_executor\n\n# For KubernetesExecutor:\
+      \ optional pod template\nexecutor = KubernetesExecutor\npod_template_file = /opt/airflow/pod_template.yaml\n\n# Resource\
+      \ limits per task (KubernetesExecutor or CeleryKubernetes)\nwith DAG(...) as dag:\n    task = PythonOperator(\n    \
+      \    task_id='heavy_task',\n        python_callable=run_model,\n        executor_config={\"KubernetesExecutor\": {\"\
+      requests\": {\"memory\": \"8Gi\"}}}\n    )\n"
+  follow_ups:
+    en:
+    - How to set up Celery with Redis or RabbitMQ as broker?
+    - What is the CeleryKubernetesExecutor hybrid?
+    ru:
+    - Как настроить Celery с Redis или RabbitMQ в качестве брокера?
+    - Что такое гибридный CeleryKubernetesExecutor?
+  expected_points:
+  - 'SequentialExecutor: single process, for testing only (runs one task at a time).'
+  - 'LocalExecutor: multi-processing, runs tasks in separate processes on the scheduler host (good for small prod).'
+  - 'CeleryExecutor: distributed using Celery workers, requires message broker (Redis/RabbitMQ) – most common production.'
+  - 'KubernetesExecutor: each task runs in its own pod – good isolation, auto-scaling, but higher overhead.'
+  - 'CeleryKubernetesExecutor: mix – some tasks on Celery workers, some as separate pods.'
+  - LocalExecutor suitable for small deployments with moderate load (<100 concurrent tasks).

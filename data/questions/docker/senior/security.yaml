@@ -1,0 +1,58 @@
+category: Docker Security
+track: docker
+level: senior
+description: Hardening containers, capabilities, seccomp, and image scanning
+questions:
+- id: dsec-s-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - docker
+  - security
+  - rootless
+  - capabilities
+  - seccomp
+  question:
+    text:
+      en: 'What are Docker security best practices? Explain: running as non-root user, dropping Linux capabilities, seccomp
+        profiles, AppArmor/SELinux, and rootless Docker. How to scan images for vulnerabilities (e.g., Trivy, Docker Scout)?'
+      ru: 'Каковы лучшие практики безопасности Docker? Объясните: запуск от non-root пользователя, удаление возможностей Linux
+        (capabilities), профили seccomp, AppArmor/SELinux и rootless Docker. Как сканировать образы на уязвимости (например,
+        Trivy, Docker Scout)?'
+    code: '# Dockerfile: create non-root user
+
+      FROM python:3.11
+
+      RUN useradd -m appuser
+
+      USER appuser
+
+
+      # Run container with dropped capabilities
+
+      docker run --cap-drop=ALL --cap-add=NET_ADMIN myapp
+
+
+      # Seccomp profile (disable certain syscalls)
+
+      docker run --security-opt seccomp=/path/to/profile.json myapp
+
+
+      # Rootless Docker installation (daemon runs without root)
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between --privileged and adding specific capabilities?
+    - How to prevent container from writing to host filesystem?
+    ru:
+    - В чём разница между --privileged и добавлением конкретных возможностей?
+    - Как предотвратить запись контейнера в файловую систему хоста?
+  expected_points:
+  - Never run containers as root inside (create user and switch with USER).
+  - Drop all capabilities and add only required ones (--cap-drop=ALL).
+  - Seccomp filters system calls; default profile blocks ~44 dangerous syscalls.
+  - AppArmor/SELinux provide mandatory access control.
+  - Rootless Docker runs daemon as non-root, reducing attack surface.
+  - 'Image scanning: Trivy, Grype, Docker Scout (formerly Snyk), Clair.'
+  - 'Read-only root filesystem: --read-only flag.'

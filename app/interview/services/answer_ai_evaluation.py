@@ -16,7 +16,6 @@ class AnswerAiEvaluationService:
     @staticmethod
     async def evaluate(
         *,
-        question_id: str,
         answer_round: int,
         question_text: str,
         question_code: str | None,
@@ -29,7 +28,6 @@ class AnswerAiEvaluationService:
         """Run AI evaluation and decide follow-up.
 
         Args:
-            question_id: Question ID from the answer row.
             answer_round: Follow-up round (0 = initial).
             question_text: Text of the question being answered.
             question_code: Optional code snippet for the question.
@@ -62,6 +60,65 @@ class AnswerAiEvaluationService:
                 initial_answer=initial_answer_text,
                 follow_up_question=question_text,
                 follow_up_answer=answer_text,
+                question_code=question_code,
+                locale=locale,
+            )
+            follow_up_needed = (
+                evaluation.needs_further_follow_up
+                and bool(evaluation.follow_up_question)
+                and answer_round < InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH
+            )
+            follow_up_text = evaluation.follow_up_question
+
+        return evaluation, follow_up_needed, follow_up_text
+
+    @staticmethod
+    async def evaluate_with_audio(
+        *,
+        answer_round: int,
+        question_text: str,
+        question_code: str | None,
+        audio_wav: bytes,
+        initial_question_text: str,
+        initial_answer_text: str,
+        provider: AIProvider,
+        locale: str,
+    ) -> tuple[AnswerEvaluation | FollowUpEvaluation, bool, str | None]:
+        """Run AI evaluation on a spoken answer and decide follow-up.
+
+        Args:
+            answer_round: Follow-up round (0 = initial).
+            question_text: Text of the question being answered.
+            question_code: Optional code snippet for the question.
+            audio_wav: The user's spoken answer as WAV bytes.
+            initial_question_text: Original question text (round 0).
+            initial_answer_text: User's initial answer transcript (round 0).
+            provider: Configured AI provider.
+            locale: Locale for AI feedback and follow-up questions.
+
+        Returns:
+            Tuple of (evaluation, follow_up_needed, follow_up_text).
+        """
+        evaluation: AnswerEvaluation | FollowUpEvaluation
+        if answer_round == 0:
+            evaluation = await InterviewEvaluatorService.evaluate_answer_with_audio(
+                provider=provider,
+                question_text=question_text,
+                audio_wav=audio_wav,
+                question_code=question_code,
+                locale=locale,
+            )
+            follow_up_needed = evaluation.follow_up_needed and bool(
+                evaluation.follow_up_question
+            )
+            follow_up_text = evaluation.follow_up_question
+        else:
+            evaluation = await InterviewEvaluatorService.evaluate_follow_up_with_audio(
+                provider=provider,
+                question_text=initial_question_text,
+                initial_answer=initial_answer_text,
+                follow_up_question=question_text,
+                audio_wav=audio_wav,
                 question_code=question_code,
                 locale=locale,
             )

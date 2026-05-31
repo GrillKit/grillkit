@@ -7,10 +7,10 @@ from pathlib import Path
 import re
 
 from app.paths import TTS_CACHE_DIR
-from app.question_voice.domain.tts_exceptions import QuestionVoiceSynthesisError
 from app.question_voice.services.piper_runtime import PiperRuntime
 from app.question_voice.services.piper_storage import is_voice_installed
-from app.shared.domain.locales import normalize_locale
+from app.question_voice.services.tts_exceptions import QuestionVoiceSynthesisError
+from app.shared.locales import normalize_locale
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _CACHE_VERSION = "v2"

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Helpers for building interview selection JSON in tests."""
 
-from app.interview.domain.selection import (
+from app.interview.services.rules.selection import (
     InterviewSelection,
     TrackSelection,
     selection_to_spec,

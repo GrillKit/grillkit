@@ -6,8 +6,13 @@ import json
 
 import pytest
 
-from app.ai.llm_models import CUSTOM_PRESET_ID, validate_new_model_id
-from app.platform.services.llm_catalog import LLMCatalogService, NewLLMModel
+from app.ai.llm_models import (
+    CUSTOM_PRESET_ID,
+    normalize_model_id,
+    validate_new_model_id,
+)
+from app.platform.schemas import NewLLMModel
+from app.platform.services.llm_catalog import LLMCatalogService
 
 
 @pytest.fixture
@@ -17,7 +22,6 @@ def llm_catalog_path(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.platform.services.llm_catalog.LLM_MODELS_PATH", catalog_path
     )
-    LLMCatalogService.invalidate_cache()
     yield catalog_path
 
 
@@ -29,6 +33,21 @@ class TestLLMCatalog:
         catalog = LLMCatalogService.load_catalog()
         assert catalog.selected_id is None
         assert catalog.models == {}
+
+    def test_add_user_model_persists_accepts_audio_input(self, llm_catalog_path):
+        """Audio capability flag round-trips through llm_models.json."""
+        entry = LLMCatalogService.add_user_model(
+            NewLLMModel(
+                model_id="audio",
+                display_name="Audio API",
+                base_url="https://api.example.com/v1",
+                model="gpt-4o-audio",
+                accepts_audio_input=True,
+            )
+        )
+        assert entry.accepts_audio_input is True
+        saved = json.loads(llm_catalog_path.read_text())
+        assert saved["models"]["audio"]["accepts_audio_input"] is True
 
     def test_add_user_model_persists_api_key(self, llm_catalog_path):
         """Models can store an API key in llm_models.json."""
@@ -73,34 +92,35 @@ class TestLLMCatalog:
 
     def test_normalize_model_id_rejects_custom(self, llm_catalog_path):
         """Custom sentinel is not a valid catalog selection."""
+        catalog = LLMCatalogService.load_catalog()
         with pytest.raises(ValueError, match="Interview model is required"):
-            LLMCatalogService.normalize_model_id(CUSTOM_PRESET_ID)
+            normalize_model_id(CUSTOM_PRESET_ID, catalog)
 
     def test_normalize_model_id_rejects_unknown(self, llm_catalog_path):
         """Unknown ids raise ValueError."""
+        catalog = LLMCatalogService.load_catalog()
         with pytest.raises(ValueError, match="Unsupported LLM model"):
-            LLMCatalogService.normalize_model_id("missing")
+            normalize_model_id("missing", catalog)
 
-    def test_parse_legacy_base_url_local(self, llm_catalog_path):
-        """Legacy base_url_local entries are read as base_url."""
+    def test_get_model_strips_trailing_slash_from_base_url(self, llm_catalog_path):
+        """Trailing slashes on base_url are normalized on read."""
         llm_catalog_path.write_text(
             json.dumps(
                 {
-                    "selected": "legacy",
+                    "selected": "local",
                     "models": {
-                        "legacy": {
-                            "display_name": "Legacy",
+                        "local": {
+                            "display_name": "Local",
                             "provider_type": "openai-compatible",
                             "model": "gpt-4",
-                            "base_url_local": "http://localhost:11434/v1",
+                            "base_url": "http://localhost:11434/v1/",
                             "api_key_required": False,
                         }
                     },
                 }
             )
         )
-        LLMCatalogService.invalidate_cache()
-        entry = LLMCatalogService.get_model("legacy")
+        entry = LLMCatalogService.get_model("local")
         assert entry is not None
         assert entry.base_url == "http://localhost:11434/v1"
 

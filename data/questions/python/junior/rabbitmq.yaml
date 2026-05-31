@@ -1,0 +1,93 @@
+category: RabbitMQ Client Basics
+track: python
+level: junior
+description: Python RabbitMQ libraries and basic producer/consumer usage with pika
+questions:
+- id: rpy-j-001
+  type: knowledge
+  difficulty: 1
+  tags:
+  - python
+  - rabbitmq
+  - pika
+  - aio-pika
+  - kombu
+  question:
+    text:
+      en: What are the main Python client libraries for RabbitMQ? Compare pika, aio-pika, and kombu. Which one is suitable
+        for sync, async, and production use?
+      ru: Какие основные Python клиентские библиотеки для RabbitMQ? Сравните pika, aio-pika и kombu. Какая подходит для синхронного,
+        асинхронного использования и продакшена?
+    code: '# Pika (synchronous, but can do async via SelectConnection/Asyncore)
+
+      import pika
+
+      connection = pika.BlockingConnection(pika.ConnectionParameters(''localhost''))
+
+      channel = connection.channel()
+
+
+      # Aio-pika (asyncio native)
+
+      import aio_pika
+
+      connection = await aio_pika.connect_robust("amqp://guest:guest@localhost/")
+
+
+      # Kombu (abstraction over multiple brokers, used by Celery)
+
+      from kombu import Connection, Exchange, Queue
+
+      conn = Connection(''amqp://guest:guest@localhost:5672//'')
+
+      '
+  follow_ups:
+    en:
+    - Is pika production-ready?
+    - Which library does Celery use under the hood?
+    - How to handle reconnections automatically?
+    ru:
+    - Подходит ли pika для продакшена?
+    - Какую библиотеку использует Celery под капотом?
+    - Как автоматически обрабатывать переподключения?
+  expected_points:
+  - 'Pika: most popular, AMQP 0-9-1, blocking and async adapters; manual reconnect needed'
+  - 'Aio-pika: convenient asyncio wrapper, auto reconnect, production-ready'
+  - 'Kombu: high-level abstraction (Redis, SQS, etc.), used by Celery'
+  - 'Also: amqpstorm (faster than pika), rabbitpy (hobby project)'
+- id: rpy-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - python
+  - rabbitmq
+  - pika
+  - producer
+  - confirms
+  question:
+    text:
+      en: Write a RabbitMQ producer in Python using pika with mandatory flag and publisher confirms (asynchronous). Show how
+        to handle confirmation and return callbacks. Include message persistence and exchange declaration.
+      ru: Напишите RabbitMQ продюсера на Python с использованием pika с флагом mandatory и подтверждениями издателя (асинхронно).
+        Покажите обработку обратных вызовов подтверждения и возврата. Включите персистентность сообщения и объявление обменника.
+    code: "import pika\nfrom pika.spec import BasicProperties\n\nconnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\n\
+      channel = connection.channel()\nchannel.confirm_delivery()  # enable publisher confirms\n\n# Callback for successful\
+      \ confirm\ndef on_confirm(frame):\n    print(f\"Message confirmed: {frame.method.delivery_tag}\")\n\n# Callback for\
+      \ mandatory flag (message returned)\ndef on_return(ch, method, properties, body):\n    print(f\"Message returned: {body}\"\
+      )\n\nchannel.add_on_return_callback(on_return)\nchannel.add_on_delivery_confirm_callback(on_confirm)\n\nchannel.exchange_declare(exchange='my_exchange',\
+      \ exchange_type='topic', durable=True)\n\nprops = BasicProperties(delivery_mode=2, content_type='application/json')\
+      \  # persistent\nchannel.basic_publish(\n    exchange='my_exchange', routing_key='key', body=b'Hello',\n    mandatory=True,\
+      \ properties=props\n)\nconnection.close()\n"
+  follow_ups:
+    en:
+    - What happens if confirm is not called?
+    - How to handle mandatory returns in blocking mode?
+    ru:
+    - Что произойдёт, если confirm не получен?
+    - Как обрабатывать mandatory возвраты в блокирующем режиме?
+  expected_points:
+  - channel.confirm_delivery() enables publisher confirms mode
+  - 'add_on_delivery_confirm_callback: called on broker confirm'
+  - 'mandatory=True: if message is unroutable, return callback is invoked'
+  - Without mandatory, unroutable messages are silently dropped
+  - delivery_mode=2 is persistent (requires durable exchange and queue)

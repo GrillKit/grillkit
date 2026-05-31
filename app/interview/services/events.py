@@ -44,6 +44,21 @@ class AnswerFeedbackEvent:
 
 
 @dataclass(frozen=True)
+class TranscriptEvent:
+    """Whisper transcript persisted for an audio answer.
+
+    Attributes:
+        question_id: YAML question ID.
+        round: Answer round number.
+        text: Recognized answer text for the chat and database.
+    """
+
+    question_id: str
+    round: int
+    text: str
+
+
+@dataclass(frozen=True)
 class InterviewCompletedEvent:
     """Entire interview session was evaluated and marked complete.
 
@@ -59,5 +74,9 @@ class InterviewCompletedEvent:
 
 
 InterviewEvent = (
-    AnswerSavedEvent | EvaluatingEvent | AnswerFeedbackEvent | InterviewCompletedEvent
+    AnswerSavedEvent
+    | EvaluatingEvent
+    | TranscriptEvent
+    | AnswerFeedbackEvent
+    | InterviewCompletedEvent
 )

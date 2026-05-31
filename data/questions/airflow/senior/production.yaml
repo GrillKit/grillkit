@@ -1,0 +1,120 @@
+category: Airflow Production
+track: airflow
+level: senior
+description: Deferrable operators, Kubernetes deployment, and dynamic DAG patterns
+questions:
+- id: aprod-s-001
+  type: knowledge
+  difficulty: 4
+  tags:
+  - airflow
+  - sensors
+  - deferrable
+  - async
+  - triggers
+  question:
+    text:
+      en: What are deferrable operators (or deferrable sensors) in Airflow 2.2+? How do they reduce worker utilization? Explain
+        the Trigger concept, Triggerer component, and the difference between classic poke_interval sensor and deferrable mode.
+        Show an example of a deferrable operator.
+      ru: Что такое отложенные операторы (deferrable operators) в Airflow 2.2+? Как они снижают потребление ресурсов воркеров?
+        Объясните концепцию Trigger, компонент Triggerer и разницу между классическим сенсором с poke_interval и отложенным
+        режимом. Покажите пример отложенного оператора.
+    code: "# Classic sensor (worker sits idle poking)\nwait = FileSensor(\n    task_id='wait_for_file',\n    filepath='/data/file.csv',\n\
+      \    poke_interval=30,\n    timeout=3600,\n    mode='poke'  # default, occupies worker slot\n)\n\n# Deferrable sensor\
+      \ (frees worker)\nwait = FileSensor(\n    task_id='wait_for_file',\n    filepath='/data/file.csv',\n    timeout=3600,\n\
+      \    mode='reschedule'  # older, still consumes DB writes\n)\n\n# True deferrable operator (Airflow 2.2+ with Triggerer)\n\
+      from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor\nwait = S3KeySensor(\n    task_id='wait_for_s3',\n \
+      \   bucket_key='data.csv',\n    deferrable=True  # uses Triggerer\n)\n\n# Custom deferrable operator (simplified)\n\
+      class MyDeferrableSensor(BaseSensorOperator):\n    def execute(self, context):\n        self.defer(trigger=MyTrigger(),\
+      \ method_name=\"execute_complete\")\n"
+  follow_ups:
+    en:
+    - What is the role of the Triggerer process?
+    - How to migrate existing sensors to deferrable mode?
+    ru:
+    - Какова роль процесса Triggerer?
+    - Как мигрировать существующие сенсоры в отложенный режим?
+  expected_points:
+  - Classic sensors (mode='poke') occupy a worker slot even while waiting (inefficient).
+  - mode='reschedule' frees worker but writes to DB on each poke (high DB load).
+  - Deferrable operators (Airflow 2.2+) use Triggers and Triggerer process – lightweight async wait.
+  - Triggerer runs asyncio code, pokes without blocking worker threads.
+  - When condition is met, Triggerer tells scheduler to resume the task.
+  - Many providers have deferrable versions (S3, GCS, SQL sensors).
+  - Reduces worker count needed for many waiting sensors.
+- id: aprod-s-002
+  type: knowledge
+  difficulty: 4
+  tags:
+  - airflow
+  - kubernetes
+  - helm
+  - k8s-executor
+  question:
+    text:
+      en: 'How to deploy Airflow on Kubernetes? Explain the Helm chart (community or official). Describe the pods: scheduler,
+        webserver, workers (Celery), and optional components (Redis, Postgres, Flower). When to use KubernetesExecutor vs
+        CeleryExecutor on K8s? How to manage DAGs with GitSync or persistent volume?'
+      ru: 'Как развернуть Airflow в Kubernetes? Объясните Helm чарт (community или официальный). Опишите поды: scheduler,
+        webserver, workers (Celery) и опциональные компоненты (Redis, Postgres, Flower). Когда использовать KubernetesExecutor
+        вместо CeleryExecutor на K8s? Как управлять DAG с помощью GitSync или persistent volume?'
+    code: "# values.yaml for official Helm chart\nexecutor: CeleryExecutor\n# or executor: KubernetesExecutor\n\n# DAGs persistence\n\
+      dags:\n  persistence:\n    enabled: true\n    size: 10Gi\n  gitSync:\n    enabled: true\n    repo: https://github.com/org/airflow-dags.git\n\
+      \    branch: main\n    syncWait: 60\n\n# Airflow configuration override\nconfig:\n  core:\n    load_examples: False\n\
+      \  scheduler:\n    min_file_process_interval: 30\n\n# KubernetesExecutor pod template\nworkers:\n  kubernetes:\n   \
+      \ pod_template_file: /opt/airflow/pod_templates/pod_template.yaml\n\n# Install\nhelm repo add apache-airflow https://airflow.apache.org\n\
+      helm install airflow apache-airflow/airflow -f values.yaml\n"
+  follow_ups:
+    en:
+    - How to scale scheduler replicas (highly available) in Airflow 2.6+?
+    - What is the difference between official Helm chart and community one?
+    ru:
+    - Как масштабировать реплики планировщика (высокая доступность) в Airflow 2.6+?
+    - В чём разница между официальным Helm чартом и community?
+  expected_points:
+  - Official Helm chart (apache-airflow/airflow) is recommended for production.
+  - 'Components: scheduler (1 or more), webserver, workers (Celery), optional Redis (broker), Postgres (metadata).'
+  - 'KubernetesExecutor: each task in separate pod – maximum isolation, slower startup, better for variable resource needs.'
+  - 'CeleryExecutor on K8s: workers as long-running pods – faster task execution, less overhead, but resource fragmentation.'
+  - 'GitSync: sync DAGs from git repo into the scheduler/worker pods (sidecar container).'
+  - Persistent volume (ReadWriteMany) shared across scheduler and workers – simple but requires RWX storage.
+  - 'HA scheduler: Airflow 2.6+ supports multi-scheduler (active-active).'
+- id: aprod-s-003
+  type: knowledge
+  difficulty: 4
+  tags:
+  - airflow
+  - dynamic-dags
+  - jinja
+  - parametrization
+  question:
+    text:
+      en: 'What are the patterns for dynamic DAG generation in Airflow? Compare static DAGs (many files) vs dynamic generation
+        from a config (JSON/YAML). Explain the risks: scheduler performance and DAG parsing time. How to handle large number
+        of similar DAGs (e.g., per tenant) without overwhelming the scheduler?'
+      ru: 'Какие существуют паттерны динамической генерации DAG в Airflow? Сравните статические DAG (много файлов) с динамической
+        генерацией из конфига (JSON/YAML). Объясните риски: производительность планировщика и время парсинга DAG. Как обрабатывать
+        большое количество похожих DAG (например, на арендатора) без перегрузки планировщика?'
+    code: "# Dynamic DAGs using Python (single file)\ndef create_dag(tenant_name, schedule):\n    with DAG(dag_id=f'{tenant_name}_daily_etl',\
+      \ schedule_interval=schedule) as dag:\n        start = DummyOperator(task_id='start')\n        process = BashOperator(task_id='process',\
+      \ bash_command=f'run_for_tenant {tenant_name}')\n        start >> process\n    return dag\n\ntenants = [{'name': 'acme',\
+      \ 'schedule': '@daily'}, {'name': 'globex', 'schedule': '@hourly'}]\nfor t in tenants:\n    globals()[f'dag_{t[\"name\"\
+      ]}'] = create_dag(t['name'], t['schedule'])\n\n# Better: use Airflow 2.3+ Dynamic DAGs with DAG definition and config\n\
+      # But still caution with many DAGs\n\n# Alternative: single parametrized DAG using Airflow's config\nwith DAG(dag_id='tenant_etl',\
+      \ params={'tenant': 'default'}) as dag:\n    task = BashOperator(task_id='run', bash_command='run_tenant {{ params.tenant\
+      \ }}')\n# Trigger with API: POST /dags/tenant_etl/dagRuns with JSON {\"conf\": {\"tenant\": \"acme\"}}\n"
+  follow_ups:
+    en:
+    - How many DAGs can a scheduler handle (ballpark)?
+    - What is the impact of dynamic DAGs on backfilling?
+    ru:
+    - Сколько DAG может обрабатывать планировщик (приблизительно)?
+    - Как динамические DAG влияют на обратное заполнение?
+  expected_points:
+  - Dynamic generation reduces code duplication but increases scheduler parsing time.
+  - Each DAG file is parsed every min_file_process_interval (default 30s).
+  - Thousands of DAGs can degrade scheduler performance (CPU, DB connections).
+  - 'Alternative: single parametrized DAG with `params` and trigger via API (more scalable).'
+  - Airflow 2.6+ introduced DAG Factory pattern (official) – still experimental.
+  - Use `max_active_runs` per DAG to limit concurrent runs of generated DAGs.

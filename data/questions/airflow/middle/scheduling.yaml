@@ -1,0 +1,78 @@
+category: Airflow Scheduling
+track: airflow
+level: middle
+description: Logical dates, catchup, backfill, and production DAG best practices
+questions:
+- id: asched-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - schedule
+  - backfill
+  - catchup
+  - execution-date
+  question:
+    text:
+      en: How does Airflow scheduling work? Explain logical date (execution_date), start_date, schedule_interval, catchup,
+        and backfill. What is the difference between depends_on_past and wait_for_downstream? How to handle a backfill of
+        historical data without triggering downstream DAGs?
+      ru: Как работает планирование в Airflow? Объясните логическую дату (execution_date), start_date, schedule_interval,
+        catchup и обратное заполнение (backfill). В чём разница между depends_on_past и wait_for_downstream? Как выполнить
+        backfill исторических данных без запуска нижестоящих DAG?
+    code: "# DAG with catchup disabled\nwith DAG('daily_etl',\n         start_date=datetime(2024,1,1),\n         schedule_interval='@daily',\n\
+      \         catchup=False) as dag:\n    ...\n\n# Backfill via CLI\nairflow dags backfill daily_etl --start-date 2024-01-01\
+      \ --end-date 2024-01-10\n\n# depends_on_past: task run waits for previous task run (same DAG, same task, previous execution\
+      \ date)\nPythonOperator(task_id='validate', depends_on_past=True, wait_for_downstream=False, ...)\n\n# wait_for_downstream:\
+      \ waits for all previous task runs within the same execution date's downstream tasks\n"
+  follow_ups:
+    en:
+    - What is the purpose of max_active_runs parameter?
+    - How to set a DAG to run at a specific timezone (e.g., US/Eastern)?
+    ru:
+    - Какова цель параметра max_active_runs?
+    - Как запустить DAG в определённом часовом поясе (например, US/Eastern)?
+  expected_points:
+  - 'execution_date (logical date): not the current time, but the start of the scheduled period.'
+  - 'start_date: timestamp when DAG should start scheduling (fixed).'
+  - 'schedule_interval: cron expression or preset (@daily, @hourly).'
+  - 'catchup: if True, schedules missed DAG runs from start_date to now; if False, only latest.'
+  - 'backfill: manually trigger runs for past dates (CLI or API).'
+  - 'depends_on_past: task instance only runs if previous (same task, previous execution) succeeded.'
+  - 'wait_for_downstream: depends on all downstream tasks of the previous execution (for that DAG run).'
+- id: asched-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - airflow
+  - best-practices
+  - idempotency
+  - top-level-code
+  question:
+    text:
+      en: 'What are Airflow best practices for writing production DAGs? Explain: avoiding top-level code that accesses DB,
+        idempotency, idempotent tasks, using idempotent operators, dynamic DAG generation (using Jinja or Python), and idempotent
+        backfills. Why should tasks be idempotent?'
+      ru: 'Каковы лучшие практики написания продакшен- DAG в Airflow? Объясните: избегание кода верхнего уровня, обращающегося
+        к БД, идемпотентность, использование идемпотентных операторов, динамическая генерация DAG (через Jinja или Python).
+        Почему задачи должны быть идемпотентными?'
+    code: "# BAD: top-level code loading data\nfrom my_db import get_config\nCONFIG = get_config()  # Executed on every scheduler\
+      \ heartbeat\n\n# GOOD: lazy loading inside tasks\n@task\ndef get_config_task():\n    from my_db import get_config\n\
+      \    return get_config()\n\n# Dynamic DAG generation (avoid too many files)\ndef generate_dag(dag_id, schedule):\n \
+      \   with DAG(dag_id, schedule_interval=schedule) as dag:\n        task = BashOperator(task_id='run', bash_command=f'echo\
+      \ {dag_id}')\n    return dag\n\nfor customer in ['cust_a', 'cust_b']:\n    globals()[f'dag_{customer}'] = generate_dag(f'process_{customer}',\
+      \ '@daily')\n"
+  follow_ups:
+    en:
+    - What is the problem with top-level code in DAG files?
+    - How to implement idempotent task patterns (e.g., delete and recreate, upsert)?
+    ru:
+    - В чём проблема кода верхнего уровня в DAG-файлах?
+    - Как реализовать идемпотентные паттерны задач (например, удалить и создать заново, upsert)?
+  expected_points:
+  - Avoid DB/queries at top-level (slows scheduler, may cause deadlocks).
+  - 'Tasks must be idempotent: re-running same task (backfill, retry) should produce same result.'
+  - 'Idempotent patterns: delete+recreate, upsert (merge), check existence before writing.'
+  - Use idempotent operators like S3CopyObjectOperator (overwrite) or BigQueryInsertJobOperator (write_disposition).
+  - 'Dynamic DAGs: generate DAGs from JSON config, but number of DAGs may impact scheduler performance.'
+  - Template variables (Jinja) for runtime values (e.g., {{ ds }}, {{ execution_date }}).

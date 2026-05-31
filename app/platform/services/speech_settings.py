@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.platform.services.config import ProviderConfig
+    from app.platform.services.config import AppConfig
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class QuestionVoiceSettings:
     locale: str
 
 
-def speech_settings_from_config(config: "ProviderConfig") -> SpeechSettings:
+def speech_settings_from_config(config: "AppConfig") -> SpeechSettings:
     """Extract Whisper settings from a provider configuration.
 
     Args:
@@ -53,7 +53,7 @@ def speech_settings_from_config(config: "ProviderConfig") -> SpeechSettings:
 
 
 def question_voice_settings_from_config(
-    config: "ProviderConfig",
+    config: "AppConfig",
 ) -> QuestionVoiceSettings:
     """Extract Piper settings from a provider configuration.
 

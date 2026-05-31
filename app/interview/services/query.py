@@ -5,37 +5,41 @@
 Read-only helpers for loading sessions from the database.
 """
 
-from app.interview.domain.interview import AnswerView, interview_view
-from app.interview.domain.progress import find_first_unanswered
-from app.interview.domain.timer import remaining_seconds
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.shared.domain.exceptions import InterviewNotFoundError
-from app.shared.infrastructure.models import Interview
+from app.interview.schemas.interview import AnswerRead, InterviewRead
+from app.interview.schemas.mappers import interview_read_from_orm
+from app.interview.services.rules.progress import find_first_unanswered
+from app.interview.services.rules.timer import remaining_seconds
+from app.shared.exceptions import InterviewNotFoundError
+from app.shared.infrastructure.models import Answer, Interview
 
 
 class InterviewQuery:
     """Read-only queries and view-model helpers for interview sessions."""
 
     @staticmethod
-    def get_interview(interview_id: str) -> Interview | None:
+    def get_interview(interview_id: str) -> InterviewRead | None:
         """Retrieve an interview session by ID with answers loaded.
 
         Args:
             interview_id: The session UUID.
 
         Returns:
-            Interview with answers loaded, or None if not found.
+            Interview read model with answers loaded, or None if not found.
         """
         with InterviewUnitOfWork() as uow:
-            return uow.interviews.get(interview_id)
+            interview = uow.interviews.get(interview_id)
+            if interview is None:
+                return None
+            return interview_read_from_orm(interview)
 
     @staticmethod
     def get_interview_or_raise(
         interview_id: str,
         *,
         uow: InterviewUnitOfWork | None = None,
-    ) -> Interview:
-        """Load an interview or raise ``InterviewNotFoundError``.
+    ) -> InterviewRead:
+        """Load an interview read model or raise ``InterviewNotFoundError``.
 
         When ``uow`` is provided, loads from that unit of work (same DB session).
         Otherwise opens a short-lived read-only ``InterviewUnitOfWork``.
@@ -45,16 +49,35 @@ class InterviewQuery:
             uow: Optional active unit of work for transactional loads.
 
         Returns:
-            Interview with answers loaded.
+            Interview read model with answers loaded.
 
         Raises:
             InterviewNotFoundError: If the interview does not exist.
         """
         if uow is not None:
-            interview = uow.interviews.get(interview_id)
-        else:
-            with InterviewUnitOfWork() as uow:
-                interview = uow.interviews.get(interview_id)
+            interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            return interview_read_from_orm(interview)
+        with InterviewUnitOfWork() as read_uow:
+            loaded = read_uow.interviews.get(interview_id)
+            if loaded is None:
+                raise InterviewNotFoundError(interview_id)
+            return interview_read_from_orm(loaded)
+
+    @staticmethod
+    def get_orm_or_raise(interview_id: str, *, uow: InterviewUnitOfWork) -> Interview:
+        """Load an ORM interview row within an active unit of work.
+
+        Args:
+            interview_id: The session UUID.
+            uow: Active unit of work.
+
+        Returns:
+            Interview ORM row with answers loaded.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+        """
+        interview = uow.interviews.get(interview_id)
         if not interview:
             raise InterviewNotFoundError(interview_id)
         return interview
@@ -64,34 +87,33 @@ class InterviewQuery:
         """Start the timer on the current unanswered round when the page loads.
 
         Args:
-            interview_id: The session UUID.
+            interview_id: The interview_dto UUID.
         """
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            interview = InterviewQuery.get_interview_or_raise(interview_id, uow=uow)
-            if not interview.question_time_limit_seconds:
+            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
+            if not interview_orm.question_time_limit_seconds:
                 return
-            session = interview_view(interview)
-            current = find_first_unanswered(session)
+            interview_dto = interview_read_from_orm(interview_orm)
+            current = find_first_unanswered(interview_dto)
             if current is not None:
                 db_answer = next(
                     a
-                    for a in interview.answers
+                    for a in interview_orm.answers
                     if a.question_id == current.question_id and a.round == current.round
                 )
                 uow.answers.mark_started(db_answer)
 
     @staticmethod
-    def timer_remaining_for_interview(interview: Interview) -> int | None:
+    def timer_remaining_for_interview(interview: InterviewRead) -> int | None:
         """Return seconds left on the current round timer for templates.
 
         Args:
-            interview: Interview with answers loaded.
+            interview: Interview read model with answers loaded.
 
         Returns:
             Remaining seconds, or None when the timer is disabled.
         """
-        session = interview_view(interview)
-        current = find_first_unanswered(session)
+        current = find_first_unanswered(interview)
         if current is None:
             return None
         return remaining_seconds(
@@ -100,13 +122,39 @@ class InterviewQuery:
         )
 
     @staticmethod
-    def get_current_unanswered(interview: Interview) -> AnswerView | None:
+    def get_current_unanswered(interview: InterviewRead) -> AnswerRead | None:
         """Return the first unanswered answer in display order.
 
         Args:
-            interview: Interview with eager-loaded answers.
+            interview: Interview read model with answers.
 
         Returns:
-            The first unanswered answer view, or None.
+            The first unanswered answer read model, or None.
         """
-        return find_first_unanswered(interview_view(interview))
+        return find_first_unanswered(interview)
+
+    @staticmethod
+    def find_orm_answer(
+        interview_orm: Interview,
+        *,
+        question_id: str,
+        round_num: int,
+    ) -> Answer:
+        """Locate an answer ORM row on a loaded interview.
+
+        Args:
+            interview_orm: Interview with eager-loaded answers.
+            question_id: YAML question ID.
+            round_num: Follow-up round number.
+
+        Returns:
+            Matching Answer ORM instance.
+
+        Raises:
+            StopIteration: If no matching row exists (caller should handle).
+        """
+        return next(
+            a
+            for a in interview_orm.answers
+            if a.question_id == question_id and a.round == round_num
+        )

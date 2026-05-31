@@ -11,7 +11,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from alembic import command
-from app.shared.infrastructure.database import ALEMBIC_INI, Base
+from app.paths import ALEMBIC_INI
+from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
 
 

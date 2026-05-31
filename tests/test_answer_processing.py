@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for answer processing with a deterministic fake AI provider."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 import json
 
 import pytest
 
-from app.interview.domain.timer import TIME_EXPIRED_ANSWER_TEXT
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_processing import AnswerProcessingService
@@ -17,7 +17,8 @@ from app.interview.services.events import (
     EvaluatingEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.shared.domain.exceptions import InterviewNotActiveError
+from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
+from app.shared.exceptions import InterviewNotActiveError
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
 from tests.helpers.selection import minimal_selection_spec
@@ -212,6 +213,102 @@ async def test_process_follow_up_answer_without_another_follow_up(
     )
     assert follow_up.answer_text == "Follow-up answer text."
     assert follow_up.score == 4
+
+
+@pytest.mark.asyncio
+async def test_last_follow_up_advances_immediately_and_evaluates_in_background(
+    isolated_db, fake_ai_provider
+):
+    """The last follow-up round advances without waiting for AI evaluation."""
+    interview_id = "ap-test-last-follow-up"
+    with InterviewUnitOfWork(auto_commit=True) as uow:
+        interview = Interview(
+            id=interview_id,
+            locale="en",
+            selection_spec=minimal_selection_spec(categories=["basics"]),
+            question_count=2,
+            question_ids=json.dumps(["q1", "q2"]),
+            status="active",
+        )
+        uow.interviews.add(interview)
+        initial = Answer(
+            interview_id=interview_id,
+            question_id="q1",
+            order=1,
+            round=0,
+            question_text="Original question?",
+        )
+        initial.answer_text = "First answer"
+        initial.score = 3
+        initial.feedback = "OK"
+        uow.answers.add(initial)
+        first_follow_up = Answer(
+            interview_id=interview_id,
+            question_id="q1",
+            order=1,
+            round=1,
+            question_text="First follow-up?",
+        )
+        first_follow_up.answer_text = "First follow-up answer"
+        first_follow_up.score = 3
+        first_follow_up.feedback = "OK"
+        uow.answers.add(first_follow_up)
+        uow.answers.add(
+            Answer(
+                interview_id=interview_id,
+                question_id="q1",
+                order=1,
+                round=2,
+                question_text="Second follow-up?",
+            )
+        )
+        uow.answers.add(
+            Answer(
+                interview_id=interview_id,
+                question_id="q2",
+                order=2,
+                round=0,
+                question_text="Question two?",
+            )
+        )
+
+    provider = fake_ai_provider(
+        [follow_up_evaluation_json(score=4, needs_further_follow_up=False)]
+    )
+
+    events = await AnswerProcessingService.process_answer_submission(
+        interview_id=interview_id,
+        question_id="q1",
+        answer_text="Second follow-up answer.",
+        provider=provider,
+    )
+
+    assert len(events) == 2
+    assert isinstance(events[0], AnswerSavedEvent)
+    feedback = events[1]
+    assert isinstance(feedback, AnswerFeedbackEvent)
+    assert not any(isinstance(event, EvaluatingEvent) for event in events)
+    assert feedback.round == 2
+    assert feedback.next_question is not None
+    assert feedback.next_question["question_id"] == "q2"
+
+    reloaded = InterviewQuery.get_interview(interview_id)
+    assert reloaded is not None
+    last_follow_up = next(
+        a for a in reloaded.answers if a.question_id == "q1" and a.round == 2
+    )
+    assert last_follow_up.answer_text == "Second follow-up answer."
+    assert last_follow_up.score is None
+
+    await asyncio.sleep(0.05)
+
+    reloaded = InterviewQuery.get_interview(interview_id)
+    assert reloaded is not None
+    last_follow_up = next(
+        a for a in reloaded.answers if a.question_id == "q1" and a.round == 2
+    )
+    assert last_follow_up.score == 4
+    assert last_follow_up.feedback is not None
 
 
 @pytest.mark.asyncio

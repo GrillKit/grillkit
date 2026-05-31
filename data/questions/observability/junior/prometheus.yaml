@@ -1,0 +1,96 @@
+category: Prometheus Fundamentals
+track: observability
+level: junior
+description: Prometheus architecture, pull model, and metric types
+questions:
+- id: oprom-j-001
+  type: knowledge
+  difficulty: 2
+  tags:
+  - prometheus
+  - metrics
+  - pull-model
+  - tsdb
+  question:
+    text:
+      en: Explain the Prometheus architecture. How does the pull model work? What components (Prometheus server, TSDB, exporters,
+        Pushgateway, Alertmanager) exist and what are their roles?
+      ru: Объясните архитектуру Prometheus. Как работает pull-модель? Какие компоненты существуют (сервер Prometheus, TSDB,
+        экспортеры, Pushgateway, Alertmanager) и какова их роль?
+    code: "# Prometheus configuration (prometheus.yml) scraping itself\nscrape_configs:\n  - job_name: 'prometheus'\n    static_configs:\n\
+      \      - targets: ['localhost:9090']\n\n# Pushgateway example (for short-lived jobs)\necho \"some_metric 42\" | curl\
+      \ --data-binary @- http://pushgateway:9091/metrics/job/my_job\n"
+  follow_ups:
+    en:
+    - Why does Prometheus use pull instead of push?
+    - What are the tradeoffs of the pull model?
+    ru:
+    - Почему Prometheus использует pull вместо push?
+    - Каковы компромиссы pull-модели?
+  expected_points:
+  - Prometheus server scrapes metrics from targets via HTTP (pull model).
+  - TSDB stores time-series data with labels (efficient compression).
+  - Exporters expose metrics for third-party systems (node_exporter, blackbox_exporter).
+  - Pushgateway allows ephemeral jobs to push metrics (avoid missing short-lived data).
+  - Alertmanager handles deduplication, grouping, and routing of alerts.
+  - Pull model simplifies discovery and reduces configuration drift.
+- id: oprom-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - prometheus
+  - metrics
+  - counter
+  - gauge
+  - histogram
+  - summary
+  question:
+    text:
+      en: What metric types does Prometheus support? Explain Counter, Gauge, Histogram, Summary. How to choose between Histogram
+        and Summary? Provide example metrics with _total, _bucket suffixes.
+      ru: Какие типы метрик поддерживает Prometheus? Объясните Counter, Gauge, Histogram, Summary. Как выбрать между Histogram
+        и Summary? Приведите примеры метрик с суффиксами _total, _bucket.
+    code: '# Counter (only increases, use rate())
+
+      http_requests_total{method="GET", status="200"} 12345
+
+
+      # Gauge (goes up and down)
+
+      cpu_temperature_celsius 36.5
+
+
+      # Histogram (observations in buckets, +_sum, +_count)
+
+      http_request_duration_seconds_bucket{le="0.1"} 100
+
+      http_request_duration_seconds_bucket{le="0.5"} 250
+
+      http_request_duration_seconds_sum 125.3
+
+      http_request_duration_seconds_count 300
+
+
+      # Summary (quantiles client-side)
+
+      rpc_duration_seconds{quantile="0.9"} 0.23
+
+      rpc_duration_seconds_sum 7.8
+
+      rpc_duration_seconds_count 100
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between Histogram and Summary quantiles?
+    - How to calculate 95th percentile from histogram?
+    ru:
+    - В чём разница между квантилями Histogram и Summary?
+    - Как вычислить 95-й перцентиль из гистограммы?
+  expected_points:
+  - 'Counter: cumulative value that only increases (request count, errors).'
+  - 'Gauge: arbitrary values (temperature, memory usage).'
+  - 'Histogram: buckets + sum + count; quantiles calculated server-side (prometheus).'
+  - 'Summary: client-side quantiles (no buckets), but less flexible for aggregation.'
+  - Use Histogram when you need aggregatable percentiles across multiple instances.
+  - Use Summary when you know quantiles in advance and need low overhead.

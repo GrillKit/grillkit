@@ -1,0 +1,142 @@
+category: Loki Operations
+track: observability
+level: middle
+description: LogQL, multitenancy, and Promtail pipelines
+questions:
+- id: oloki-m-001
+  type: knowledge
+  difficulty: 3
+  tags:
+  - loki
+  - logql
+  - queries
+  - filtering
+  question:
+    text:
+      en: 'Write LogQL queries for: (a) filter all logs with ''error'' in the message, (b) show error count per minute, (c)
+        parse JSON log and extract a field, (d) calculate rate of error logs over 5 minutes. Explain line filters (=, !=,
+        =~, !~) and label matchers.'
+      ru: 'Напишите LogQL запросы: (a) отфильтровать все логи с ''error'' в сообщении, (b) показать количество ошибок в минуту,
+        (c) распарсить JSON лог и извлечь поле, (d) рассчитать rate ошибок за 5 минут. Объясните фильтры строк (=, !=, =~,
+        !~) и сопоставители меток.'
+    code: '# (a) simple filter
+
+      {job="app"} |= "error"
+
+
+      # (b) count of error logs per minute
+
+      sum(count_over_time({job="app"} |= "error" [1m]))
+
+
+      # (c) parse JSON and extract status field
+
+      {job="app"} | json | line_format "Status: {{.status}}"
+
+
+      # (d) rate of error logs per second
+
+      rate({job="app"} |= "error" [5m])
+
+
+      # Line filters
+
+      {app="myapp"} != "debug"               # exclude debug
+
+      {app="myapp"} =~ "(?i)error|fatal"     # regex case-insensitive
+
+      {app="myapp"} !~ "INFO.*user"          # negative regex
+
+
+      # Label matchers
+
+      {namespace="prod", app=~"web-.*"}       # regex on label
+
+      '
+  follow_ups:
+    en:
+    - What is the difference between |= and |~?
+    - How to join two log streams?
+    ru:
+    - В чём разница между |= и |~?
+    - Как объединить два потока логов?
+  expected_points:
+  - LogQL uses label matchers first (indexed), then line filters.
+  - '|= substring match, != negative substring, =~ regex match, !~ negative regex.'
+  - 'Parsing operators: |json, |logfmt, |regexp, |unpack.'
+  - 'Aggregation functions: count_over_time, rate, sum, avg, max, etc.'
+  - Rate() calculates per-second average (useful for alerting).
+  - LogQL v2 supports grouping and range vectors.
+- id: oloki-m-002
+  type: knowledge
+  difficulty: 3
+  tags:
+  - loki
+  - multitenant
+  - auth
+  - grafana
+  question:
+    text:
+      en: How does Loki multitenancy work? How to configure tenant separation via X-Scope-OrgID header? How to set up Grafana
+        to send logs to a specific tenant (using custom HTTP headers)? Explain how to query across tenants (as admin).
+      ru: Как работает мультитенантность в Loki? Как настроить разделение тенантов через заголовок X-Scope-OrgID? Как настроить
+        Grafana для отправки логов в конкретный тенант (через пользовательские HTTP заголовки)? Объясните, как выполнять запросы
+        между тенантами (как администратор).
+    code: "# Loki auth config (enable multitenancy)\nauth_enabled: true\n\n# Promtail config with tenant ID\nclients:\n  -\
+      \ url: http://loki:3100/loki/api/v1/push\n    tenant_id: \"tenant-1\"\n\n# Grafana data source configuration (HTTP headers)\n\
+      # Custom HTTP Headers: X-Scope-OrgID = tenant-1\n\n# Admin query across all tenants (requires auth)\n# Not supported\
+      \ in default Loki; use query frontend with special flag or Loki microservices mode\n# In Loki's distributor, you can\
+      \ skip tenant labeling for internal queries.\n"
+  follow_ups:
+    en:
+    - How to use nginx sidecar for dynamic tenant extraction?
+    - What is the default tenant when auth_enabled=false?
+    ru:
+    - Как использовать nginx sidecar для динамического извлечения тенанта?
+    - Какой тенант используется по умолчанию, когда auth_enabled=false?
+  expected_points:
+  - Multitenancy isolates logs by tenant ID (X-Scope-OrgID header).
+  - When auth_enabled=true, Loki rejects requests without tenant ID.
+  - Promtail can be configured with tenant_id per client.
+  - 'Grafana data source: add custom header X-Scope-OrgID for each tenant.'
+  - 'Default tenant (auth_enabled=false): anonymous tenant ''fake'' or empty string.'
+  - Cross-tenant querying not officially supported (use Thanos or multi-tenant query proxy).
+- id: oloki-m-003
+  type: knowledge
+  difficulty: 3
+  tags:
+  - loki
+  - promtail
+  - pipeline
+  - log-processing
+  question:
+    text:
+      en: 'How to use Promtail pipeline stages? Explain docker_sd, file_targets, and stages: docker, regex, json, template,
+        labels, output, timestamp, replace. Show an example of extracting level and module from a log line and adding them
+        as labels.'
+      ru: 'Как использовать конвейерные этапы Promtail? Объясните docker_sd, file_targets и этапы: docker, regex, json, template,
+        labels, output, timestamp, replace. Покажите пример извлечения level и module из строки лога и добавления их как меток.'
+    code: "# Promtail config with pipeline\nscrape_configs:\n  - job_name: app-logs\n    file_sd_configs:\n      - files:\
+      \ [\"/var/log/*.log\"]\n    pipeline_stages:\n      - regex:\n          expression: 'level=(?P<level>\\w+) module=(?P<module>\\\
+      w+)'\n      - labels:\n          level: \"\"\n          module: \"\"\n      - json:\n          expressions: {time: timestamp,\
+      \ msg: message}\n      - timestamp:\n          source: time\n          format: RFC3339\n      - output:\n          source:\
+      \ msg\n\n# Docker service discovery (logs from containers)\n  - job_name: docker\n    docker_sd_configs:\n      - host:\
+      \ unix:///var/run/docker.sock\n    relabel_configs:\n      - source_labels: [__meta_docker_container_name]\n       \
+      \ target_label: container\n"
+  follow_ups:
+    en:
+    - How to drop logs or filter at pipeline level?
+    - What is the purpose of template stage?
+    ru:
+    - Как отбросить логи или отфильтровать на уровне конвейера?
+    - Какова цель этапа template?
+  expected_points:
+  - Promtail pipelines process logs before sending to Loki (stage list).
+  - 'docker_sd: discovers containers on Docker host (requires socket access).'
+  - 'Regex stage: extracts fields from log line.'
+  - 'JSON stage: parses JSON logs.'
+  - 'Labels stage: adds extracted fields as Loki labels.'
+  - 'Output stage: sets the final log line (may drop original content).'
+  - 'Timestamp stage: overrides timestamp from log.'
+  - 'Template stage: modifies fields with Go templates.'
+  - 'Replace stage: regex substitution (e.g., hide passwords).'

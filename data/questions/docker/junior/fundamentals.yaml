@@ -1,0 +1,158 @@
+category: Docker Fundamentals
+track: docker
+level: junior
+description: Containers, images, Dockerfile basics, and persistent storage
+questions:
+- id: dfund-j-001
+  type: knowledge
+  difficulty: 1
+  tags:
+  - docker
+  - containers
+  - images
+  - virtualization
+  question:
+    text:
+      en: What is Docker? How does a container differ from a virtual machine (VM)? Explain the concept of images, containers,
+        and registries (Docker Hub).
+      ru: Что такое Docker? Чем контейнер отличается от виртуальной машины (ВМ)? Объясните концепции образов, контейнеров
+        и регистри (Docker Hub).
+    code: '# Build image from Dockerfile
+
+      docker build -t myapp:latest .
+
+
+      # Run container
+
+      docker run -d -p 80:80 --name myapp myapp:latest
+
+
+      # Push to registry
+
+      docker tag myapp:latest myuser/myapp:v1
+
+      docker push myuser/myapp:v1
+
+      '
+  follow_ups:
+    en:
+    - What are the main namespaces and cgroups used by Docker?
+    - When to use Docker instead of a full VM?
+    ru:
+    - Какие основные пространства имён и cgroups использует Docker?
+    - Когда использовать Docker вместо полноценной ВМ?
+  expected_points:
+  - Docker is a containerization platform that packages applications with dependencies.
+  - Containers share the host OS kernel, VMs run a full guest OS (heavier).
+  - 'Image: read-only template (layers) with application and dependencies.'
+  - 'Container: runnable instance of an image (isolated process).'
+  - 'Registry: stores images (Docker Hub, private registries).'
+  - Namespaces (pid, net, mnt, uts, ipc, user) provide isolation.
+  - cgroups limit resource usage (CPU, memory, disk I/O).
+- id: dfund-j-002
+  type: knowledge
+  difficulty: 2
+  tags:
+  - docker
+  - dockerfile
+  - layers
+  - best-practices
+  question:
+    text:
+      en: 'Explain key instructions in a Dockerfile: FROM, RUN, COPY, ADD, CMD, ENTRYPOINT, EXPOSE, ENV, WORKDIR. What is
+        the difference between CMD and ENTRYPOINT? Show a multi-stage build example.'
+      ru: 'Объясните ключевые инструкции Dockerfile: FROM, RUN, COPY, ADD, CMD, ENTRYPOINT, EXPOSE, ENV, WORKDIR. В чём разница
+        между CMD и ENTRYPOINT? Приведите пример многоступенчатой сборки.'
+    code: '# Multi-stage build example
+
+      FROM golang:1.20 AS builder
+
+      WORKDIR /app
+
+      COPY . .
+
+      RUN go build -o myapp .
+
+
+      FROM alpine:latest
+
+      WORKDIR /root/
+
+      COPY --from=builder /app/myapp .
+
+      CMD ["./myapp"]
+
+
+      # Difference: ENTRYPOINT defines executable, CMD provides defaults
+
+      ENTRYPOINT ["python"]
+
+      CMD ["app.py"]   # user can override CMD, but ENTRYPOINT stays
+
+      '
+  follow_ups:
+    en:
+    - Why is COPY preferred over ADD in most cases?
+    - What is a Docker layer cache and how to optimize it?
+    ru:
+    - Почему COPY предпочтительнее ADD в большинстве случаев?
+    - Что такое кэш слоёв Docker и как его оптимизировать?
+  expected_points:
+  - 'FROM: base image. RUN: execute commands during build (creates layers).'
+  - COPY copies files from host; ADD also supports URLs and automatic tar extraction (use COPY unless needed).
+  - 'CMD: provides defaults for the container (can be overridden).'
+  - 'ENTRYPOINT: command that always runs (makes container an executable).'
+  - EXPOSE documents ports (does not publish). ENV sets environment variables.
+  - WORKDIR sets working directory for subsequent instructions.
+  - Multi-stage builds reduce final image size by discarding build tools.
+  - 'Layer cache: order instructions from least to most frequently changed.'
+- id: dfund-j-003
+  type: knowledge
+  difficulty: 2
+  tags:
+  - docker
+  - volumes
+  - bind-mounts
+  - persistence
+  question:
+    text:
+      en: How does Docker handle persistent data? Compare volumes, bind mounts, and tmpfs mounts. Explain volume lifecycle
+        (creation, backup, removal). When to use named volumes vs bind mounts?
+      ru: Как Docker работает с постоянными данными? Сравните тома (volumes), bind-монтирования и tmpfs-монтирования. Объясните
+        жизненный цикл тома (создание, резервное копирование, удаление). Когда использовать именованные тома вместо bind-монтирований?
+    code: '# Named volume
+
+      docker volume create mydata
+
+      docker run -v mydata:/data myapp
+
+
+      # Bind mount (host directory)
+
+      docker run -v /host/path:/container/path myapp
+
+
+      # tmpfs (in-memory, not persisted)
+
+      docker run --tmpfs /tmp myapp
+
+
+      # Backup volume
+
+      docker run --rm -v mydata:/source -v $(pwd):/backup alpine cp -a /source /backup
+
+      '
+  follow_ups:
+    en:
+    - How to share volumes between containers?
+    - What permissions issues can arise with bind mounts?
+    ru:
+    - Как разделить тома между контейнерами?
+    - Какие проблемы с правами могут возникнуть при bind-монтировании?
+  expected_points:
+  - Volumes are managed by Docker (stored in /var/lib/docker/volumes) – preferred for production.
+  - 'Bind mounts: any host directory (bypasses Docker management, dependent on host filesystem).'
+  - 'tmpfs: in-memory, ephemeral (for sensitive or temporary data).'
+  - 'Named volumes: easy to backup, share, and manage lifecycle.'
+  - Bind mounts are good for development (live code reload).
+  - Volume drivers allow remote storage (NFS, cloud).

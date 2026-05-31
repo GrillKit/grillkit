@@ -5,7 +5,7 @@
 from pathlib import Path
 
 from app.paths import PIPER_VOICES_ROOT
-from app.question_voice.domain.voices import normalize_tts_voice_id
+from app.question_voice.services.rules.voices import normalize_tts_voice_id
 
 
 def voice_dir(voice_id: str) -> Path:

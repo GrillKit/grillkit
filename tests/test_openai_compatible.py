@@ -248,6 +248,56 @@ class TestOpenAICompatibleProvider:
                 pass
 
     @pytest.mark.asyncio
+    async def test_generate_with_audio_success(self, mock_openai_client):
+        """Test successful multimodal generation with attached WAV."""
+        mock_client, mock_instance = mock_openai_client
+        provider = OpenAICompatibleProvider(
+            model="test-model", base_url="http://localhost"
+        )
+
+        mock_chat_completion = ChatCompletion(
+            id="chatcmpl-audio",
+            choices=[
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": ChatCompletionMessage(
+                        content='{"score":4,"feedback":"ok","follow_up_needed":false}',
+                        role="assistant",
+                    ),
+                    "logprobs": None,
+                }
+            ],
+            created=1678886400,
+            model="test-model",
+            object="chat.completion",
+            usage=CompletionUsage(completion_tokens=3, prompt_tokens=2, total_tokens=5),
+        )
+        mock_instance.chat.completions.create.return_value = mock_chat_completion
+
+        from app.ai.audio_probe import minimal_wav_bytes
+
+        messages = [Message(role="system", content="Evaluate the answer.")]
+        result = await provider.generate_with_audio(
+            messages=messages,
+            audio_wav=minimal_wav_bytes(),
+            user_text="Question:\nWhat is Python?",
+            temperature=0.3,
+            max_tokens=1000,
+        )
+
+        call_kwargs = mock_instance.chat.completions.create.call_args.kwargs
+        assert call_kwargs["model"] == "test-model"
+        assert call_kwargs["temperature"] == 0.3
+        assert call_kwargs["max_tokens"] == 1000
+        user_message = call_kwargs["messages"][-1]
+        assert user_message["role"] == "user"
+        assert isinstance(user_message["content"], list)
+        assert user_message["content"][0]["type"] == "text"
+        assert user_message["content"][1]["type"] == "input_audio"
+        assert result.content.startswith('{"score":4')
+
+    @pytest.mark.asyncio
     async def test_validate_success(self, mock_openai_client):
         """Test successful API key validation."""
         mock_client, mock_instance = mock_openai_client

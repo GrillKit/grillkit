@@ -93,6 +93,11 @@ class FakeProvider(AIProvider):
         """Always report a valid connection."""
         return True
 
+    async def probe_audio_input(self, audio_wav: bytes) -> bool:
+        """Report audio probe success for tests."""
+        _ = audio_wav
+        return True
+
     async def generate(
         self,
         messages: list[Message],
@@ -113,6 +118,35 @@ class FakeProvider(AIProvider):
             ValueError: If the reply queue is empty.
         """
         del messages, temperature, max_tokens
+        if not self._replies:
+            raise ValueError("FakeProvider has no more queued replies")
+        return GenerationResult(content=self._replies.pop(0))
+
+    async def generate_with_audio(
+        self,
+        messages: list[Message],
+        audio_wav: bytes,
+        *,
+        user_text: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ) -> GenerationResult:
+        """Return the next queued reply for audio evaluation tests.
+
+        Args:
+            messages: Conversation messages (ignored).
+            audio_wav: Audio payload (ignored).
+            user_text: User prompt text (ignored).
+            temperature: Sampling temperature (ignored).
+            max_tokens: Token limit (ignored).
+
+        Returns:
+            Generation result with queued content.
+
+        Raises:
+            ValueError: If the reply queue is empty.
+        """
+        del messages, audio_wav, user_text, temperature, max_tokens
         if not self._replies:
             raise ValueError("FakeProvider has no more queued replies")
         return GenerationResult(content=self._replies.pop(0))

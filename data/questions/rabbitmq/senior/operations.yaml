@@ -1,0 +1,58 @@
+category: RabbitMQ Operations
+track: rabbitmq
+level: senior
+description: Performance tuning, flow control, and production monitoring
+questions:
+- id: rops-s-001
+  type: knowledge
+  difficulty: 4
+  tags:
+  - rabbitmq
+  - performance
+  - flow-control
+  - memory
+  question:
+    text:
+      en: How to tune RabbitMQ for high throughput? Explain flow control (credit-based), memory alarms, disk free limit, prefetch
+        and batch get, TCP settings, and lazy queues vs in-memory.
+      ru: Как настроить RabbitMQ для высокой пропускной способности? Объясните контроль потока (credit-based), сигналы памяти,
+        лимит свободного места на диске, prefetch и batch get, настройки TCP, а также ленивые очереди против in-memory.
+    code: '# rabbitmq.conf
+
+      vm_memory_high_watermark.absolute = 2GB
+
+      vm_memory_high_watermark_paging_ratio = 0.8
+
+      disk_free_limit.absolute = 2GB
+
+
+      # Increase file descriptors limit (ulimit -n 65536)
+
+      # Use heartbeat to detect dead connections
+
+
+      # Client-side: use publisher confirms asynchronously, set prefetch=100-1000 (not 1)
+
+      channel.basic_qos(prefetch_count=100)
+
+
+      # For streaming: use basic.get with multiple messages (not recommended, use consume)
+
+      '
+  follow_ups:
+    en:
+    - What is the impact of persistent messages on performance?
+    - How to avoid the 'channel leak' problem?
+    - What metrics to watch in management UI?
+    ru:
+    - Как влияют персистентные сообщения на производительность?
+    - Как избежать проблемы утечки каналов?
+    - Какие метрики отслеживать в управляющем интерфейсе?
+  expected_points:
+  - 'Flow control: slow consumer slows producer (credit-based backpressure)'
+  - 'Memory alarm: when memory exceeds threshold, publishes are blocked'
+  - 'Disk free limit: blocks publishes when disk space is exhausted'
+  - 'Prefetch: improves throughput by reducing per-message RTT'
+  - Lazy queues save RAM but use more disk I/O
+  - 'Persistent messages: fsync reduces throughput (can disable for tests)'
+  - 'Monitoring: ready/unacked messages, publish/confirm rates, file descriptors, GC, Erlang processes'

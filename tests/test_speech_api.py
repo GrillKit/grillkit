@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.platform.services.config import ProviderConfig
+from app.platform.services.config import AppConfig
 from app.speech.services.whisper_model import WhisperModelService
 from app.speech.services.whisper_runtime import WhisperRuntime
 
@@ -35,7 +35,7 @@ class TestSpeechModelApi:
 
     def test_status_json_missing_model(self, client):
         """Status reports missing when no model is on disk."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",
@@ -60,7 +60,7 @@ class TestSpeechModelApi:
 
     def test_download_schedules_work(self, client):
         """Download endpoint returns downloading state for HTML clients."""
-        mock_config = ProviderConfig(
+        mock_config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
             model="gpt-4",

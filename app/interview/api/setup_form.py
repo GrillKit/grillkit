@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Setup form template context helpers."""
 
-from app.interview.domain.selection import track_label
+from app.interview.services.rules.selection import track_label
 from app.questions import list_categories, list_levels, list_tracks
-from app.shared.domain.locales import SUPPORTED_LOCALES, normalize_locale
+from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
 
 
 def setup_form_context(

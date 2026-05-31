@@ -5,7 +5,7 @@
 from pathlib import Path
 
 from app.paths import WHISPER_MODELS_ROOT
-from app.speech.domain.models import normalize_speech_model_size
+from app.speech.services.rules.speech_models import normalize_speech_model_size
 
 
 def model_dir(size: str) -> Path:

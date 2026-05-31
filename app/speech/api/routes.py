@@ -8,32 +8,10 @@ from fastapi.responses import JSONResponse, Response
 from app.platform.api.deps import ConfigServiceDep
 from app.shared.api.negotiated_response import negotiated_response
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.domain.models import SPEECH_MODEL_BY_SIZE
-from app.speech.services.whisper_model import WhisperModelStatus
+from app.speech.schemas.options import SpeechModelOptionRead
+from app.speech.services.rules.speech_models import SPEECH_MODEL_BY_SIZE
 
 router = APIRouter(prefix="/speech", tags=["speech"])
-
-
-def _status_response(
-    request: Request,
-    status: WhisperModelStatus,
-) -> Response:
-    """Return HTML fragment or JSON depending on the Accept header."""
-    return negotiated_response(
-        request,
-        {
-            "size": status.size,
-            "locale": status.locale,
-            "locale_label": status.locale_label,
-            "state": status.state,
-            "percent": status.percent,
-            "message": status.message,
-            "model_display_name": status.model_display_name,
-            "loaded_in_memory": status.loaded_in_memory,
-        },
-        "speech_model_status.html",
-        {"status": status},
-    )
 
 
 @router.get("/model/status")
@@ -61,7 +39,12 @@ async def speech_model_status(
         config.speech_model_size,
         config.locale,
     )
-    return _status_response(request, status)
+    return negotiated_response(
+        request,
+        status.model_dump(),
+        "speech_model_status.html",
+        {"status": status},
+    )
 
 
 @router.post("/model/download")
@@ -89,7 +72,12 @@ async def speech_model_download(
         config.speech_model_size,
         config.locale,
     )
-    return _status_response(request, status)
+    return negotiated_response(
+        request,
+        status.model_dump(),
+        "speech_model_status.html",
+        {"status": status},
+    )
 
 
 @router.get("/model/options")
@@ -100,14 +88,14 @@ async def speech_model_options() -> JSONResponse:
         JSON list of size options with download and performance hints.
     """
     options = [
-        {
-            "size": spec.size,
-            "display_name": spec.display_name,
-            "approx_download_mb": spec.approx_download_mb,
-            "ram_hint": spec.ram_hint,
-            "speed_hint": spec.speed_hint,
-            "quality_hint": spec.quality_hint,
-        }
+        SpeechModelOptionRead(
+            size=spec.size,
+            display_name=spec.display_name,
+            approx_download_mb=spec.approx_download_mb,
+            ram_hint=spec.ram_hint,
+            speed_hint=spec.speed_hint,
+            quality_hint=spec.quality_hint,
+        ).model_dump()
         for spec in SPEECH_MODEL_BY_SIZE.values()
     ]
     return JSONResponse({"options": options})

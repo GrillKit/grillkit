@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Load question banks and build interview question plans."""
 
-from app.interview.domain.selection import (
+from app.interview.services.rules.selection import (
     InterviewSelection,
     TrackQuestionPools,
     plan_questions,
@@ -16,7 +16,7 @@ from app.questions import (
     load_categories,
     load_category,
 )
-from app.shared.domain.locales import normalize_locale
+from app.shared.locales import normalize_locale
 
 
 def validate_selection(selection: InterviewSelection) -> None:
