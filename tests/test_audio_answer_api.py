@@ -188,13 +188,14 @@ class TestAudioAnswerApi:
         assert "audio input" in response.json()["detail"].lower()
 
     def test_audio_answer_rejects_when_whisper_unavailable(
-        self, client, isolated_db, monkeypatch
+        self, client, isolated_db, override_ws_ai_provider, monkeypatch
     ):
         """HTTP 503 when Whisper is not loaded on the application."""
         monkeypatch.setattr(
             "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
+        override_ws_ai_provider(client, [])
         interview_id = _seed_two_question_interview("audio-api-no-whisper")
         client.app.state.speech_transcriber = None
         wav_bytes = minimal_wav_bytes()
