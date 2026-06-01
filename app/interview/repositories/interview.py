@@ -6,15 +6,16 @@ Provides data access for ``Interview`` records, including
 eager-loading of related answers and lookups by ID.
 """
 
-from datetime import UTC, datetime
-
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.mappers import (
+    domain_answer_to_orm,
     interview_from_orm,
+    interview_to_orm,
     interview_to_orm_fields,
 )
 from app.shared.infrastructure.models import Interview
@@ -68,6 +69,24 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             return None
         return interview_from_orm(orm_interview)
 
+    def create_aggregate(self, interview: DomainInterview) -> DomainInterview:
+        """Insert a new interview aggregate and return it with assigned answer IDs.
+
+        Args:
+            interview: Domain aggregate from ``Interview.start``.
+
+        Returns:
+            Reloaded domain aggregate after flush.
+        """
+        orm_interview = interview_to_orm(interview)
+        self._session.add(orm_interview)
+        self._session.flush()
+        self._session.refresh(orm_interview)
+        reloaded = self.get(interview.id)
+        if reloaded is None:
+            raise InterviewNotFoundError(interview.id)
+        return interview_from_orm(reloaded)
+
     def save_aggregate(self, interview: DomainInterview) -> None:
         """Persist mutable fields from a domain aggregate onto ORM rows.
 
@@ -90,6 +109,9 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
 
         orm_answers_by_id = {answer.id: answer for answer in orm_interview.answers}
         for domain_answer in interview.answers:
+            if domain_answer.id == DomainAnswer.NEW_ID:
+                orm_interview.answers.append(domain_answer_to_orm(domain_answer))
+                continue
             orm_answer = orm_answers_by_id.get(domain_answer.id)
             if orm_answer is None:
                 continue
@@ -97,17 +119,6 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             orm_answer.score = domain_answer.score
             orm_answer.feedback = domain_answer.feedback
             orm_answer.started_at = domain_answer.started_at
-
-    def mark_completed(self, interview: Interview, score: int) -> None:
-        """Persist completed session state.
-
-        Args:
-            session: The session entity (must be attached to this repo's session).
-            score: Final total score for the session.
-        """
-        interview.score = score
-        interview.status = "completed"
-        interview.completed_at = datetime.now(UTC)
 
     def list_recent(self, limit: int = 20) -> list[Interview]:
         """Return recent interviews (active and completed), newest first.
@@ -128,14 +139,3 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             .limit(limit)
             .all()
         )
-
-    def save_evaluation_feedback(
-        self, interview: Interview, evaluation_json: str
-    ) -> None:
-        """Persist the overall_feedback JSON on a session.
-
-        Args:
-            session: The session entity.
-            evaluation_json: JSON string with evaluation data.
-        """
-        interview.overall_feedback = evaluation_json

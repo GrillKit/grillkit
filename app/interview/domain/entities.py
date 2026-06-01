@@ -10,10 +10,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from app.interview.domain.exceptions import (
+    AnswerNotFoundError,
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,
 )
 from app.interview.domain.value_objects import InterviewSelection
+from app.questions import Question
 from app.shared.locales import TIMEOUT_FEEDBACK_MESSAGES, localized_string
 
 InterviewStatus = Literal["active", "completed"]
@@ -40,6 +42,7 @@ class Answer:
 
     TIME_EXPIRED_ANSWER_TEXT = "[Time expired]"
     TIMEOUT_GRACE_SECONDS = 2
+    NEW_ID = 0
 
     id: int
     interview_id: str
@@ -180,6 +183,72 @@ class Interview:
     completed_at: datetime | None
     answers: tuple[Answer, ...]
 
+    @classmethod
+    def start(
+        cls,
+        interview_id: str,
+        *,
+        selection: InterviewSelection,
+        locale: str,
+        planned_questions: tuple[Question, ...],
+        question_time_limit_seconds: int | None = None,
+        started_at: datetime | None = None,
+    ) -> Interview:
+        """Build a new active interview aggregate from a question plan.
+
+        Args:
+            interview_id: New session UUID.
+            selection: Track/level/topic selection from setup.
+            locale: Locale for AI feedback and follow-ups.
+            planned_questions: Ordered questions for this session (non-empty).
+            question_time_limit_seconds: Per-round time limit, or None to disable.
+            started_at: Session start time (defaults to UTC now).
+
+        Returns:
+            Active aggregate with initial answer rows (``Answer.NEW_ID``).
+
+        Raises:
+            ValueError: If ``planned_questions`` is empty.
+        """
+        if not planned_questions:
+            raise ValueError("No questions found for the selected topics")
+
+        when = started_at or datetime.now(UTC)
+        question_ids = tuple(question.id for question in planned_questions)
+        timer_start = when if question_time_limit_seconds is not None else None
+        answers: list[Answer] = []
+        for order, question in enumerate(planned_questions, start=1):
+            answers.append(
+                Answer(
+                    id=Answer.NEW_ID,
+                    interview_id=interview_id,
+                    question_id=question.id,
+                    order=order,
+                    round=0,
+                    question_text=question.text,
+                    question_code=question.code,
+                    answer_text=None,
+                    score=None,
+                    feedback=None,
+                    started_at=timer_start if order == 1 else None,
+                    created_at=when,
+                )
+            )
+        return cls(
+            id=interview_id,
+            locale=locale,
+            selection=selection,
+            question_count=len(planned_questions),
+            question_ids=question_ids,
+            question_time_limit_seconds=question_time_limit_seconds,
+            status="active",
+            score=None,
+            overall_feedback=None,
+            started_at=when,
+            completed_at=None,
+            answers=tuple(answers),
+        )
+
     def ensure_active(self) -> None:
         """Ensure this interview accepts new answers.
 
@@ -211,6 +280,112 @@ class Interview:
             for answer in self.answers
         )
         return replace(self, answers=answers)
+
+    def with_answer_text(self, answer_id: int, text: str) -> Interview:
+        """Return aggregate with user answer text on the given row.
+
+        Args:
+            answer_id: Primary key of the answer row to update.
+            text: User answer text (maybe empty before transcription).
+
+        Returns:
+            A new aggregate with ``answer_text`` set on the target answer.
+        """
+        answers = tuple(
+            replace(answer, answer_text=text) if answer.id == answer_id else answer
+            for answer in self.answers
+        )
+        return replace(self, answers=answers)
+
+    def with_timed_out_round(self, answer_id: int, locale: str) -> Interview:
+        """Return aggregate with a timed-out round scored zero.
+
+        Args:
+            answer_id: Primary key of the answer row that expired.
+            locale: Interview locale for timeout feedback text.
+
+        Returns:
+            A new aggregate with timeout marker text, score 0, and feedback.
+        """
+        feedback = self.timeout_feedback(locale)
+        answers = tuple(
+            replace(
+                answer,
+                answer_text=Answer.TIME_EXPIRED_ANSWER_TEXT,
+                score=0,
+                feedback=feedback,
+            )
+            if answer.id == answer_id
+            else answer
+            for answer in self.answers
+        )
+        return replace(self, answers=answers)
+
+    def with_evaluation(
+        self, question_id: str, round_num: int, score: int, feedback: str
+    ) -> Interview:
+        """Return aggregate with AI score and feedback on one answer round.
+
+        Args:
+            question_id: YAML question ID.
+            round_num: Follow-up round (0 = initial).
+            score: AI score for the round.
+            feedback: AI feedback text.
+
+        Returns:
+            A new aggregate with evaluation fields set on the target answer.
+        """
+        target = self.find_answer(question_id, round_num)
+        answers = tuple(
+            replace(answer, score=score, feedback=feedback)
+            if answer.id == target.id
+            else answer
+            for answer in self.answers
+        )
+        return replace(self, answers=answers)
+
+    def max_round_for_question(self, question_id: str) -> int:
+        """Return the highest follow-up round number for a question.
+
+        Args:
+            question_id: YAML question ID.
+
+        Returns:
+            Maximum ``round`` value among answers for the question, or 0 when none exist.
+        """
+        rounds = [answer.round for answer in self.answers if answer.question_id == question_id]
+        return max(rounds) if rounds else 0
+
+    def with_follow_up(
+        self, question_id: str, question_text: str
+    ) -> tuple[Interview, Answer]:
+        """Return aggregate with a new unanswered follow-up answer row.
+
+        Args:
+            question_id: YAML question ID for the follow-up chain.
+            question_text: Follow-up question text shown to the user.
+
+        Returns:
+            Tuple of updated aggregate and the pending follow-up answer (``id`` is ``NEW_ID``).
+        """
+        base = self.find_answer(question_id, 0)
+        next_round = self.max_round_for_question(question_id) + 1
+        created_at = datetime.now(UTC)
+        follow_up = Answer(
+            id=Answer.NEW_ID,
+            interview_id=self.id,
+            question_id=question_id,
+            order=base.order,
+            round=next_round,
+            question_text=question_text,
+            question_code=base.question_code,
+            answer_text=None,
+            score=None,
+            feedback=None,
+            started_at=None,
+            created_at=created_at,
+        )
+        return replace(self, answers=self.answers + (follow_up,)), follow_up
 
     @staticmethod
     def timeout_feedback(locale: str) -> str:
@@ -251,6 +426,24 @@ class Interview:
             if answer.question_id == question_id and answer.answer_text is None:
                 return answer
         raise UnansweredAnswerNotFoundError(self.id, question_id)
+
+    def find_answer(self, question_id: str, round_num: int) -> Answer:
+        """Return the answer row for a question and follow-up round.
+
+        Args:
+            question_id: YAML question ID.
+            round_num: Follow-up round (0 = initial).
+
+        Returns:
+            The matching answer row.
+
+        Raises:
+            AnswerNotFoundError: If no row matches the keys.
+        """
+        for answer in self.answers:
+            if answer.question_id == question_id and answer.round == round_num:
+                return answer
+        raise AnswerNotFoundError(self.id, question_id, round_num)
 
     def find_next_unanswered_after(self, current_index: int) -> Answer | None:
         """Return the next unanswered answer after a position in the answer list.
@@ -293,6 +486,30 @@ class Interview:
             maximum = self.MAX_SCORE_PER_ROUND * len(rounds)
             breakdown[question_id] = {"score": earned, "max": maximum}
         return breakdown
+
+    def with_session_completed(
+        self,
+        overall_feedback: dict[str, Any],
+        *,
+        completed_at: datetime | None = None,
+    ) -> Interview:
+        """Return aggregate marked completed with final evaluation payload.
+
+        Args:
+            overall_feedback: Parsed overall evaluation dict for persistence.
+            completed_at: Session end time (defaults to UTC now).
+
+        Returns:
+            A new aggregate with ``status`` completed, total score, and feedback set.
+        """
+        when = completed_at or datetime.now(UTC)
+        return replace(
+            self,
+            status="completed",
+            score=self.total_score(),
+            overall_feedback=overall_feedback,
+            completed_at=when,
+        )
 
     def next_question_client_payload(self, answer: Answer) -> dict[str, Any]:
         """Build WebSocket/API payload for the next unanswered question.

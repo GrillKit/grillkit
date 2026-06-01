@@ -4,13 +4,15 @@
 
 import pytest
 
-from app.interview.domain.entities import Interview
+from app.interview.domain.entities import Answer, Interview
 from app.interview.domain.exceptions import (
+    AnswerNotFoundError,
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,
 )
 from app.interview.repositories.mappers import interview_read_to_domain
 from app.interview.schemas.interview import AnswerRead, InterviewRead
+from app.questions import Question
 from tests.helpers.selection import minimal_selection_spec
 
 _SPEC = minimal_selection_spec()
@@ -112,6 +114,119 @@ def test_ensure_active():
         session.ensure_active()
 
 
+def test_find_answer_returns_matching_round():
+    """find_answer locates a row by question_id and round."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1", round=0),
+            _answer(id=2, question_id="q1", round=1, question_text="Follow-up"),
+        ]
+    )
+    found = session.find_answer("q1", 1)
+    assert found.id == 2
+    assert found.round == 1
+
+
+def test_find_answer_raises_when_missing():
+    """find_answer raises AnswerNotFoundError for unknown keys."""
+    session = _session(answers=[_answer(question_id="q1")])
+    with pytest.raises(AnswerNotFoundError):
+        session.find_answer("q99", 0)
+
+
+def test_with_timed_out_round_sets_marker_score_and_feedback():
+    """with_timed_out_round records timeout fields on one row."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
+        ]
+    )
+    updated = session.with_timed_out_round(1, "en")
+    timed = updated.answers[0]
+    assert timed.answer_text == Answer.TIME_EXPIRED_ANSWER_TEXT
+    assert timed.score == 0
+    assert timed.feedback
+    assert updated.answers[1].answer_text is None
+
+
+def test_with_evaluation_sets_score_and_feedback():
+    """with_evaluation updates score and feedback on one round."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1", answer_text="a"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
+        ]
+    )
+    updated = session.with_evaluation("q1", 0, 4, "Solid answer.")
+    evaluated = updated.answers[0]
+    assert evaluated.score == 4
+    assert evaluated.feedback == "Solid answer."
+    assert updated.answers[1].score is None
+
+
+def test_with_follow_up_appends_new_round():
+    """with_follow_up adds an unanswered follow-up row with NEW_ID."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1", answer_text="a", score=3),
+        ]
+    )
+    updated, pending = session.with_follow_up("q1", "Can you elaborate?")
+    assert pending.id == Answer.NEW_ID
+    assert pending.round == 1
+    assert pending.question_text == "Can you elaborate?"
+    assert pending.answer_text is None
+    assert len(updated.answers) == 2
+
+
+def test_max_round_for_question():
+    """max_round_for_question returns the highest round for a question."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1", round=0),
+            _answer(id=2, question_id="q1", round=2, question_text="R2"),
+        ]
+    )
+    assert session.max_round_for_question("q1") == 2
+
+
+def test_with_answer_text_updates_single_row():
+    """with_answer_text sets answer_text on one answer without touching others."""
+    session = _session(
+        answers=[
+            _answer(id=1, question_id="q1"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
+        ]
+    )
+    updated = session.with_answer_text(1, "my answer")
+    assert updated.answers[0].answer_text == "my answer"
+    assert updated.answers[1].answer_text is None
+
+
+def test_start_timer_for_answer_sets_started_at():
+    """start_timer_for_answer activates the timer on the target row only."""
+    from datetime import UTC, datetime
+
+    when = datetime(2026, 6, 1, 10, 0, 0, tzinfo=UTC)
+    read = InterviewRead(
+        id="s1",
+        status="active",
+        locale="en",
+        selection_spec=_SPEC,
+        question_ids="[]",
+        question_count=2,
+        question_time_limit_seconds=90,
+        answers=[
+            _answer(id=1, question_id="q1"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
+        ],
+    )
+    timed = interview_read_to_domain(read).start_timer_for_answer(2, when=when)
+    assert timed.answers[0].started_at is None
+    assert timed.answers[1].started_at == when
+
+
 def test_per_question_score_breakdown():
     """per_question_score_breakdown aggregates per question."""
     session = _session(
@@ -129,3 +244,122 @@ def test_per_question_score_breakdown():
         "max": Interview.MAX_SCORE_PER_ROUND * 2,
     }
     assert breakdown["q2"] == {"score": 5, "max": Interview.MAX_SCORE_PER_ROUND}
+
+
+def _planned_question(question_id: str, *, text: str = "What is a list?") -> Question:
+    return Question(
+        id=question_id,
+        type="technical",
+        difficulty=1,
+        tags=[],
+        text=text,
+        code=None,
+        follow_ups=[],
+        expected_points=[],
+    )
+
+
+def test_interview_start_builds_active_aggregate():
+    """Interview.start creates answer rows and question_ids from the plan."""
+    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
+
+    selection = InterviewSelection(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("data-structures",),
+            ),
+        )
+    )
+    session = Interview.start(
+        "new-session",
+        selection=selection,
+        locale="ru",
+        planned_questions=(
+            _planned_question("ds-001"),
+            _planned_question("ds-002", text="Second?"),
+        ),
+    )
+
+    assert session.status == "active"
+    assert session.locale == "ru"
+    assert session.question_count == 2
+    assert session.question_ids == ("ds-001", "ds-002")
+    assert len(session.answers) == 2
+    assert session.answers[0].id == Answer.NEW_ID
+    assert session.answers[0].order == 1
+    assert session.answers[1].question_id == "ds-002"
+    assert session.answers[0].started_at is None
+
+
+def test_interview_start_with_timer_starts_first_round():
+    """Interview.start sets started_at on the first answer when a limit is set."""
+    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
+
+    selection = InterviewSelection(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("basics",),
+            ),
+        )
+    )
+    session = Interview.start(
+        "timed-session",
+        selection=selection,
+        locale="en",
+        planned_questions=(_planned_question("q1"),),
+        question_time_limit_seconds=120,
+    )
+
+    assert session.question_time_limit_seconds == 120
+    assert session.answers[0].started_at is not None
+    assert session.answers[0].started_at == session.started_at
+
+
+def test_with_session_completed_sets_final_state():
+    """with_session_completed marks the session completed with total score."""
+    from datetime import UTC, datetime
+
+    when = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+    session = _session(
+        answers=[
+            _answer(question_id="q1", answer_text="a", score=4),
+            _answer(
+                question_id="q2", order=2, question_text="Q2", answer_text="b", score=3
+            ),
+        ]
+    )
+    completed = session.with_session_completed(
+        {"summary": "Solid performance."},
+        completed_at=when,
+    )
+
+    assert completed.status == "completed"
+    assert completed.score == 7
+    assert completed.completed_at == when
+    assert completed.overall_feedback == {"summary": "Solid performance."}
+
+
+def test_interview_start_empty_plan_raises():
+    """Interview.start rejects an empty question plan."""
+    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
+
+    selection = InterviewSelection(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("basics",),
+            ),
+        )
+    )
+    with pytest.raises(ValueError, match="No questions found"):
+        Interview.start(
+            "empty",
+            selection=selection,
+            locale="en",
+            planned_questions=(),
+        )

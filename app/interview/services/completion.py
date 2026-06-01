@@ -9,9 +9,12 @@ final AI evaluations.
 import logging
 
 from app.ai.base import AIProvider
-from app.interview.repositories.mappers import interview_read_to_domain
+from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.repositories.mappers import (
+    interview_read_to_domain,
+    interview_to_read,
+)
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
@@ -86,15 +89,13 @@ class InterviewCompletionService:
 
         score = 0
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-
-            uow.interviews.save_evaluation_feedback(
-                db_interview, interview_eval.model_dump_json()
-            )
-            completed_read = interview_read_from_orm(db_interview)
-            score = interview_read_to_domain(completed_read).total_score()
-            uow.interviews.mark_completed(db_interview, score)
-            interview = interview_read_from_orm(db_interview)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            completed = aggregate.with_session_completed(interview_eval.model_dump())
+            score = completed.score or 0
+            uow.interviews.save_aggregate(completed)
+            interview = interview_to_read(completed)
 
         max_score = DashboardBuilder.compute_max_score(
             interview, interview_eval.score_breakdown or None

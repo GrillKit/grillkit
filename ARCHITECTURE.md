@@ -2,7 +2,7 @@
 
 User-facing overview, screenshots, and quick start: [README.md](README.md).
 
-GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Alembic** (schema and data migrations), **Jinja2** templates, and **OpenAI-compatible** plus **faster-whisper** adapters in `ai/`. Code is organized **by feature** (`interview/`, `speech/`, `question_voice/`, `platform/`) with cross-cutting code in `shared/`. Within each feature: transport in `api/`, orchestration in `services/`, Pydantic read models in `schemas/` (where present), feature rules in `services/rules/`, persistence in `repositories/` (interview only). Interview transactions use `InterviewUnitOfWork` (`interview/repositories/uow.py`), extending base `UnitOfWork` in `shared/infrastructure/`. The interview API maps ORM rows to `interview/schemas/` before HTTP/WebSocket responses; it does not expose SQLAlchemy models on the wire.
+GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** (HTTP + WebSocket), **SQLAlchemy** (SQLite), **Alembic** (schema and data migrations), **Jinja2** templates, and **OpenAI-compatible** plus **faster-whisper** adapters in `ai/`. Code is organized **by feature** (`interview/`, `speech/`, `question_voice/`, `platform/`) with cross-cutting code in `shared/`. Within each feature: transport in `api/`, orchestration in `services/`, Pydantic read models in `schemas/` (where present), persistence in `repositories/` (interview only). The **interview** feature uses a dedicated **domain** layer (`interview/domain/`: frozen aggregates, value objects, exceptions, behavior on entities) separate from ORM write models and Pydantic DTOs; `interview/repositories/mappers.py` maps ORM ↔ domain ↔ `InterviewRead`. Interview services load and mutate sessions via `get_aggregate` / `save_aggregate` and return `InterviewRead` at boundaries; they do not import SQLAlchemy models. Interview transactions use `InterviewUnitOfWork` (`interview/repositories/uow.py`), extending base `UnitOfWork` in `shared/infrastructure/`. The interview API does not expose SQLAlchemy models on the wire.
 
 ## Terminology
 
@@ -54,11 +54,13 @@ grillkit/
 │   │       ├── speech_settings.py
 │   │       └── ai_context.py   # ai_provider_from_config() async context manager
 │   ├── interview/
+│   │   ├── domain/             # Interview/Answer aggregates, VO, domain exceptions
 │   │   ├── schemas/            # InterviewRead, page context, WebSocket message models
-│   │   ├── services/rules/     # progress, lifecycle, selection, timer (pure rules)
+│   │   ├── services/rules/     # selection helpers (display titles, parsing spec JSON)
 │   │   ├── repositories/
-│   │   │   ├── interview.py
+│   │   │   ├── interview.py    # get_aggregate, save_aggregate, list_recent
 │   │   │   ├── answer.py
+│   │   │   ├── mappers.py      # ORM ↔ domain ↔ InterviewRead
 │   │   │   └── uow.py          # InterviewUnitOfWork
 │   │   ├── services/
 │   │   │   ├── creation.py
@@ -146,14 +148,16 @@ grillkit/
 |-----------------|----------------|
 | `interview/api/`, `speech/api/`, `platform/api/`, `question_voice/api/` | HTTP/WebSocket transport, forms, template rendering |
 | `*/api/deps.py` | Inject service **classes** via `Depends` (handlers call static methods) |
+| `interview/domain/` | Interview aggregate, `Answer`, value objects, domain exceptions; no I/O or framework imports |
 | `interview/schemas/` | Pydantic read models (`InterviewRead`, page context, WS server messages) |
+| `interview/repositories/mappers.py` | ORM ↔ domain ↔ `InterviewRead` (persistence and read-model mapping) |
 | `interview/api/ws_protocol.py` | Map `InterviewEvent` dataclasses → interview WebSocket JSON (`interview/schemas/ws.py`) |
 | `speech/api/dictation_protocol.py` | Dictation WebSocket message types (`start`, `stop`, `ready`, `final`, `error`) |
 | `interview/api/errors.py` | Map `InterviewDomainError` → error payloads |
 | `*/services/` | Use-case orchestration (static methods on service classes) |
-| `*/services/rules/` | Pure rules (no I/O) for a feature (timer, selection, voices, etc.) |
+| `*/services/rules/` | Pure helpers (no I/O) for a feature (selection display, voices, etc.) |
 | `shared/exceptions.py`, `shared/locales.py` | Cross-cutting exceptions and locale helpers |
-| `interview/repositories/` | Interview persistence (SQLAlchemy via `SqlAlchemyRepository`) |
+| `interview/repositories/` | Interview persistence: ORM access, `get_aggregate` / `save_aggregate`, mappers |
 | `shared/infrastructure/uow.py` | Base transaction boundary (session lifecycle) |
 | `interview/repositories/uow.py` | `InterviewUnitOfWork`: `uow.interviews`, `uow.answers` |
 | `shared/infrastructure/models.py` | ORM models |
@@ -189,13 +193,14 @@ question_voice/services/
   └── tts_cache.py ──► data/tts-cache/v2/{locale}/
 
 interview/services/
-  ├── creation.py ──► services/rules, question_planning, InterviewUnitOfWork
+  ├── creation.py ──► domain, mappers, question_planning, InterviewUnitOfWork
   ├── question_planning.py ──► app/questions.py, services/rules/selection
-  ├── session_navigation.py ──► answer_timer, services/rules/progress, services/rules/timer
-  ├── query.py ──► services/rules, InterviewUnitOfWork, dashboard, services/rules/timer
-  ├── completion.py ──► evaluator, uow (AIProvider via interview/api/deps)
+  ├── session_navigation.py ──► domain, InterviewUnitOfWork (timer start on aggregate)
+  ├── query.py ──► domain, mappers, InterviewUnitOfWork
+  ├── dashboard.py ──► domain, mappers, InterviewUnitOfWork
+  ├── completion.py ──► domain, mappers, evaluator, uow (AIProvider via interview/api/deps)
   ├── answer_processing.py ──► answer_timer, answer_ai_evaluation, answer_evaluation_persistence
-  ├── answer_timer.py ──► services/rules/timer
+  ├── answer_timer.py ──► domain, session_navigation, InterviewUnitOfWork
   └── answer_ai_evaluation.py ──► evaluator (AIProvider injected)
 
 interview/api/deps.py ──► platform/services/ai_context (yields AIProvider for WS/routes)
@@ -263,6 +268,7 @@ flowchart TB
   whisper_model --> whisper_runtime
   whisper_model --> whisper_storage
   whisper_runtime --> whisper_storage
+  interview_svc --> interview_domain[domain]
   interview_svc --> interview_rules[services/rules]
   interview_svc --> uow
   interview_svc --> questions_mod[questions]
@@ -280,8 +286,10 @@ flowchart TB
   subgraph interview_repos [interview/repositories]
     interview_repo[interview]
     answer_repo[answer]
+    repo_mappers[mappers]
   end
   interview_repos --> models
+  repo_mappers --> interview_domain
 ```
 
 </details>
@@ -290,7 +298,9 @@ flowchart TB
 
 | Concept | Name in code |
 |---------|----------------|
-| Interview ORM model | `Interview` (table `interviews`) |
+| Interview domain aggregate | `app.interview.domain.entities.Interview` |
+| Interview ORM model | `shared.infrastructure.models.Interview` (table `interviews`) |
+| Interview read DTO | `app.interview.schemas.interview.InterviewRead` |
 | Primary key column | `Interview.id` (UUID string) |
 | Route / WS path param | `interview_id` (same value as `Interview.id`) |
 | Answer FK | `Answer.interview_id` → `interviews.id` |
@@ -474,7 +484,7 @@ with UnitOfWork(auto_commit=True) as uow:
 ## Scoring
 
 - Each answered round (initial or follow-up) is scored **1–5** by the AI.
-- Maximum points per round: `MAX_SCORE_PER_ROUND` (5) in `app/interview/services/rules/lifecycle.py`.
+- Maximum points per round: `Interview.MAX_SCORE_PER_ROUND` (5) in `app/interview/domain/entities.py`.
 - Session total: `compute_interview_score()` sums all non-null answer scores.
 - Per-question breakdown: `build_per_question_score_breakdown()` for completion feedback.
 

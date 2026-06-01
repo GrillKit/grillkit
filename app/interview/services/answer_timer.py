@@ -4,50 +4,15 @@
 
 from typing import Any
 
-from app.interview.domain.entities import Answer, Interview
-from app.interview.repositories.mappers import answer_from_orm
+from app.interview.domain.entities import Interview
+from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.events import AnswerFeedbackEvent
 from app.interview.services.session_navigation import SessionNavigationService
-from app.shared.infrastructure.models import Answer as OrmAnswer
-from app.shared.infrastructure.models import Interview as OrmInterview
 
 
 class RoundTimerService:
-    """Timer activation and timeout persistence for answer rounds."""
-
-    @staticmethod
-    def activate_timed_round(
-        uow: InterviewUnitOfWork, interview: OrmInterview, answer: OrmAnswer | None
-    ) -> None:
-        """Start the per-round timer on an answer row when the session has a limit.
-
-        Args:
-            uow: Active unit of work.
-            interview: Parent interview.
-            answer: Answer row that became current, if any.
-        """
-        if interview.question_time_limit_seconds and answer is not None:
-            uow.answers.mark_started(answer)
-
-    @staticmethod
-    def remaining_for_answer(
-        interview: OrmInterview, answer: OrmAnswer | None
-    ) -> int | None:
-        """Return seconds left on the current round timer.
-
-        Args:
-            interview: Parent interview.
-            answer: Current answer row.
-
-        Returns:
-            Remaining seconds, or None when the timer is disabled.
-        """
-        if answer is None:
-            return None
-        return answer_from_orm(answer).remaining_seconds(
-            interview.question_time_limit_seconds
-        )
+    """Timeout persistence for timed answer rounds."""
 
     @staticmethod
     def persist_timed_out_round(
@@ -75,13 +40,12 @@ class RoundTimerService:
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id=interview_id,
-                question_id=question_id,
-                round_num=round_num,
-            )
-            uow.answers.set_answer_text(db_answer, Answer.TIME_EXPIRED_ANSWER_TEXT)
-            uow.answers.set_evaluation(db_answer, 0, feedback_text)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            current = aggregate.find_answer(question_id, round_num)
+            updated = aggregate.with_timed_out_round(current.id, locale)
+            uow.interviews.save_aggregate(updated)
 
             next_question_data, timer_remaining = (
                 SessionNavigationService.advance_to_next_unanswered(

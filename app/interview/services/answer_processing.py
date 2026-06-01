@@ -14,16 +14,11 @@ import logging
 from app.ai.base import AIProvider
 from app.ai.speech_transcriber import SpeechTranscriber
 from app.interview.domain.exceptions import (
+    InterviewNotFoundError,
     QuestionTimerNotEnabledError,
     QuestionTimerNotExpiredError,
 )
-from app.interview.repositories.mappers import (
-    answer_from_orm,
-    answer_read_from_domain,
-    interview_read_to_domain,
-)
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_evaluation_persistence import (
     AnswerEvaluationPersistenceService,
@@ -36,7 +31,6 @@ from app.interview.services.events import (
     InterviewEvent,
     TranscriptEvent,
 )
-from app.interview.services.query import InterviewQuery
 from app.platform.services.config import ConfigService
 from app.platform.services.llm_catalog import LLMCatalogService
 from app.shared.infrastructure.audio_wav import (
@@ -181,28 +175,29 @@ class AnswerProcessingService:
         submission: AnswerSubmissionContext | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-            interview_dto = interview_read_from_orm(interview_orm)
-            session = interview_read_to_domain(interview_dto)
-            session.ensure_active()
-            current_domain = session.find_unanswered_for_question(question_id)
-            current_answer = answer_read_from_domain(current_domain)
-            round_num = current_answer.round
-            limit = interview_dto.question_time_limit_seconds
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
 
-            if limit and current_domain.is_timer_expired(limit, grace_seconds=0):
+            aggregate.ensure_active()
+            current = aggregate.find_unanswered_for_question(question_id)
+            round_num = current.round
+            limit = aggregate.question_time_limit_seconds
+
+            if limit and current.is_timer_expired(limit, grace_seconds=0):
                 timed_out_round = round_num
             else:
-                db_answer = uow.answers.get_by_interview_question_round(
-                    interview_id, question_id, round_num
-                )
-                uow.answers.set_answer_text(db_answer, answer_text)
+                updated = aggregate.with_answer_text(current.id, answer_text)
+                uow.interviews.save_aggregate(updated)
+                saved = next(a for a in updated.answers if a.id == current.id)
 
-                initial_question_text = current_answer.question_text
+                initial_question_text = saved.question_text
                 initial_answer_text = ""
                 if round_num > 0:
-                    initial = uow.answers.get_by_interview_question_round(
-                        interview_id, question_id, 0
+                    initial = next(
+                        a
+                        for a in updated.answers
+                        if a.question_id == question_id and a.round == 0
                     )
                     initial_question_text = initial.question_text
                     initial_answer_text = initial.answer_text or ""
@@ -210,12 +205,12 @@ class AnswerProcessingService:
                 submission = AnswerSubmissionContext(
                     question_id=question_id,
                     round_num=round_num,
-                    order=current_answer.order,
-                    question_text=current_answer.question_text,
-                    question_code=current_answer.question_code,
+                    order=saved.order,
+                    question_text=saved.question_text,
+                    question_code=saved.question_code,
                     initial_question_text=initial_question_text,
                     initial_answer_text=initial_answer_text,
-                    locale=interview_dto.locale,
+                    locale=updated.locale,
                     answer_text=answer_text,
                 )
 
@@ -257,10 +252,12 @@ class AnswerProcessingService:
         samples = wav_bytes_to_float32(wav_bytes)
         transcript = await transcriber.transcribe(samples, locale)
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id, question_id, round_num
-            )
-            uow.answers.set_answer_text(db_answer, transcript)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            current = aggregate.find_answer(question_id, round_num)
+            updated = aggregate.with_answer_text(current.id, transcript)
+            uow.interviews.save_aggregate(updated)
         return transcript
 
     @staticmethod
@@ -323,27 +320,27 @@ class AnswerProcessingService:
             UnansweredAnswerNotFoundError: If the round is not open.
         """
         with InterviewUnitOfWork() as uow:
-            interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-            interview = interview_read_from_orm(interview_orm)
-            interview_read_to_domain(interview).ensure_active()
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
 
-            limit = interview.question_time_limit_seconds
+            aggregate.ensure_active()
+
+            limit = aggregate.question_time_limit_seconds
             if not limit:
                 raise QuestionTimerNotEnabledError(interview_id)
 
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id, question_id, round_num
-            )
+            current = aggregate.find_answer(question_id, round_num)
             now = datetime.now(UTC)
 
-            if db_answer.answer_text is not None:
+            if current.answer_text is not None:
                 return
 
-            if not answer_from_orm(db_answer).client_timeout_due(limit, now):
+            if not current.client_timeout_due(limit, now):
                 raise QuestionTimerNotExpiredError(interview_id, question_id)
 
-            order = db_answer.order
-            locale = interview.locale
+            order = current.order
+            locale = aggregate.locale
 
         yield RoundTimerService.persist_timed_out_round(
             interview_id=interview_id,

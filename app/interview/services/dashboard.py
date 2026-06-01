@@ -7,10 +7,10 @@ from typing import Any
 
 from app.interview.domain.entities import Interview
 from app.interview.domain.value_objects import InterviewSelection
+from app.interview.repositories.mappers import interview_from_orm, interview_to_read
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
-from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.rules.selection import (
     get_interview_selection,
     interview_display_title,
@@ -127,7 +127,7 @@ class DashboardBuilder:
 
         rows: list[DashboardRowRead] = []
         for interview_orm in interviews:
-            interview = interview_read_from_orm(interview_orm)
+            interview = interview_to_read(interview_from_orm(interview_orm))
             if interview.status == "completed":
                 feedback = DashboardBuilder.parse_overall_feedback(interview)
                 breakdown = feedback.get("score_breakdown") if feedback else None
@@ -135,11 +135,11 @@ class DashboardBuilder:
                 score = interview.score if interview.score is not None else 0
                 score_display = f"{score} / {max_score}"
                 status_label = "Completed"
-                when = interview_orm.completed_at
+                when = interview.completed_at
             else:
                 score_display = "—"
                 status_label = "Active"
-                when = interview_orm.started_at
+                when = interview.started_at
 
             rows.append(
                 DashboardRowRead(

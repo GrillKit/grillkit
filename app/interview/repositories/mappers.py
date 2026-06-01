@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.entities import Interview as DomainInterview
@@ -17,10 +17,8 @@ from app.interview.services.rules.selection import (
     parse_selection_spec,
     selection_to_spec,
 )
-
-if TYPE_CHECKING:
-    from app.shared.infrastructure.models import Answer as OrmAnswer
-    from app.shared.infrastructure.models import Interview as OrmInterview
+from app.shared.infrastructure.models import Answer as OrmAnswer
+from app.shared.infrastructure.models import Interview as OrmInterview
 
 _EPOCH = datetime.min.replace(tzinfo=UTC)
 
@@ -53,6 +51,30 @@ def _question_ids_to_json(question_ids: tuple[str, ...]) -> str:
         JSON array string.
     """
     return json.dumps(list(question_ids), separators=(",", ":"))
+
+
+def domain_answer_to_orm(answer: DomainAnswer) -> OrmAnswer:
+    """Map a domain answer to a new ORM row for insert.
+
+    Args:
+        answer: Domain answer (typically ``id`` is ``Answer.NEW_ID``).
+
+    Returns:
+        Detached ORM Answer ready to be added to a session.
+    """
+    return OrmAnswer(
+        interview_id=answer.interview_id,
+        question_id=answer.question_id,
+        order=answer.order,
+        round=answer.round,
+        question_text=answer.question_text,
+        question_code=answer.question_code,
+        answer_text=answer.answer_text,
+        score=answer.score,
+        feedback=answer.feedback,
+        started_at=answer.started_at,
+        created_at=answer.created_at,
+    )
 
 
 def answer_from_orm(answer: OrmAnswer) -> DomainAnswer:
@@ -211,6 +233,34 @@ def interview_to_read(interview: DomainInterview) -> InterviewRead:
         started_at=interview.started_at,
         completed_at=interview.completed_at,
     )
+
+
+def interview_to_orm(interview: DomainInterview) -> OrmInterview:
+    """Map a new domain aggregate to a detached ORM interview row.
+
+    Args:
+        interview: Domain aggregate from ``Interview.start``.
+
+    Returns:
+        ORM Interview with nested answer rows ready for ``session.add``.
+    """
+    orm_interview = OrmInterview(
+        id=interview.id,
+        locale=interview.locale,
+        selection_spec=selection_to_spec(interview.selection),
+        question_count=interview.question_count,
+        question_ids=_question_ids_to_json(interview.question_ids),
+        question_time_limit_seconds=interview.question_time_limit_seconds,
+        status=interview.status,
+        score=interview.score,
+        overall_feedback=None,
+        started_at=interview.started_at,
+        completed_at=interview.completed_at,
+    )
+    orm_interview.answers = [
+        domain_answer_to_orm(answer) for answer in interview.answers
+    ]
+    return orm_interview
 
 
 def interview_to_orm_fields(interview: DomainInterview) -> dict[str, Any]:

@@ -8,9 +8,13 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.interview.domain.entities import Answer as DomainAnswer
+from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.exceptions import AnswerNotFoundError
+from app.interview.domain.value_objects import InterviewSelection, TrackSelection
 from app.interview.repositories.answer import AnswerRepository
 from app.interview.repositories.interview import InterviewRepository
+from app.questions import Question
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
@@ -150,50 +154,79 @@ class TestInterviewRepository:
         # answers should be loaded (no lazy-load error)
         assert len(session.answers) == 1
 
-    def test_mark_completed(self, db_session):
-        """Test mark_completed() sets status, score, and timestamp."""
-        _create_test_interview(db_session)
-        a1 = _create_test_answer(db_session, question_id="q1")
+    def test_save_aggregate_persists_completed_session(self, db_session):
+        """save_aggregate writes completed status, score, and overall feedback."""
+        _create_test_interview(db_session, interview_id="session-1")
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+        a1.answer_text = "a"
         a1.score = 4
-        a2 = _create_test_answer(db_session, question_id="q2")
+        a2 = _create_test_answer(db_session, question_id="q2", order=2)
+        a2.answer_text = "b"
         a2.score = 3
         db_session.commit()
 
         repo = InterviewRepository(db_session)
-        session = repo.get("session-1")
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        completed = aggregate.with_session_completed({"summary": "done"})
+        repo.save_aggregate(completed)
+        db_session.commit()
 
-        repo.mark_completed(session, score=7)
-
-        assert session.status == "completed"
-        assert session.score == 7
-        assert session.completed_at is not None
-        assert isinstance(session.completed_at, datetime)
-
-    def test_mark_completed_zero_score(self, db_session):
-        """Test mark_completed with zero score."""
-        _create_test_interview(db_session)
-        _create_test_answer(db_session, question_id="q1")
-
-        repo = InterviewRepository(db_session)
-        session = repo.get("session-1")
-
-        repo.mark_completed(session, score=0)
-        assert session.score == 0
-        assert session.status == "completed"
-
-    def test_save_evaluation_feedback(self, db_session):
-        """Test save_evaluation_feedback() sets overall_feedback."""
-        _create_test_interview(db_session)
-        repo = InterviewRepository(db_session)
-        session = repo.get("session-1")
-
-        repo.save_evaluation_feedback(session, '{"score": 42}')
-        assert session.overall_feedback == '{"score": 42}'
+        reloaded = repo.get_aggregate("session-1")
+        assert reloaded is not None
+        assert reloaded.status == "completed"
+        assert reloaded.score == 7
+        assert reloaded.completed_at is not None
+        assert isinstance(reloaded.completed_at, datetime)
+        assert reloaded.overall_feedback == {"summary": "done"}
 
     def test_get_not_found(self, db_session):
         """Test get returns None for missing ID."""
         repo = InterviewRepository(db_session)
         assert repo.get("nope") is None
+
+    def test_create_aggregate_inserts_interview_and_answers(self, db_session):
+        """create_aggregate persists a new domain aggregate with real answer IDs."""
+        selection = InterviewSelection(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            )
+        )
+        planned = (
+            Question(
+                id="q1",
+                type="technical",
+                difficulty=1,
+                tags=[],
+                text="Question one",
+                code=None,
+                follow_ups=[],
+                expected_points=[],
+            ),
+        )
+        aggregate = DomainInterview.start(
+            "new-session",
+            selection=selection,
+            locale="en",
+            planned_questions=planned,
+            question_time_limit_seconds=60,
+        )
+
+        repo = InterviewRepository(db_session)
+        persisted = repo.create_aggregate(aggregate)
+        db_session.commit()
+
+        assert persisted.id == "new-session"
+        assert persisted.question_count == 1
+        assert persisted.answers[0].id != DomainAnswer.NEW_ID
+        assert persisted.answers[0].started_at is not None
+        reloaded = repo.get_aggregate("new-session")
+        assert reloaded is not None
+        assert reloaded.answers[0].question_text == "Question one"
 
     def test_get_aggregate_maps_domain_interview(self, db_session):
         """get_aggregate returns a domain interview with answers."""
@@ -229,6 +262,86 @@ class TestInterviewRepository:
         assert reloaded is not None
         started = next(ans for ans in reloaded.answers if ans.id == a1.id)
         assert started.started_at is not None
+
+    def test_save_aggregate_persists_answer_text(self, db_session):
+        """save_aggregate writes answer_text from the domain model."""
+        _create_test_interview(db_session, interview_id="session-1")
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        updated = aggregate.with_answer_text(a1.id, "Lists are mutable.")
+        repo.save_aggregate(updated)
+        db_session.commit()
+
+        reloaded = repo.get_aggregate("session-1")
+        assert reloaded is not None
+        saved = next(ans for ans in reloaded.answers if ans.id == a1.id)
+        assert saved.answer_text == "Lists are mutable."
+
+    def test_save_aggregate_persists_timed_out_round(self, db_session):
+        """save_aggregate writes timeout marker, score, and feedback."""
+        _create_test_interview(db_session, interview_id="session-1")
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        updated = aggregate.with_timed_out_round(a1.id, "en")
+        repo.save_aggregate(updated)
+        db_session.commit()
+
+        reloaded = repo.get_aggregate("session-1")
+        assert reloaded is not None
+        saved = next(ans for ans in reloaded.answers if ans.id == a1.id)
+        assert saved.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
+        assert saved.score == 0
+        assert saved.feedback
+
+    def test_save_aggregate_persists_evaluation(self, db_session):
+        """save_aggregate writes AI score and feedback from the domain model."""
+        _create_test_interview(db_session, interview_id="session-1")
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+        a1.answer_text = "my answer"
+        db_session.commit()
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        updated = aggregate.with_evaluation("q1", 0, 5, "Excellent.")
+        repo.save_aggregate(updated)
+        db_session.commit()
+
+        reloaded = repo.get_aggregate("session-1")
+        assert reloaded is not None
+        saved = reloaded.find_answer("q1", 0)
+        assert saved.score == 5
+        assert saved.feedback == "Excellent."
+
+    def test_save_aggregate_inserts_follow_up(self, db_session):
+        """save_aggregate inserts a new follow-up answer row."""
+        _create_test_interview(db_session, interview_id="session-1")
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+        a1.answer_text = "done"
+        a1.score = 4
+        db_session.commit()
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        evaluated = aggregate.with_evaluation("q1", 0, 4, "Good.")
+        updated, _ = evaluated.with_follow_up("q1", "Tell me more.")
+        repo.save_aggregate(updated)
+        db_session.commit()
+
+        reloaded = repo.get_aggregate("session-1")
+        assert reloaded is not None
+        assert len(reloaded.answers) == 2
+        follow_up = reloaded.find_answer("q1", 1)
+        assert follow_up.id != DomainAnswer.NEW_ID
+        assert follow_up.question_text == "Tell me more."
+        assert follow_up.answer_text is None
 
 
 # ======================================================================

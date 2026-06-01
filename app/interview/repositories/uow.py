@@ -15,8 +15,9 @@ class InterviewUnitOfWork(UnitOfWork):
     Usage::
 
         with InterviewUnitOfWork() as uow:
-            session = uow.interviews.get(interview_id)
-            uow.interviews.mark_completed(session, score=0)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            completed = aggregate.with_session_completed({"summary": "..."})
+            uow.interviews.save_aggregate(completed)
             uow.commit()
     """
 

@@ -3,7 +3,7 @@
 """Answer repository.
 
 Provides data access for ``Answer`` records, including queries for
-finding answers by session/question/round and creating follow-up entries.
+finding answers by session, question, and round.
 """
 
 from collections.abc import Sequence
@@ -154,34 +154,3 @@ class AnswerRepository(SqlAlchemyRepository[Answer]):
         if answer.started_at is not None:
             return
         answer.started_at = when or datetime.now(UTC)
-
-    def add_follow_up(
-        self,
-        *,
-        interview_id: str,
-        question_id: str,
-        round_num: int,
-        question_text: str,
-    ) -> Answer:
-        """Create a follow-up answer row for an existing question.
-
-        Args:
-            interview_id: Parent interview UUID.
-            question_id: Question ID from the initial answer row.
-            round_num: Follow-up round number for the new row.
-            question_text: Follow-up question text shown to the user.
-
-        Returns:
-            Newly created follow-up Answer entity.
-        """
-        original = self.get_by_interview_question_round(interview_id, question_id, 0)
-        follow_up = Answer(
-            interview_id=original.interview_id,
-            question_id=original.question_id,
-            order=original.order,
-            round=round_num,
-            question_text=question_text,
-            question_code=original.question_code,
-        )
-        self.add(follow_up)
-        return follow_up
