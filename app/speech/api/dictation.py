@@ -9,9 +9,8 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.interview.api.access import get_interview_for_dictation
-from app.interview.services.rules.progress import require_active
+from app.interview.domain.exceptions import InterviewNotActiveError
 from app.platform.api.deps import ConfigServiceDep
-from app.shared.exceptions import InterviewNotActiveError
 from app.speech.api.dictation_protocol import (
     DICTATION_CLIENT_START,
     DICTATION_CLIENT_STOP,
@@ -74,9 +73,7 @@ async def interview_dictation_ws(
         await _reject_dictation(websocket, "Interview not found")
         return
 
-    try:
-        require_active(interview)
-    except InterviewNotActiveError:
+    if interview.status != "active":
         await _reject_dictation(websocket, "Interview is not active")
         return
 

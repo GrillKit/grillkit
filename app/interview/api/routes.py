@@ -40,6 +40,7 @@ from app.interview.api.deps import (
 )
 from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
 from app.interview.api.ws_protocol import event_to_message, events_to_messages
+from app.interview.domain.exceptions import InterviewDomainError
 from app.interview.services.answer_processing import AnswerProcessingService
 from app.interview.services.page import InterviewPageService
 from app.platform.api.deps import ConfigServiceDep
@@ -49,7 +50,6 @@ from app.question_voice.services.tts_exceptions import (
     QuestionVoiceDisabledError,
     QuestionVoiceSynthesisError,
 )
-from app.shared.exceptions import InterviewDomainError
 from app.shared.infrastructure.audio_wav import validate_wav_bytes
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.api.preload import preload_whisper_for_active_interview

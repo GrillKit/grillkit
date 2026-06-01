@@ -7,9 +7,9 @@ import json
 
 from app.ai.base import GenerationResult, Message
 from app.interview.api.deps import get_ai_provider
+from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import FakeProvider, answer_evaluation_json
 from tests.helpers.selection import minimal_selection_spec
@@ -191,5 +191,5 @@ def test_websocket_timeout_scores_zero(client, isolated_db, override_ws_ai_provi
     reloaded = InterviewQuery.get_interview(interview_id)
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1")
-    assert q1.answer_text == TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
     assert q1.score == 0

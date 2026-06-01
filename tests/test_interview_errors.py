@@ -7,7 +7,7 @@ import pytest
 
 from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
 from app.interview.api.routes import _ai_error_message
-from app.shared.exceptions import (
+from app.interview.domain.exceptions import (
     AnswerNotFoundError,
     InterviewNotActiveError,
     InterviewNotFoundError,

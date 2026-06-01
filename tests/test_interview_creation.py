@@ -6,31 +6,28 @@ import json
 
 import pytest
 
+from app.interview.domain.value_objects import InterviewSelection, TrackSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.creation import InterviewCreationService
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.selection import (
-    InterviewSelection,
-    TrackSelection,
-    get_interview_selection,
-)
+from app.interview.services.rules.selection import get_interview_selection
 
 
 def _single_selection(
     *,
     track: str = "python",
     level: str = "junior",
-    categories: list[str] | None = None,
+    categories: tuple[str, ...] | None = None,
 ) -> InterviewSelection:
     """Build a single-track selection for tests."""
     return InterviewSelection(
-        sources=[
+        sources=(
             TrackSelection(
                 track=track,
                 level=level,
-                categories=categories or ["data-structures"],
-            )
-        ]
+                categories=categories or ("data-structures",),
+            ),
+        )
     )
 
 
@@ -97,7 +94,7 @@ def test_create_interview_unknown_category_raises(isolated_db, temp_questions_di
     del temp_questions_dir
     with pytest.raises(ValueError, match="Unknown topic"):
         InterviewCreationService.create_interview(
-            selection=_single_selection(categories=["nonexistent"]),
+            selection=_single_selection(categories=("nonexistent",)),
             question_count=1,
         )
 
@@ -106,7 +103,7 @@ def test_create_interview_expunged_instance_is_usable(isolated_db, temp_question
     """Returned interview is detached but id and fields remain readable."""
     del temp_questions_dir
     interview = InterviewCreationService.create_interview(
-        selection=_single_selection(categories=["algorithms"]),
+        selection=_single_selection(categories=("algorithms",)),
         question_count=1,
     )
 
@@ -125,13 +122,13 @@ def test_create_multi_topic_interview(isolated_db, temp_questions_dir, monkeypat
     monkeypatch.setattr("random.shuffle", lambda items: None)
 
     selection = InterviewSelection(
-        sources=[
+        sources=(
             TrackSelection(
                 track="python",
                 level="junior",
-                categories=["data-structures", "algorithms"],
-            )
-        ]
+                categories=("data-structures", "algorithms"),
+            ),
+        )
     )
     interview = InterviewCreationService.create_interview(
         selection=selection,

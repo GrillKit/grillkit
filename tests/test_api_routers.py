@@ -10,9 +10,12 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.ai.llm_models import LLMModelEntry
+from app.interview.domain.exceptions import (
+    InterviewNotActiveError,
+    InterviewNotFoundError,
+)
 from app.main import create_app
 from app.platform.services.config import AppConfig
-from app.shared.exceptions import InterviewNotActiveError, InterviewNotFoundError
 
 
 async def _raising_answer_stream(

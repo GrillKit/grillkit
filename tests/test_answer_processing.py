@@ -8,6 +8,8 @@ import json
 
 import pytest
 
+from app.interview.domain.entities import Answer as DomainAnswer
+from app.interview.domain.exceptions import InterviewNotActiveError
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_processing import AnswerProcessingService
@@ -17,8 +19,6 @@ from app.interview.services.events import (
     EvaluatingEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
-from app.shared.exceptions import InterviewNotActiveError
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
 from tests.helpers.selection import minimal_selection_spec
@@ -434,7 +434,7 @@ async def test_process_timeout_scores_zero_and_advances(isolated_db):
     reloaded = InterviewQuery.get_interview(interview_id)
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
-    assert q1.answer_text == TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
     assert q1.score == 0
     q2 = next(a for a in reloaded.answers if a.question_id == "q2")
     assert q2.started_at is not None
@@ -535,4 +535,4 @@ async def test_late_answer_submission_treated_as_timeout(isolated_db, fake_ai_pr
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
     assert q1.score == 0
-    assert q1.answer_text == TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT

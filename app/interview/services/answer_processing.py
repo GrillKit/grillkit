@@ -13,6 +13,15 @@ import logging
 
 from app.ai.base import AIProvider
 from app.ai.speech_transcriber import SpeechTranscriber
+from app.interview.domain.exceptions import (
+    QuestionTimerNotEnabledError,
+    QuestionTimerNotExpiredError,
+)
+from app.interview.repositories.mappers import (
+    answer_from_orm,
+    answer_read_from_domain,
+    interview_read_to_domain,
+)
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
@@ -28,17 +37,8 @@ from app.interview.services.events import (
     TranscriptEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.progress import (
-    find_unanswered_for_question,
-    require_active,
-)
-from app.interview.services.rules.timer import client_timeout_due, is_expired
 from app.platform.services.config import ConfigService
 from app.platform.services.llm_catalog import LLMCatalogService
-from app.shared.exceptions import (
-    QuestionTimerNotEnabledError,
-    QuestionTimerNotExpiredError,
-)
 from app.shared.infrastructure.audio_wav import (
     validate_wav_bytes,
     wav_bytes_to_float32,
@@ -183,13 +183,14 @@ class AnswerProcessingService:
         with InterviewUnitOfWork(auto_commit=True) as uow:
             interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
             interview_dto = interview_read_from_orm(interview_orm)
-            require_active(interview_dto)
-
-            current_answer = find_unanswered_for_question(interview_dto, question_id)
+            session = interview_read_to_domain(interview_dto)
+            session.ensure_active()
+            current_domain = session.find_unanswered_for_question(question_id)
+            current_answer = answer_read_from_domain(current_domain)
             round_num = current_answer.round
             limit = interview_dto.question_time_limit_seconds
 
-            if limit and is_expired(current_answer.started_at, limit, grace_seconds=0):
+            if limit and current_domain.is_timer_expired(limit, grace_seconds=0):
                 timed_out_round = round_num
             else:
                 db_answer = uow.answers.get_by_interview_question_round(
@@ -324,7 +325,7 @@ class AnswerProcessingService:
         with InterviewUnitOfWork() as uow:
             interview_orm = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
             interview = interview_read_from_orm(interview_orm)
-            require_active(interview)
+            interview_read_to_domain(interview).ensure_active()
 
             limit = interview.question_time_limit_seconds
             if not limit:
@@ -338,7 +339,7 @@ class AnswerProcessingService:
             if db_answer.answer_text is not None:
                 return
 
-            if not client_timeout_due(db_answer.started_at, limit, now):
+            if not answer_from_orm(db_answer).client_timeout_due(limit, now):
                 raise QuestionTimerNotExpiredError(interview_id, question_id)
 
             order = db_answer.order

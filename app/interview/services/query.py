@@ -5,12 +5,14 @@
 Read-only helpers for loading sessions from the database.
 """
 
+from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.repositories.mappers import (
+    answer_read_from_domain,
+    interview_read_to_domain,
+)
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.interview.schemas.mappers import interview_read_from_orm
-from app.interview.services.rules.progress import find_first_unanswered
-from app.interview.services.rules.timer import remaining_seconds
-from app.shared.exceptions import InterviewNotFoundError
 from app.shared.infrastructure.models import Answer, Interview
 
 
@@ -94,7 +96,7 @@ class InterviewQuery:
             if not interview_orm.question_time_limit_seconds:
                 return
             interview_dto = interview_read_from_orm(interview_orm)
-            current = find_first_unanswered(interview_dto)
+            current = interview_read_to_domain(interview_dto).find_first_unanswered()
             if current is not None:
                 db_answer = next(
                     a
@@ -113,13 +115,11 @@ class InterviewQuery:
         Returns:
             Remaining seconds, or None when the timer is disabled.
         """
-        current = find_first_unanswered(interview)
+        session = interview_read_to_domain(interview)
+        current = session.find_first_unanswered()
         if current is None:
             return None
-        return remaining_seconds(
-            current.started_at,
-            interview.question_time_limit_seconds,
-        )
+        return current.remaining_seconds(interview.question_time_limit_seconds)
 
     @staticmethod
     def get_current_unanswered(interview: InterviewRead) -> AnswerRead | None:
@@ -131,7 +131,8 @@ class InterviewQuery:
         Returns:
             The first unanswered answer read model, or None.
         """
-        return find_first_unanswered(interview)
+        answer = interview_read_to_domain(interview).find_first_unanswered()
+        return answer_read_from_domain(answer) if answer is not None else None
 
     @staticmethod
     def find_orm_answer(

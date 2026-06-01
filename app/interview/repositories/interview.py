@@ -11,6 +11,12 @@ from datetime import UTC, datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from app.interview.domain.entities import Interview as DomainInterview
+from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.repositories.mappers import (
+    interview_from_orm,
+    interview_to_orm_fields,
+)
 from app.shared.infrastructure.models import Interview
 from app.shared.repositories.base import SqlAlchemyRepository
 
@@ -47,6 +53,50 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             .filter_by(id=entity_id)
             .first()
         )
+
+    def get_aggregate(self, entity_id: str) -> DomainInterview | None:
+        """Load a domain interview aggregate with answers.
+
+        Args:
+            entity_id: The session UUID.
+
+        Returns:
+            Domain aggregate, or None when the session does not exist.
+        """
+        orm_interview = self.get(entity_id)
+        if orm_interview is None:
+            return None
+        return interview_from_orm(orm_interview)
+
+    def save_aggregate(self, interview: DomainInterview) -> None:
+        """Persist mutable fields from a domain aggregate onto ORM rows.
+
+        Updates interview scalars and answer fields that may change during
+        navigation and answer submission (``answer_text``, ``score``,
+        ``feedback``, ``started_at``).
+
+        Args:
+            interview: Domain aggregate previously loaded from this repository.
+
+        Raises:
+            InterviewNotFoundError: If the session row no longer exists.
+        """
+        orm_interview = self.get(interview.id)
+        if orm_interview is None:
+            raise InterviewNotFoundError(interview.id)
+
+        for field, value in interview_to_orm_fields(interview).items():
+            setattr(orm_interview, field, value)
+
+        orm_answers_by_id = {answer.id: answer for answer in orm_interview.answers}
+        for domain_answer in interview.answers:
+            orm_answer = orm_answers_by_id.get(domain_answer.id)
+            if orm_answer is None:
+                continue
+            orm_answer.answer_text = domain_answer.answer_text
+            orm_answer.score = domain_answer.score
+            orm_answer.feedback = domain_answer.feedback
+            orm_answer.started_at = domain_answer.started_at
 
     def mark_completed(self, interview: Interview, score: int) -> None:
         """Persist completed session state.

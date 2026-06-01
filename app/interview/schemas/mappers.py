@@ -9,7 +9,7 @@ from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.shared.infrastructure.models import Answer, Interview
 
 
-def _parse_overall_feedback(raw: str | None) -> dict[str, Any] | None:
+def parse_overall_feedback(raw: str | None) -> dict[str, Any] | None:
     """Parse ``overall_feedback`` JSON from the database.
 
     Args:
@@ -71,7 +71,7 @@ def interview_read_from_orm(interview: Interview) -> InterviewRead:
         question_time_limit_seconds=interview.question_time_limit_seconds,
         answers=[answer_read_from_orm(a) for a in interview.answers],
         score=interview.score,
-        overall_feedback=_parse_overall_feedback(interview.overall_feedback),
+        overall_feedback=parse_overall_feedback(interview.overall_feedback),
         started_at=interview.started_at,
         completed_at=interview.completed_at,
     )

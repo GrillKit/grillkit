@@ -6,12 +6,12 @@ import json
 import logging
 from uuid import uuid4
 
+from app.interview.domain.value_objects import InterviewSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
 from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.question_planning import build_question_plan
 from app.interview.services.rules.selection import (
-    InterviewSelection,
     selection_to_spec,
     validate_question_count,
 )

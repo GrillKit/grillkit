@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.shared.exceptions import AnswerNotFoundError
+from app.interview.domain.exceptions import AnswerNotFoundError
 from app.shared.infrastructure.models import Answer
 from app.shared.repositories.base import SqlAlchemyRepository
 

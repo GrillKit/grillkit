@@ -5,13 +5,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
+from app.interview.domain.entities import Interview
+from app.interview.domain.value_objects import InterviewSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
 from app.interview.schemas.mappers import interview_read_from_orm
-from app.interview.services.rules.lifecycle import MAX_SCORE_PER_ROUND
 from app.interview.services.rules.selection import (
-    InterviewSelection,
     get_interview_selection,
     interview_display_title,
     track_label,
@@ -83,11 +83,11 @@ class DashboardBuilder:
             total = 0
             for qid, breakdown in score_breakdown.items():
                 if qid != "total" and isinstance(breakdown, dict):
-                    total += breakdown.get("max", MAX_SCORE_PER_ROUND)
+                    total += breakdown.get("max", Interview.MAX_SCORE_PER_ROUND)
             return total
 
         return sum(
-            MAX_SCORE_PER_ROUND
+            Interview.MAX_SCORE_PER_ROUND
             for answer in interview.answers
             if answer.answer_text is not None
         )

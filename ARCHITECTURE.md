@@ -451,7 +451,9 @@ Client → WS {"type":"complete"}
 ## Data Access Pattern
 
 ```python
-from app.interview.services.rules.lifecycle import compute_interview_score
+from app.interview.repositories.mappers import interview_read_to_domain
+
+score = interview_read_to_domain(interview_read).total_score()
 from app.shared.infrastructure.models import Interview
 from app.interview.repositories.uow import InterviewUnitOfWork
 

@@ -4,7 +4,7 @@
 
 from fastapi import HTTPException
 
-from app.shared.exceptions import (
+from app.interview.domain.exceptions import (
     AnswerNotFoundError,
     InterviewDomainError,
     InterviewNotActiveError,

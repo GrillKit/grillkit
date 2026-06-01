@@ -2,12 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Load question banks and build interview question plans."""
 
-from app.interview.services.rules.selection import (
-    InterviewSelection,
-    TrackQuestionPools,
-    plan_questions,
-    track_label,
-)
+from app.interview.domain.value_objects import InterviewSelection, TrackQuestionPools
+from app.interview.services.rules.selection import plan_questions, track_label
 from app.questions import (
     Question,
     list_categories,
@@ -72,7 +68,7 @@ def load_track_pools(
     pools: list[TrackQuestionPools] = []
     for source in selection.sources:
         full_pool = load_categories(
-            source.track, source.level, source.categories, locale=locale
+            source.track, source.level, list(source.categories), locale=locale
         )
         category_pools: dict[str, list[Question]] = {}
         for category in source.categories:
@@ -83,8 +79,10 @@ def load_track_pools(
         pools.append(
             TrackQuestionPools(
                 source=source,
-                full_pool=full_pool,
-                category_pools=category_pools,
+                full_pool=tuple(full_pool),
+                category_pools={
+                    category: tuple(pool) for category, pool in category_pools.items()
+                },
             )
         )
     return pools

@@ -138,20 +138,20 @@ class TestQuestionAudioApi:
             model="gpt-4",
             question_voice_enabled=False,
         )
-        from app.interview.services.rules.selection import (
+        from app.interview.domain.value_objects import (
             InterviewSelection,
             TrackSelection,
         )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(
-                sources=[
+                sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
-                        categories=["data-structures"],
-                    )
-                ]
+                        categories=("data-structures",),
+                    ),
+                )
             ),
             locale="en",
             question_count=1,
@@ -175,20 +175,20 @@ class TestQuestionAudioApi:
         """Enabled voice returns WAV from cache when available."""
         del temp_questions_dir
         monkeypatch.setattr("random.shuffle", lambda items: None)
-        from app.interview.services.rules.selection import (
+        from app.interview.domain.value_objects import (
             InterviewSelection,
             TrackSelection,
         )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(
-                sources=[
+                sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
-                        categories=["data-structures"],
-                    )
-                ]
+                        categories=("data-structures",),
+                    ),
+                )
             ),
             locale="en",
             question_count=1,

@@ -4,11 +4,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import random
-from typing import Any, Protocol
+from typing import Any
 
+from app.interview.domain.value_objects import (
+    InterviewSelection,
+    InterviewSelectionHolder,
+    TrackQuestionPools,
+    TrackSelection,
+)
 from app.questions import Question
 
 _TRACK_LABELS: dict[str, str] = {
@@ -28,67 +33,6 @@ def track_label(slug: str) -> str:
         Display label for templates and UI.
     """
     return _TRACK_LABELS.get(slug, slug.replace("-", " ").replace("_", " ").title())
-
-
-class InterviewSelectionHolder(Protocol):
-    """Minimal interview shape for loading ``selection_spec``."""
-
-    id: str
-    selection_spec: str
-
-
-@dataclass(frozen=True)
-class TrackQuestionPools:
-    """Loaded question pools for one track source.
-
-    Attributes:
-        source: Track, level, and category selection from setup.
-        full_pool: All questions across selected categories for the source.
-        category_pools: Per-category question lists keyed by category slug.
-    """
-
-    source: TrackSelection
-    full_pool: list[Question]
-    category_pools: dict[str, list[Question]]
-
-
-@dataclass(frozen=True)
-class TrackSelection:
-    """One question-bank track with level and topic categories.
-
-    Attributes:
-        track: Question bank slug (e.g. ``python``).
-        level: Difficulty level (e.g. ``junior``).
-        categories: YAML category slugs (e.g. ``basics``, ``oop``).
-    """
-
-    track: str
-    level: str
-    categories: list[str]
-
-
-@dataclass(frozen=True)
-class InterviewSelection:
-    """Full interview question-bank selection (one or more tracks).
-
-    Attributes:
-        sources: Ordered track selections as chosen on the setup form.
-    """
-
-    sources: list[TrackSelection]
-
-    @property
-    def topic_count(self) -> int:
-        """Return total number of selected categories across all sources."""
-        return sum(len(source.categories) for source in self.sources)
-
-    def is_multi(self) -> bool:
-        """Return True when more than one track or category is selected."""
-        if len(self.sources) > 1:
-            return True
-        if not self.sources:
-            return False
-        return len(self.sources[0].categories) > 1
 
 
 def validate_question_count(selection: InterviewSelection, question_count: int) -> None:
@@ -200,10 +144,10 @@ def selection_from_payload(data: dict[str, Any]) -> InterviewSelection:
             TrackSelection(
                 track=track,
                 level=level,
-                categories=[str(c) for c in categories],
+                categories=tuple(str(c) for c in categories),
             )
         )
-    return InterviewSelection(sources=sources)
+    return InterviewSelection(sources=tuple(sources))
 
 
 def selection_sources_summary(selection: InterviewSelection) -> str:
@@ -313,7 +257,7 @@ def plan_questions(
     picked: list[Question] = []
     picked_ids: set[str] = set()
     question_track: dict[str, str] = {}
-    pools_by_source: list[tuple[TrackSelection, list[Question]]] = []
+    pools_by_source: list[tuple[TrackSelection, tuple[Question, ...]]] = []
 
     for pools in track_pools:
         source = pools.source
@@ -323,14 +267,14 @@ def plan_questions(
         pools_by_source.append((source, full_pool))
 
         for category in source.categories:
-            category_pool = pools.category_pools.get(category, [])
+            category_pool = pools.category_pools.get(category, ())
             if not category_pool:
                 raise ValueError(
                     f"No questions found for {source.track}/{source.level}/{category}"
                 )
             available = [q for q in category_pool if q.id not in picked_ids]
             if not available:
-                available = category_pool
+                available = list(category_pool)
             question = random.choice(available)
             picked.append(question)
             picked_ids.add(question.id)

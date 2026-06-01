@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.interview.domain.exceptions import AnswerNotFoundError
 from app.interview.repositories.answer import AnswerRepository
 from app.interview.repositories.interview import InterviewRepository
-from app.shared.exceptions import AnswerNotFoundError
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
@@ -194,6 +194,41 @@ class TestInterviewRepository:
         """Test get returns None for missing ID."""
         repo = InterviewRepository(db_session)
         assert repo.get("nope") is None
+
+    def test_get_aggregate_maps_domain_interview(self, db_session):
+        """get_aggregate returns a domain interview with answers."""
+        _create_test_interview(db_session)
+        _create_test_answer(db_session, question_id="q1", order=1)
+        _create_test_answer(db_session, question_id="q2", order=2)
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+
+        assert aggregate is not None
+        assert aggregate.id == "session-1"
+        assert aggregate.status == "active"
+        assert len(aggregate.answers) == 2
+        assert aggregate.answers[0].question_id == "q1"
+
+    def test_save_aggregate_persists_answer_started_at(self, db_session):
+        """save_aggregate writes answer timer state from the domain model."""
+        interview = _create_test_interview(db_session, interview_id="session-1")
+        interview.question_time_limit_seconds = 120
+        db_session.commit()
+        a1 = _create_test_answer(db_session, question_id="q1", order=1)
+        _create_test_answer(db_session, question_id="q2", order=2)
+
+        repo = InterviewRepository(db_session)
+        aggregate = repo.get_aggregate("session-1")
+        assert aggregate is not None
+        updated = aggregate.start_timer_for_answer(a1.id)
+        repo.save_aggregate(updated)
+        db_session.commit()
+
+        reloaded = repo.get("session-1")
+        assert reloaded is not None
+        started = next(ans for ans in reloaded.answers if ans.id == a1.id)
+        assert started.started_at is not None
 
 
 # ======================================================================

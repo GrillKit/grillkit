@@ -4,17 +4,13 @@
 
 from typing import Any
 
+from app.interview.domain.entities import Answer, Interview
+from app.interview.repositories.mappers import answer_from_orm
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.events import AnswerFeedbackEvent
-from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.timer import (
-    TIME_EXPIRED_ANSWER_TEXT,
-    remaining_seconds,
-    timeout_feedback,
-)
 from app.interview.services.session_navigation import SessionNavigationService
-from app.shared.infrastructure.models import Answer, Interview
+from app.shared.infrastructure.models import Answer as OrmAnswer
+from app.shared.infrastructure.models import Interview as OrmInterview
 
 
 class RoundTimerService:
@@ -22,7 +18,7 @@ class RoundTimerService:
 
     @staticmethod
     def activate_timed_round(
-        uow: InterviewUnitOfWork, interview: Interview, answer: Answer | None
+        uow: InterviewUnitOfWork, interview: OrmInterview, answer: OrmAnswer | None
     ) -> None:
         """Start the per-round timer on an answer row when the session has a limit.
 
@@ -35,7 +31,9 @@ class RoundTimerService:
             uow.answers.mark_started(answer)
 
     @staticmethod
-    def remaining_for_answer(interview: Interview, answer: Answer | None) -> int | None:
+    def remaining_for_answer(
+        interview: OrmInterview, answer: OrmAnswer | None
+    ) -> int | None:
         """Return seconds left on the current round timer.
 
         Args:
@@ -47,9 +45,8 @@ class RoundTimerService:
         """
         if answer is None:
             return None
-        return remaining_seconds(
-            answer.started_at,
-            interview.question_time_limit_seconds,
+        return answer_from_orm(answer).remaining_seconds(
+            interview.question_time_limit_seconds
         )
 
     @staticmethod
@@ -74,26 +71,22 @@ class RoundTimerService:
             Feedback event for the client.
         """
         next_question_data: dict[str, Any] | None = None
-        feedback_text = timeout_feedback(locale)
+        feedback_text = Interview.timeout_feedback(locale)
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-            session = interview_read_from_orm(db_interview)
-
             db_answer = uow.answers.get_by_interview_question_round(
                 interview_id=interview_id,
                 question_id=question_id,
                 round_num=round_num,
             )
-            uow.answers.set_answer_text(db_answer, TIME_EXPIRED_ANSWER_TEXT)
+            uow.answers.set_answer_text(db_answer, Answer.TIME_EXPIRED_ANSWER_TEXT)
             uow.answers.set_evaluation(db_answer, 0, feedback_text)
 
             next_question_data, timer_remaining = (
                 SessionNavigationService.advance_to_next_unanswered(
                     uow,
-                    db_interview,
-                    session,
+                    interview_id,
                     question_id=question_id,
                     round_num=round_num,
                 )
