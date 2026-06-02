@@ -21,47 +21,8 @@ from app.interview.services.events import (
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
+from tests.helpers.interview_seed import seed_two_question_interview
 from tests.helpers.selection import minimal_selection_spec
-
-
-def _seed_two_question_interview(interview_id: str = "ap-test-1") -> str:
-    """Persist an active interview with two unanswered questions.
-
-    Args:
-        interview_id: Interview primary key.
-
-    Returns:
-        The interview id.
-    """
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
-            id=interview_id,
-            locale="en",
-            selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
-            status="active",
-        )
-        uow.interviews.add(interview)
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q1",
-                order=1,
-                round=0,
-                question_text="Question one?",
-            )
-        )
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q2",
-                order=2,
-                round=0,
-                question_text="Question two?",
-            )
-        )
-    return interview_id
 
 
 @pytest.mark.asyncio
@@ -69,7 +30,7 @@ async def test_process_answer_persists_score_and_next_question(
     isolated_db, fake_ai_provider
 ):
     """Initial answer is scored and the client receives the next question."""
-    interview_id = _seed_two_question_interview()
+    interview_id = seed_two_question_interview()
     provider = fake_ai_provider(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
@@ -109,7 +70,7 @@ async def test_process_answer_persists_score_and_next_question(
 @pytest.mark.asyncio
 async def test_process_answer_creates_follow_up_round(isolated_db, fake_ai_provider):
     """When AI requests a follow-up, a new unanswered round row is created."""
-    interview_id = _seed_two_question_interview("ap-test-2")
+    interview_id = seed_two_question_interview("ap-test-2")
     provider = fake_ai_provider(
         [
             answer_evaluation_json(

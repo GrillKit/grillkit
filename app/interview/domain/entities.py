@@ -353,7 +353,9 @@ class Interview:
         Returns:
             Maximum ``round`` value among answers for the question, or 0 when none exist.
         """
-        rounds = [answer.round for answer in self.answers if answer.question_id == question_id]
+        rounds = [
+            answer.round for answer in self.answers if answer.question_id == question_id
+        ]
         return max(rounds) if rounds else 0
 
     def with_follow_up(

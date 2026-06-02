@@ -9,22 +9,7 @@ import pytest
 
 from app.ai.faster_whisper_transcriber import FasterWhisperTranscriber
 from app.speech.services.dictation import DictationSession
-
-
-class FakeTranscriber:
-    """Minimal transcriber for dictation session tests."""
-
-    def __init__(self, text: str = "hello") -> None:
-        """Store the transcript to return."""
-        self.text = text
-        self.last_audio: np.ndarray | None = None
-        self.last_locale: str | None = None
-
-    async def transcribe(self, audio: np.ndarray, locale: str) -> str:
-        """Record inputs and return a fixed transcript."""
-        self.last_audio = audio
-        self.last_locale = locale
-        return self.text
+from tests.helpers.transcription import FakeTranscriber
 
 
 class TestDictationSession:

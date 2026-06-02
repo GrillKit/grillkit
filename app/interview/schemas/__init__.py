@@ -8,7 +8,6 @@ from app.interview.schemas.interview import (
     InterviewPageContext,
     InterviewRead,
 )
-from app.interview.schemas.mappers import answer_read_from_orm, interview_read_from_orm
 from app.interview.schemas.ws import (
     AnswerFeedbackMessage,
     AnswerSavedMessage,
@@ -26,7 +25,5 @@ __all__ = [
     "InterviewCompletedMessage",
     "InterviewPageContext",
     "InterviewRead",
-    "answer_read_from_orm",
-    "interview_read_from_orm",
     "server_message_to_dict",
 ]

@@ -3,7 +3,6 @@
 """Test doubles for AI and interview flows."""
 
 from collections.abc import AsyncIterator
-import json
 
 from app.ai.base import AIProvider, GenerationResult, Message
 from app.interview.services.evaluator.models import AnswerEvaluation, FollowUpEvaluation
@@ -172,15 +171,3 @@ class FakeProvider(AIProvider):
 
     async def close(self) -> None:
         """No-op close."""
-
-
-def parse_answer_evaluation_json(raw: str) -> AnswerEvaluation:
-    """Parse JSON into ``AnswerEvaluation`` (test helper).
-
-    Args:
-        raw: JSON string.
-
-    Returns:
-        Validated evaluation model.
-    """
-    return AnswerEvaluation.model_validate(json.loads(raw))

@@ -1,6 +1,6 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Interview access helpers for other features' API layers."""
+"""Interview access helpers for cross-feature services."""
 
 from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.interview.services.query import InterviewQuery

@@ -10,9 +10,15 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Changed
 
+- Cross-feature interview reads moved from `interview/api/access` to `interview/services/access`; Whisper transcriber resolution consolidated in `speech/services/transcriber_resolver`
+- Overall feedback JSON parsing lives in `interview/services/rules/feedback` (repository mappers import it instead of `schemas/mappers`)
+
 ### Fixed
 
 ### Removed
+
+- Dead `platform/api/llm_page_context.py` and legacy ORM→read helpers in `interview/schemas/mappers.py`
+- Unused `pydeps` runtime dependency
 
 ## 2026.5.31
 

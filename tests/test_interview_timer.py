@@ -43,7 +43,9 @@ def test_is_timer_expired_with_grace() -> None:
     """Expiry includes grace seconds beyond the hard deadline."""
     started = datetime(2026, 5, 23, 12, 0, 0, tzinfo=UTC)
     limit = 60
-    just_before_grace = started + timedelta(seconds=limit + Answer.TIMEOUT_GRACE_SECONDS - 1)
+    just_before_grace = started + timedelta(
+        seconds=limit + Answer.TIMEOUT_GRACE_SECONDS - 1
+    )
     assert not _answer(started).is_timer_expired(limit, just_before_grace)
     after_grace = started + timedelta(seconds=limit + Answer.TIMEOUT_GRACE_SECONDS)
     assert _answer(started).is_timer_expired(limit, after_grace)

@@ -4,9 +4,12 @@
 
 from pathlib import Path
 
-from app.interview.api.access import get_current_unanswered, load_interview_or_raise
 from app.interview.repositories.mappers import interview_read_to_domain
 from app.interview.schemas.interview import AnswerRead, InterviewRead
+from app.interview.services.access import (
+    get_current_unanswered,
+    load_interview_or_raise,
+)
 from app.platform.services.config import ConfigService
 from app.platform.services.speech_settings import question_voice_settings_from_config
 from app.question_voice.services.tts_cache import TtsCacheService

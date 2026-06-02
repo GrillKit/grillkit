@@ -16,11 +16,9 @@ from app.question_voice.schemas import QuestionVoicePageContext
 from app.speech.schemas.page import SpeechModelPageContext
 from app.speech.schemas.status import WhisperModelStatusRead
 from tests.fakes import answer_evaluation_json
+from tests.helpers.interview_seed import seed_two_question_interview
 from tests.helpers.selection import minimal_selection_spec
-from tests.test_audio_answer_processing import (
-    FakeTranscriber,
-    _seed_two_question_interview,
-)
+from tests.helpers.transcription import FakeTranscriber
 
 
 def _parse_ndjson(body: str) -> list[dict]:
@@ -106,7 +104,7 @@ class TestAudioAnswerApi:
             "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
-        interview_id = _seed_two_question_interview("audio-api-1")
+        interview_id = seed_two_question_interview("audio-api-1")
         override_ws_ai_provider(
             audio_api_client,
             [answer_evaluation_json(score=5, follow_up_needed=False)],
@@ -139,7 +137,7 @@ class TestAudioAnswerApi:
             "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
-        interview_id = _seed_two_question_interview("audio-api-invalid")
+        interview_id = seed_two_question_interview("audio-api-invalid")
 
         response = audio_api_client.post(
             f"/interview/{interview_id}/audio-answer",
@@ -154,7 +152,7 @@ class TestAudioAnswerApi:
         self, audio_api_client, isolated_db, monkeypatch
     ):
         """HTTP 400 when the configured catalog model does not accept audio."""
-        interview_id = _seed_two_question_interview("audio-api-disabled")
+        interview_id = seed_two_question_interview("audio-api-disabled")
         monkeypatch.setattr(
             "app.platform.services.config.ConfigService.get_config",
             lambda: AppConfig(
@@ -196,12 +194,12 @@ class TestAudioAnswerApi:
             staticmethod(lambda: None),
         )
         override_ws_ai_provider(client, [])
-        interview_id = _seed_two_question_interview("audio-api-no-whisper")
+        interview_id = seed_two_question_interview("audio-api-no-whisper")
         client.app.state.speech_transcriber = None
         wav_bytes = minimal_wav_bytes()
 
         with patch(
-            "app.interview.api.routes.is_installed",
+            "app.speech.services.transcriber_resolver.is_installed",
             return_value=False,
         ):
             response = client.post(

@@ -61,7 +61,7 @@ class InterviewPageService:
             else None
         )
         current_round = current_question.round if current_question else 0
-        overall_feedback_data = DashboardBuilder.parse_overall_feedback(interview)
+        overall_feedback_data = interview.overall_feedback
         max_score = DashboardBuilder.compute_max_score(interview)
         selection = get_interview_selection(interview)
         selection_lines = DashboardBuilder.selection_summary_lines(selection)

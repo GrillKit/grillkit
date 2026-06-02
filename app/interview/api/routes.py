@@ -10,7 +10,7 @@ delegated to the service layer.
 from collections.abc import AsyncIterator
 import json
 import logging
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from fastapi import (
     APIRouter,
@@ -54,8 +54,10 @@ from app.shared.infrastructure.audio_wav import validate_wav_bytes
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.api.preload import preload_whisper_for_active_interview
 from app.speech.services.page import SpeechModelPageService
-from app.speech.services.whisper_runtime import WhisperRuntime
-from app.speech.services.whisper_storage import is_installed
+from app.speech.services.transcriber_resolver import (
+    resolve_speech_transcriber,
+    speech_transcriber_unavailable_message,
+)
 from app.templating import templates
 
 router = APIRouter(prefix="/interview", tags=["interview"])
@@ -118,20 +120,13 @@ async def _resolve_speech_transcriber(
     Raises:
         HTTPException: When Whisper is unavailable.
     """
-    transcriber = getattr(request.app.state, "speech_transcriber", None)
+    transcriber = await resolve_speech_transcriber(request.app, config_service)
     if transcriber is None:
-        config = config_service.get_config()
-        if config is not None and is_installed(config.speech_model_size):
-            await WhisperRuntime.load_size(config.speech_model_size)
-            transcriber = getattr(request.app.state, "speech_transcriber", None)
-    if transcriber is None:
-        load_error = WhisperRuntime.load_error()
-        detail = f" Speech model load error: {load_error}" if load_error else ""
         raise HTTPException(
             status_code=503,
-            detail="Speech model is not loaded. Download it in Configuration." + detail,
+            detail=speech_transcriber_unavailable_message(),
         )
-    return cast(SpeechTranscriber, transcriber)
+    return transcriber
 
 
 async def _stream_audio_answer_ndjson(

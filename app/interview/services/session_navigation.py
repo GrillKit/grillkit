@@ -55,6 +55,10 @@ class SessionNavigationService:
         updated = aggregate.start_timer_for_answer(next_answer.id)
         uow.interviews.save_aggregate(updated)
 
-        activated = next(answer for answer in updated.answers if answer.id == next_answer.id)
-        timer_remaining = activated.remaining_seconds(updated.question_time_limit_seconds)
+        activated = next(
+            answer for answer in updated.answers if answer.id == next_answer.id
+        )
+        timer_remaining = activated.remaining_seconds(
+            updated.question_time_limit_seconds
+        )
         return updated.next_question_client_payload(activated), timer_remaining

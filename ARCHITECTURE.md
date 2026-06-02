@@ -43,9 +43,7 @@ grillkit/
 │   ├── platform/
 │   │   ├── schemas.py          # Config page read models, NewLLMModel, mappers
 │   │   ├── api/
-│   │   │   ├── config.py       # GET/POST /config + build_config_page_context
-│   │   │   ├── llm_page_context.py
-│   │   │   ├── runtime_reload.py # SpeechRuntimeCoordinator hooks
+│   │   │   ├── config.py       # GET/POST /config
 │   │   │   └── deps.py
 │   │   └── services/
 │   │       ├── config.py       # AppConfig, ConfigService (data/config.json)
@@ -56,7 +54,7 @@ grillkit/
 │   ├── interview/
 │   │   ├── domain/             # Interview/Answer aggregates, VO, domain exceptions
 │   │   ├── schemas/            # InterviewRead, page context, WebSocket message models
-│   │   ├── services/rules/     # selection helpers (display titles, parsing spec JSON)
+│   │   ├── services/rules/     # selection, feedback parsing (display titles, spec JSON)
 │   │   ├── repositories/
 │   │   │   ├── interview.py    # get_aggregate, save_aggregate, list_recent
 │   │   │   ├── answer.py
@@ -74,11 +72,11 @@ grillkit/
 │   │   │   ├── answer_ai_evaluation.py
 │   │   │   ├── answer_evaluation_persistence.py
 │   │   │   ├── session_navigation.py
+│   │   │   ├── access.py       # Cross-feature interview read helpers
 │   │   │   ├── events.py
 │   │   │   └── evaluator/      # service.py, models.py, prompts.py
 │   │   └── api/
 │   │       ├── deps.py         # Services + AIProvider for WS
-│   │       ├── access.py       # Cross-feature InterviewView reads
 │   │       ├── dashboard.py    # GET /
 │   │       ├── setup.py        # GET/POST /setup, GET /setup/options
 │   │       ├── setup_form.py
@@ -91,7 +89,7 @@ grillkit/
 │   │   └── services/           # piper_*, tts_cache, question_audio, rules (voices)
 │   ├── speech/
 │   │   ├── schemas/            # Pydantic status/page context read models
-│   │   ├── services/           # whisper_*, dictation
+│   │   ├── services/           # whisper_*, dictation, transcriber_resolver
 │   │   └── api/
 │   │       ├── routes.py       # GET/POST /speech/model/*
 │   │       ├── preload.py
@@ -156,7 +154,7 @@ grillkit/
 | `interview/api/errors.py` | Map `InterviewDomainError` → error payloads |
 | `*/services/` | Use-case orchestration (static methods on service classes) |
 | `*/services/rules/` | Pure helpers (no I/O) for a feature (selection display, voices, etc.) |
-| `shared/exceptions.py`, `shared/locales.py` | Cross-cutting exceptions and locale helpers |
+| `shared/locales.py` | Locale normalization and localized UI strings |
 | `interview/repositories/` | Interview persistence: ORM access, `get_aggregate` / `save_aggregate`, mappers |
 | `shared/infrastructure/uow.py` | Base transaction boundary (session lifecycle) |
 | `interview/repositories/uow.py` | `InterviewUnitOfWork`: `uow.interviews`, `uow.answers` |
@@ -178,16 +176,14 @@ main.py ──► lifespan: init_db(), SpeechRuntimeCoordinator.startup() (Whisp
   ├── platform/api/config.py ──► platform/services/config, platform/services/page
   ├── question_voice/api/routes.py ──► piper_voice, tts_cache
   └── speech/api/  (routes, dictation)
-        ├── dictation.py ──► dictation_protocol, dictation session, app.state.speech_transcriber
+        ├── dictation.py ──► dictation_protocol, transcriber_resolver, dictation session
         └── routes.py ──► speech/services/whisper_model
 
 interview/api/routes.py ──► question_voice/services/question_audio, interview/api/deps (AIProvider)
-interview/api/access.py ──► interview/services/query, interview/schemas/interview (InterviewRead)
-
-platform/api/runtime_reload.py ──► platform/services/speech_runtime (SpeechRuntimeCoordinator)
+interview/services/access.py ──► interview/services/query, interview/schemas/interview (InterviewRead)
 
 question_voice/services/
-  ├── question_audio.py ──► interview/api/access, speech_settings, tts_cache
+  ├── question_audio.py ──► interview/services/access, speech_settings, tts_cache
   ├── piper_voice.py ──► Hugging Face download into data/piper-voices/
   ├── piper_runtime.py ──► in-process PiperVoice load and synthesis
   └── tts_cache.py ──► data/tts-cache/v2/{locale}/
@@ -209,6 +205,7 @@ platform/services/config.py ──► ai/factory, speech/schemas, data/config.js
 speech/services/
   ├── whisper_model.py ──► whisper_runtime, whisper_storage, Hugging Face hub
   ├── whisper_runtime.py ──► ai/faster_whisper_transcriber, whisper_storage
+  ├── transcriber_resolver.py ──► whisper_runtime, ConfigService
   └── dictation.py ──► ai/speech_transcriber
 
 shared/infrastructure/uow.py
@@ -305,7 +302,7 @@ flowchart TB
 | Route / WS path param | `interview_id` (same value as `Interview.id`) |
 | Answer FK | `Answer.interview_id` → `interviews.id` |
 | Create flow | `interview.services.creation.InterviewCreationService.create_interview()` |
-| Read flow | `interview.services.query.InterviewQuery.get_interview()`, `list_dashboard_rows()` |
+| Read flow | `interview.services.query.InterviewQuery.get_interview()`, `dashboard.DashboardBuilder.list_rows()` |
 | Answer flow | `AnswerProcessingService` (orchestrates timer + `AnswerAiEvaluationService` + persistence) |
 | Timeout flow | `AnswerProcessingService.stream_timeout_submission()` + `RoundTimerService` |
 | Complete flow | `interview.services.completion.InterviewCompletionService.complete_interview()` |

@@ -51,18 +51,6 @@ class DashboardBuilder:
         return interview_display_title(selection)
 
     @staticmethod
-    def parse_overall_feedback(interview: InterviewRead) -> dict[str, Any] | None:
-        """Return parsed overall feedback for templates and APIs.
-
-        Args:
-            interview: Interview read model.
-
-        Returns:
-            Parsed dict, or None if the session has no feedback.
-        """
-        return interview.overall_feedback
-
-    @staticmethod
     def compute_max_score(
         interview: InterviewRead,
         score_breakdown: dict[str, Any] | None = None,
@@ -129,7 +117,7 @@ class DashboardBuilder:
         for interview_orm in interviews:
             interview = interview_to_read(interview_from_orm(interview_orm))
             if interview.status == "completed":
-                feedback = DashboardBuilder.parse_overall_feedback(interview)
+                feedback = interview.overall_feedback
                 breakdown = feedback.get("score_breakdown") if feedback else None
                 max_score = DashboardBuilder.compute_max_score(interview, breakdown)
                 score = interview.score if interview.score is not None else 0
