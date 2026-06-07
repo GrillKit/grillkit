@@ -94,6 +94,37 @@ class TestTtsStatusApi:
         assert payload["state"] == "ready"
         assert payload["enabled"] is True
 
+    def test_status_locale_query_overrides_saved_config(self, client, voice_config):
+        """Status endpoint honors locale query param over saved config on Configuration."""
+        missing = PiperVoiceStatusRead(
+            voice_id="ru_RU-dmitri-medium",
+            locale="ru",
+            locale_label="Russian",
+            state="missing",
+            percent=0,
+            message="Question voice is not installed.",
+            voice_display_name="Dmitri (Russian, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=voice_config,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                return_value=missing,
+            ) as get_status,
+        ):
+            response = client.get(
+                "/speech/tts/status?locale=ru",
+                headers={"Accept": "application/json"},
+            )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["voice_id"] == "ru_RU-dmitri-medium"
+        assert payload["locale"] == "ru"
+        get_status.assert_called_once_with("ru_RU-dmitri-medium", "ru")
+
     def test_voice_download_without_config_uses_defaults(self, client):
         """Download schedules work before provider config is saved."""
         ready = PiperVoiceStatusRead(

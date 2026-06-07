@@ -32,14 +32,22 @@ class QuestionVoiceStatusService:
         Returns:
             Piper voice id and normalized interview locale.
         """
-        if config is not None:
-            return config.tts_voice_id, config.locale
-        resolved_locale = normalize_locale(locale or DEFAULT_LOCALE)
-        resolved_voice = (
-            normalize_tts_voice_id(voice_id)
-            if voice_id
-            else default_voice_for_locale(resolved_locale)
-        )
+        if locale is not None:
+            resolved_locale = normalize_locale(locale)
+        elif config is not None:
+            resolved_locale = config.locale
+        else:
+            resolved_locale = DEFAULT_LOCALE
+
+        if voice_id is not None:
+            resolved_voice = normalize_tts_voice_id(voice_id)
+        elif locale is not None:
+            resolved_voice = default_voice_for_locale(resolved_locale)
+        elif config is not None:
+            resolved_voice = config.tts_voice_id
+        else:
+            resolved_voice = default_voice_for_locale(resolved_locale)
+
         return resolved_voice, resolved_locale
 
     @staticmethod
