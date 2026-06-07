@@ -55,6 +55,7 @@ data/whisper-models/*
 data/piper-voices/*
 !data/piper-voices/.gitkeep
 data/tts-cache/
+data/.cache/
 nohup.out
 
 # Test artifacts
