@@ -4,10 +4,10 @@
 
 from typing import Any
 
-from app.interview.domain.entities import Interview
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.events import AnswerFeedbackEvent
+from app.interview.services.rules.feedback import timeout_feedback_for_locale
 from app.interview.services.session_navigation import SessionNavigationService
 
 
@@ -36,7 +36,7 @@ class RoundTimerService:
             Feedback event for the client.
         """
         next_question_data: dict[str, Any] | None = None
-        feedback_text = Interview.timeout_feedback(locale)
+        feedback_text = timeout_feedback_for_locale(locale)
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
@@ -44,7 +44,7 @@ class RoundTimerService:
             if aggregate is None:
                 raise InterviewNotFoundError(interview_id)
             current = aggregate.find_answer(question_id, round_num)
-            updated = aggregate.with_timed_out_round(current.id, locale)
+            updated = aggregate.with_timed_out_round(current.id, feedback_text)
             uow.interviews.save_aggregate(updated)
 
             next_question_data, timer_remaining = (

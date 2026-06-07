@@ -1,6 +1,6 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Piper TTS voice metadata keyed by voice id and interview locale."""
+"""Piper TTS voice metadata shared across platform and question-voice features."""
 
 from dataclasses import dataclass
 from typing import Final

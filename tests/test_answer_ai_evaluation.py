@@ -5,7 +5,6 @@
 import pytest
 
 from app.ai.audio_probe import minimal_wav_bytes
-from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.evaluator.service import InterviewEvaluatorService
 from tests.fakes import FakeProvider, answer_evaluation_json, follow_up_evaluation_json
 
@@ -29,15 +28,15 @@ async def test_evaluate_with_audio_initial_round() -> None:
         evaluation,
         follow_up_needed,
         follow_up_text,
-    ) = await AnswerAiEvaluationService.evaluate_with_audio(
+    ) = await InterviewEvaluatorService.evaluate_submission(
+        provider=provider,
+        locale="en",
         answer_round=0,
         question_text="What is a generator?",
         question_code=None,
-        audio_wav=audio_wav,
         initial_question_text="What is a generator?",
         initial_answer_text="",
-        provider=provider,
-        locale="en",
+        audio_wav=audio_wav,
     )
 
     assert evaluation.score == 4
@@ -65,15 +64,15 @@ async def test_evaluate_with_audio_follow_up_round() -> None:
         evaluation,
         follow_up_needed,
         follow_up_text,
-    ) = await AnswerAiEvaluationService.evaluate_with_audio(
+    ) = await InterviewEvaluatorService.evaluate_submission(
+        provider=provider,
+        locale="en",
         answer_round=InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH,
         question_text="Can you give an example?",
         question_code=None,
-        audio_wav=audio_wav,
         initial_question_text="What is a generator?",
         initial_answer_text="It yields values lazily.",
-        provider=provider,
-        locale="en",
+        audio_wav=audio_wav,
     )
 
     assert evaluation.score == 3

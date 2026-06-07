@@ -170,6 +170,8 @@ class TestConfigRouter:
             response = client.get("/config")
             assert response.status_code == 200
             assert "Interview model" in response.text
+            assert "Speech recognition model" in response.text
+            assert "Question voice (TTS)" in response.text
 
     async def test_save_config_preserves_api_key_when_field_empty(self, client):
         """POST /config keeps the stored key when the password field is left blank."""

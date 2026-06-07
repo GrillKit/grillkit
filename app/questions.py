@@ -29,8 +29,6 @@ class Question:
         tags: List of topic tags.
         text: The question text.
         code: Optional code snippet (None if not applicable).
-        follow_ups: List of follow-up questions.
-        expected_points: Expected answer key points.
     """
 
     id: str
@@ -39,8 +37,6 @@ class Question:
     tags: list[str]
     text: str
     code: str | None
-    follow_ups: list[str]
-    expected_points: list[str]
 
 
 def _resolve_localized_string(
@@ -86,45 +82,6 @@ def _resolve_localized_string(
     return str(value[DEFAULT_LOCALE])
 
 
-def _resolve_follow_ups(value: Any, locale: str, question_id: str) -> list[str]:
-    """Return follow-up strings for a locale.
-
-    Args:
-        value: Legacy list (English) or ``{locale: [str, ...]}`` map.
-        locale: Requested locale code.
-        question_id: Question id for warning logs.
-
-    Returns:
-        List of follow-up question strings.
-
-    Raises:
-        ValueError: If value shape is invalid.
-    """
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return [str(item) for item in value]
-    if not isinstance(value, dict):
-        msg = (
-            f"Question {question_id}: invalid follow_ups (expected list or locale map)"
-        )
-        raise ValueError(msg)
-    code = normalize_locale(locale)
-    if code in value:
-        return [str(item) for item in value[code]]
-    if DEFAULT_LOCALE in value:
-        if code != DEFAULT_LOCALE:
-            logger.warning(
-                "Question %s: no %s follow_ups, falling back to %s",
-                question_id,
-                code,
-                DEFAULT_LOCALE,
-            )
-        return [str(item) for item in value[DEFAULT_LOCALE]]
-    msg = f"Question {question_id}: missing required '{DEFAULT_LOCALE}' in follow_ups"
-    raise ValueError(msg)
-
-
 def load_category(
     track: str,
     level: str,
@@ -137,7 +94,7 @@ def load_category(
         track: Question bank slug (e.g. ``python``, ``database``).
         level: Difficulty level (e.g., "junior", "middle", "senior").
         category: Question category name (e.g., "basics", "oop").
-        locale: Locale for question text and bank follow-ups (default: ``en``).
+        locale: Locale for question text (default: ``en``).
 
     Returns:
         List of Question objects. Empty list if file doesn't exist.
@@ -167,8 +124,6 @@ def load_category(
                     question_id=qid,
                 ),
                 code=q["question"].get("code"),
-                follow_ups=_resolve_follow_ups(q.get("follow_ups"), locale, qid),
-                expected_points=q.get("expected_points", []),
             )
         )
     return questions

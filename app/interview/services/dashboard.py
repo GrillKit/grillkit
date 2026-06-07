@@ -7,7 +7,7 @@ from typing import Any
 
 from app.interview.domain.entities import Interview
 from app.interview.domain.value_objects import InterviewSelection
-from app.interview.repositories.mappers import interview_from_orm, interview_to_read
+from app.interview.repositories.mappers import interview_to_read
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
@@ -114,8 +114,8 @@ class DashboardBuilder:
             interviews = uow.interviews.list_recent(limit=limit)
 
         rows: list[DashboardRowRead] = []
-        for interview_orm in interviews:
-            interview = interview_to_read(interview_from_orm(interview_orm))
+        for aggregate in interviews:
+            interview = interview_to_read(aggregate)
             if interview.status == "completed":
                 feedback = interview.overall_feedback
                 breakdown = feedback.get("score_breakdown") if feedback else None

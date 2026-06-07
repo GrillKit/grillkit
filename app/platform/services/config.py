@@ -15,17 +15,17 @@ from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
 from app.paths import CONFIG_PATH, DATA_DIR
 from app.platform.services.llm_catalog import LLMCatalogService
-from app.question_voice.services.rules.voices import (
+from app.shared.locales import DEFAULT_LOCALE, normalize_locale
+from app.shared.speech_models import (
+    DEFAULT_SPEECH_MODEL_SIZE,
+    normalize_speech_model_size,
+)
+from app.shared.tts_voices import (
     DEFAULT_TTS_VOICE_ID,
     default_voice_for_locale,
     normalize_tts_voice_id,
 )
-from app.shared.locales import DEFAULT_LOCALE, normalize_locale
-from app.speech.services.rules.speech_models import (
-    DEFAULT_SPEECH_MODEL_SIZE,
-    normalize_speech_model_size,
-)
-from app.speech.services.whisper_storage import is_installed
+from app.speech.services.readiness import WhisperReadinessService
 
 MASKED_API_KEY_PLACEHOLDER = "***"
 
@@ -287,7 +287,7 @@ class ConfigService:
             Tuple of success flag and error message when not ready.
         """
         size = normalize_speech_model_size(speech_model_size)
-        if is_installed(size):
+        if WhisperReadinessService.is_model_installed(size):
             return True, ""
         return (
             False,
@@ -331,6 +331,28 @@ class ConfigService:
                 await provider.close()
 
     @staticmethod
+    async def test_catalog_model(
+        config: AppConfig,
+        *,
+        accepts_audio_input: bool,
+    ) -> tuple[bool, str]:
+        """Probe a catalog entry before it is saved to the interview model list.
+
+        Args:
+            config: Effective provider settings to probe.
+            accepts_audio_input: Whether the catalog entry supports audio answers.
+
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
+        success, message = await ConfigService.test_connection(config)
+        if not success:
+            return False, message
+        if not accepts_audio_input:
+            return True, message
+        return await ConfigService.test_audio_connection(config)
+
+    @staticmethod
     async def test_interview_model(
         config: AppConfig,
         *,
@@ -345,7 +367,10 @@ class ConfigService:
         Returns:
             Tuple of (success: bool, message: str).
         """
-        success, message = await ConfigService.test_connection(config)
+        success, message = await ConfigService.test_catalog_model(
+            config,
+            accepts_audio_input=accepts_audio_input,
+        )
         if not success:
             return False, message
         if not accepts_audio_input:
@@ -355,7 +380,7 @@ class ConfigService:
         )
         if not whisper_ok:
             return False, whisper_message
-        return await ConfigService.test_audio_connection(config)
+        return True, message
 
     @staticmethod
     def create_provider_from_config() -> AIProvider:

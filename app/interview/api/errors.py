@@ -4,6 +4,7 @@
 
 from fastapi import HTTPException
 
+from app.interview.api.ws_protocol import domain_error_to_wire
 from app.interview.domain.exceptions import (
     AnswerNotFoundError,
     InterviewDomainError,
@@ -24,7 +25,7 @@ def ws_error_payload(exc: InterviewDomainError) -> dict[str, str]:
     Returns:
         JSON-serializable error dict for the client.
     """
-    return {"type": "error", "message": str(exc)}
+    return domain_error_to_wire(exc)
 
 
 def http_exception_from_domain_error(exc: InterviewDomainError) -> HTTPException:

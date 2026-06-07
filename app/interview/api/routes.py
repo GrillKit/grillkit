@@ -7,8 +7,6 @@ endpoint for real-time answers and completion. Business logic is
 delegated to the service layer.
 """
 
-from collections.abc import AsyncIterator
-import json
 import logging
 from typing import Annotated, Any
 
@@ -30,34 +28,25 @@ from fastapi.responses import (
     StreamingResponse,
 )
 
-from app.ai.base import AIProvider
-from app.ai.speech_transcriber import SpeechTranscriber
+from app.interview.api.audio_answer import InterviewAudioAnswerAdapter
 from app.interview.api.deps import (
     AIProviderDep,
-    AnswerProcessingServiceDep,
     InterviewCompletionServiceDep,
     InterviewQueryDep,
+    SpeechTranscriberDep,
 )
-from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
-from app.interview.api.ws_protocol import event_to_message, events_to_messages
+from app.interview.api.errors import http_exception_from_domain_error
+from app.interview.api.ws_session import InterviewWebSocketService
 from app.interview.domain.exceptions import InterviewDomainError
-from app.interview.services.answer_processing import AnswerProcessingService
 from app.interview.services.page import InterviewPageService
 from app.platform.api.deps import ConfigServiceDep
-from app.question_voice.services.page import QuestionVoicePageService
+from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 from app.question_voice.services.question_audio import get_question_audio_path
 from app.question_voice.services.tts_exceptions import (
     QuestionVoiceDisabledError,
     QuestionVoiceSynthesisError,
 )
-from app.shared.infrastructure.audio_wav import validate_wav_bytes
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.api.preload import preload_whisper_for_active_interview
-from app.speech.services.page import SpeechModelPageService
-from app.speech.services.transcriber_resolver import (
-    resolve_speech_transcriber,
-    speech_transcriber_unavailable_message,
-)
 from app.templating import templates
 
 router = APIRouter(prefix="/interview", tags=["interview"])
@@ -82,94 +71,6 @@ async def _safe_send_json(websocket: WebSocket, message: dict[str, Any]) -> bool
         return False
 
 
-def _ai_error_message(exc: Exception) -> str:
-    """Turn provider failures into a short WebSocket error for the client.
-
-    Args:
-        exc: Exception raised during AI evaluation.
-
-    Returns:
-        User-facing error message.
-    """
-    text = str(exc)
-    if "not found" in text.lower() and "model" in text.lower():
-        return (
-            "AI model is not available on the configured endpoint. "
-            "Open /config and verify the model name and provider settings."
-        )
-    if "timed out" in text.lower() or "timeout" in text.lower():
-        return (
-            "AI evaluation timed out. The model may still be loading — "
-            "wait and try again, or increase the timeout on /config."
-        )
-    return f"AI evaluation failed: {text}"
-
-
-async def _resolve_speech_transcriber(
-    request: Request, config_service: ConfigServiceDep
-) -> SpeechTranscriber:
-    """Return a loaded speech transcriber or raise HTTPException.
-
-    Args:
-        request: FastAPI request with application state.
-        config_service: Provider configuration service.
-
-    Returns:
-        Loaded speech transcriber instance.
-
-    Raises:
-        HTTPException: When Whisper is unavailable.
-    """
-    transcriber = await resolve_speech_transcriber(request.app, config_service)
-    if transcriber is None:
-        raise HTTPException(
-            status_code=503,
-            detail=speech_transcriber_unavailable_message(),
-        )
-    return transcriber
-
-
-async def _stream_audio_answer_ndjson(
-    *,
-    interview_id: str,
-    question_id: str,
-    wav_bytes: bytes,
-    provider: AIProvider,
-    transcriber: SpeechTranscriber,
-) -> AsyncIterator[str]:
-    """Map audio answer service events to NDJSON lines.
-
-    Args:
-        interview_id: Interview session UUID.
-        question_id: Question being answered.
-        wav_bytes: Uploaded WAV payload.
-        provider: Configured AI provider.
-        transcriber: Loaded speech transcriber.
-
-    Yields:
-        One JSON object per line for ``StreamingResponse``.
-    """
-    try:
-        async for event in AnswerProcessingService.stream_audio_answer_submission(
-            interview_id=interview_id,
-            question_id=question_id,
-            wav_bytes=wav_bytes,
-            provider=provider,
-            transcriber=transcriber,
-        ):
-            yield json.dumps(event_to_message(event)) + "\n"
-    except InterviewDomainError as exc:
-        yield json.dumps(ws_error_payload(exc)) + "\n"
-    except ValueError as exc:
-        yield json.dumps({"type": "error", "message": str(exc)}) + "\n"
-    except Exception as exc:
-        logger.exception(
-            "Audio answer submission failed for session %s",
-            interview_id,
-        )
-        yield json.dumps({"type": "error", "message": _ai_error_message(exc)}) + "\n"
-
-
 @router.get("/{interview_id}", response_class=HTMLResponse)
 async def interview_page(
     request: Request,
@@ -191,34 +92,24 @@ async def interview_page(
     Returns:
         HTML response with interview view, or redirect if not found.
     """
-    interview = InterviewPageService.load_interview(interview_id)
-    if not interview:
-        return RedirectResponse(url="/", status_code=303)
-
     config = config_service.get_config()
-    await preload_whisper_for_active_interview(
+    page = await InterviewPageService.prepare_page(
+        interview_id,
+        config=config,
+        whisper_model_service=whisper_model_service,
+    )
+    if page.redirect_url is not None:
+        return RedirectResponse(url=page.redirect_url, status_code=303)
+
+    await SpeechRuntimeCoordinator.preload_whisper_for_active_interview(
         request.app,
         config,
-        interview_active=interview.status == "active",
+        interview_active=page.interview_active,
     )
-
-    page_context = InterviewPageService.build_page_context(
-        interview,
-        config=config,
-        question_voice_enabled=bool(config and config.question_voice_enabled),
-    )
-    voice_ctx = (await QuestionVoicePageService.build_page_context(config)).model_dump()
     return templates.TemplateResponse(
         request,
         "interview.html",
-        {
-            **page_context.model_dump(),
-            **SpeechModelPageService.build_page_context(
-                config,
-                whisper_model_service=whisper_model_service,
-            ).model_dump(),
-            **voice_ctx,
-        },
+        page.template_context or {},
     )
 
 
@@ -255,10 +146,9 @@ async def question_audio(
 
 @router.post("/{interview_id}/audio-answer")
 async def submit_audio_answer(
-    request: Request,
     interview_id: str,
-    config_service: ConfigServiceDep,
     provider: AIProviderDep,
+    transcriber: SpeechTranscriberDep,
     question_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
 ) -> StreamingResponse:
@@ -272,10 +162,9 @@ async def submit_audio_answer(
     (``saved``, ``evaluating``, ``transcript``, ``feedback``, ``error``).
 
     Args:
-        request: FastAPI request object.
         interview_id: Interview session UUID.
-        config_service: Provider configuration service.
         provider: AI provider for multimodal evaluation.
+        transcriber: Loaded Whisper transcriber for audio transcription.
         question_id: Question ID from the active answer row.
         file: Uploaded WAV audio answer.
 
@@ -285,23 +174,17 @@ async def submit_audio_answer(
     Raises:
         HTTPException: When required fields are missing or WAV validation fails.
     """
-    normalized_question_id = question_id.strip()
-    if not normalized_question_id:
-        raise HTTPException(status_code=400, detail="question_id is required")
-
     wav_bytes = await file.read()
-    if not wav_bytes:
-        raise HTTPException(status_code=400, detail="Audio file is required")
-
     try:
-        AnswerProcessingService.require_audio_answer_enabled()
-        validate_wav_bytes(wav_bytes)
+        normalized_question_id = InterviewAudioAnswerAdapter.parse_submission(
+            question_id=question_id,
+            wav_bytes=wav_bytes,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    transcriber = await _resolve_speech_transcriber(request, config_service)
     return StreamingResponse(
-        _stream_audio_answer_ndjson(
+        InterviewAudioAnswerAdapter.stream_ndjson_lines(
             interview_id=interview_id,
             question_id=normalized_question_id,
             wav_bytes=wav_bytes,
@@ -317,7 +200,6 @@ async def interview_ws(
     websocket: WebSocket,
     interview_id: str,
     interview_query: InterviewQueryDep,
-    answer_processing: AnswerProcessingServiceDep,
     interview_completion: InterviewCompletionServiceDep,
     provider: AIProviderDep,
 ) -> None:
@@ -341,7 +223,6 @@ async def interview_ws(
         websocket: The WebSocket connection.
         interview_id: The session UUID.
         interview_query: Interview read service.
-        answer_processing: Answer processing service.
         interview_completion: Interview completion service.
         provider: AI provider for answer and session evaluation.
     """
@@ -353,130 +234,16 @@ async def interview_ws(
                 raw = await websocket.receive_json()
             except RuntimeError:
                 break
-            msg_type = raw.get("type")
 
-            if msg_type == "answer":
-                question_id = raw.get("question_id", "")
-                answer_text = raw.get("answer_text", "")
-
-                if not question_id or not answer_text:
-                    await _safe_send_json(
-                        websocket,
-                        {
-                            "type": "error",
-                            "message": (
-                                "Both question_id and answer_text are required"
-                            ),
-                        },
-                    )
-                    continue
-                try:
-                    async for event in answer_processing.stream_answer_submission(
-                        interview_id=interview_id,
-                        question_id=question_id,
-                        answer_text=answer_text,
-                        provider=provider,
-                    ):
-                        if not await _safe_send_json(
-                            websocket, event_to_message(event)
-                        ):
-                            break
-                except InterviewDomainError as e:
-                    await _safe_send_json(websocket, ws_error_payload(e))
-                except Exception as e:
-                    logger.exception(
-                        "WebSocket AI evaluation failed for session %s",
-                        interview_id,
-                    )
-                    if not await _safe_send_json(
-                        websocket,
-                        {
-                            "type": "error",
-                            "message": _ai_error_message(e),
-                        },
-                    ):
-                        break
-
-            elif msg_type == "timeout":
-                question_id = raw.get("question_id", "")
-                round_num = raw.get("round")
-                if not question_id or round_num is None:
-                    await _safe_send_json(
-                        websocket,
-                        {
-                            "type": "error",
-                            "message": "Both question_id and round are required",
-                        },
-                    )
-                    continue
-                try:
-                    async for event in answer_processing.stream_timeout_submission(
-                        interview_id=interview_id,
-                        question_id=question_id,
-                        round_num=int(round_num),
-                    ):
-                        if not await _safe_send_json(
-                            websocket, event_to_message(event)
-                        ):
-                            break
-                except InterviewDomainError as e:
-                    await _safe_send_json(websocket, ws_error_payload(e))
-                except Exception as e:
-                    logger.exception(
-                        "WebSocket timeout failed for session %s",
-                        interview_id,
-                    )
-                    await _safe_send_json(
-                        websocket,
-                        {
-                            "type": "error",
-                            "message": f"Timeout processing failed: {e}",
-                        },
-                    )
-
-            elif msg_type == "ping":
-                try:
-                    interview = interview_query.get_interview(interview_id)
-                    status = interview.status if interview else "not_found"
-                    await _safe_send_json(websocket, {"type": "pong", "status": status})
-                except Exception as e:
-                    logger.warning("Ping failed for session %s: %s", interview_id, e)
-                    await _safe_send_json(
-                        websocket, {"type": "pong", "status": "error"}
-                    )
-
-            elif msg_type == "complete":
-                try:
-                    events = await interview_completion.complete_interview(
-                        interview_id=interview_id,
-                        provider=provider,
-                    )
-                    for message in events_to_messages(events):
-                        if not await _safe_send_json(websocket, message):
-                            break
-                except InterviewDomainError as e:
-                    await _safe_send_json(websocket, ws_error_payload(e))
-                except Exception as e:
-                    logger.exception(
-                        "WebSocket session completion failed for session %s",
-                        interview_id,
-                    )
-                    if not await _safe_send_json(
-                        websocket,
-                        {
-                            "type": "error",
-                            "message": _ai_error_message(e),
-                        },
-                    ):
-                        break
-            else:
-                await _safe_send_json(
-                    websocket,
-                    {
-                        "type": "error",
-                        "message": f"Unknown message type: {msg_type}",
-                    },
-                )
+            async for message in InterviewWebSocketService.iter_responses(
+                raw,
+                interview_id=interview_id,
+                provider=provider,
+                interview_completion=interview_completion,
+                interview_query=interview_query,
+            ):
+                if not await _safe_send_json(websocket, message):
+                    break
     except WebSocketDisconnect:
         logger.debug("WebSocket disconnected for session %s", interview_id)
     except RuntimeError:

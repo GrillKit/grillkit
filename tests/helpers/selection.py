@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Helpers for building interview selection JSON in tests."""
 
+from app.interview.domain.serialization import selection_to_spec
 from app.interview.domain.value_objects import InterviewSelection, TrackSelection
-from app.interview.services.rules.selection import selection_to_spec
 
 
 def minimal_selection_spec(

@@ -6,15 +6,18 @@ from __future__ import annotations
 
 import json
 import random
-from typing import Any
 
+from app.interview.domain.serialization import (
+    parse_selection_spec,
+    selection_from_payload,
+)
 from app.interview.domain.value_objects import (
     InterviewSelection,
     InterviewSelectionHolder,
+    PlannedQuestion,
     TrackQuestionPools,
     TrackSelection,
 )
-from app.questions import Question
 
 _TRACK_LABELS: dict[str, str] = {
     "python": "Python",
@@ -54,48 +57,6 @@ def validate_question_count(selection: InterviewSelection, question_count: int) 
         raise ValueError(msg)
 
 
-def selection_to_spec(selection: InterviewSelection) -> str:
-    """Serialize selection to JSON for ``Interview.selection_spec``.
-
-    Args:
-        selection: Interview selection.
-
-    Returns:
-        JSON string with a ``sources`` list.
-    """
-    payload = {
-        "sources": [
-            {
-                "track": source.track,
-                "level": source.level,
-                "categories": list(source.categories),
-            }
-            for source in selection.sources
-        ],
-    }
-    return json.dumps(payload, separators=(",", ":"))
-
-
-def parse_selection_spec(raw: str) -> InterviewSelection:
-    """Parse ``selection_spec`` JSON from the database.
-
-    Args:
-        raw: JSON string stored on ``Interview.selection_spec``.
-
-    Returns:
-        Parsed selection.
-
-    Raises:
-        ValueError: If ``raw`` is empty or invalid.
-    """
-    if not raw:
-        raise ValueError("selection_spec is empty")
-    data = json.loads(raw)
-    if not isinstance(data, dict):
-        raise ValueError("selection_spec must be a JSON object")
-    return selection_from_payload(data)
-
-
 def get_interview_selection(interview: InterviewSelectionHolder) -> InterviewSelection:
     """Load selection from an interview row.
 
@@ -111,43 +72,6 @@ def get_interview_selection(interview: InterviewSelectionHolder) -> InterviewSel
     if not interview.selection_spec:
         raise ValueError(f"Interview {interview.id} has no selection_spec")
     return parse_selection_spec(interview.selection_spec)
-
-
-def selection_from_payload(data: dict[str, Any]) -> InterviewSelection:
-    """Build ``InterviewSelection`` from a JSON-compatible dict.
-
-    Args:
-        data: Dict with ``sources`` list.
-
-    Returns:
-        InterviewSelection instance.
-
-    Raises:
-        ValueError: If payload shape is invalid.
-    """
-    sources_raw = data.get("sources")
-    if not isinstance(sources_raw, list) or not sources_raw:
-        raise ValueError("Invalid selection_spec: missing sources")
-
-    sources: list[TrackSelection] = []
-    for item in sources_raw:
-        if not isinstance(item, dict):
-            raise ValueError("Invalid selection_spec: source must be an object")
-        track = item.get("track")
-        level = item.get("level")
-        categories = item.get("categories")
-        if not isinstance(track, str) or not isinstance(level, str):
-            raise ValueError("Invalid selection_spec: track and level required")
-        if not isinstance(categories, list) or not categories:
-            raise ValueError("Invalid selection_spec: categories required")
-        sources.append(
-            TrackSelection(
-                track=track,
-                level=level,
-                categories=tuple(str(c) for c in categories),
-            )
-        )
-    return InterviewSelection(sources=tuple(sources))
 
 
 def selection_sources_summary(selection: InterviewSelection) -> str:
@@ -233,7 +157,7 @@ def plan_questions(
     selection: InterviewSelection,
     question_count: int,
     track_pools: list[TrackQuestionPools],
-) -> list[Question]:
+) -> list[PlannedQuestion]:
     """Build ordered question list from pre-loaded pools.
 
     Picks one random question per selected topic, then fills remaining slots
@@ -254,10 +178,10 @@ def plan_questions(
     if len(track_pools) != len(selection.sources):
         raise ValueError("track_pools must match selection.sources")
 
-    picked: list[Question] = []
+    picked: list[PlannedQuestion] = []
     picked_ids: set[str] = set()
     question_track: dict[str, str] = {}
-    pools_by_source: list[tuple[TrackSelection, tuple[Question, ...]]] = []
+    pools_by_source: list[tuple[TrackSelection, tuple[PlannedQuestion, ...]]] = []
 
     for pools in track_pools:
         source = pools.source
@@ -282,7 +206,7 @@ def plan_questions(
 
     extra = question_count - len(picked)
     if extra > 0:
-        remaining_by_track: list[tuple[str, list[Question]]] = []
+        remaining_by_track: list[tuple[str, list[PlannedQuestion]]] = []
         for source, full_pool in pools_by_source:
             remaining_pool = [q for q in full_pool if q.id not in picked_ids]
             if remaining_pool:
@@ -304,12 +228,12 @@ def plan_questions(
                     picked_ids.add(question.id)
                     question_track[question.id] = track_slug
 
-    by_track: dict[str, list[Question]] = {}
+    by_track: dict[str, list[PlannedQuestion]] = {}
     for question in picked:
         track_key = question_track[question.id]
         by_track.setdefault(track_key, []).append(question)
 
-    ordered: list[Question] = []
+    ordered: list[PlannedQuestion] = []
     for source in selection.sources:
         block = by_track.get(source.track, [])
         random.shuffle(block)

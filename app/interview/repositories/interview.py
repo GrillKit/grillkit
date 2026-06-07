@@ -120,8 +120,8 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             orm_answer.feedback = domain_answer.feedback
             orm_answer.started_at = domain_answer.started_at
 
-    def list_recent(self, limit: int = 20) -> list[Interview]:
-        """Return recent interviews (active and completed), newest first.
+    def list_recent(self, limit: int = 20) -> list[DomainInterview]:
+        """Return recent domain aggregates (active and completed), newest first.
 
         Sort key is ``completed_at`` when set, otherwise ``started_at``.
 
@@ -129,13 +129,14 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             limit: Maximum number of rows to return.
 
         Returns:
-            Interviews with answers eagerly loaded.
+            Domain interviews with answers loaded.
         """
         sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
-        return (
+        orm_rows = (
             self._session.query(Interview)
             .options(selectinload(Interview.answers))
             .order_by(sort_key.desc())
             .limit(limit)
             .all()
         )
+        return [interview_from_orm(row) for row in orm_rows]

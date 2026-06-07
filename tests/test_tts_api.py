@@ -35,9 +35,24 @@ class TestTtsStatusApi:
             model="gpt-4",
             question_voice_enabled=False,
         )
-        with patch(
-            "app.platform.services.config.ConfigService.get_config",
-            return_value=config,
+        missing = PiperVoiceStatusRead(
+            voice_id="en_US-lessac-medium",
+            locale="en",
+            locale_label="English",
+            state="missing",
+            percent=0,
+            message="Question voice is not installed.",
+            voice_display_name="Lessac (US English, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=config,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                return_value=missing,
+            ),
         ):
             response = client.get(
                 "/speech/tts/status",
@@ -79,17 +94,36 @@ class TestTtsStatusApi:
         assert payload["state"] == "ready"
         assert payload["enabled"] is True
 
-    def test_voice_download_requires_config(self, client):
-        """Download returns 400 when provider config is missing."""
-        with patch(
-            "app.platform.services.config.ConfigService.get_config",
-            return_value=None,
+    def test_voice_download_without_config_uses_defaults(self, client):
+        """Download schedules work before provider config is saved."""
+        ready = PiperVoiceStatusRead(
+            voice_id="en_US-lessac-medium",
+            locale="en",
+            locale_label="English",
+            state="downloading",
+            percent=5,
+            message="Downloading question voice…",
+            voice_display_name="Lessac (US English, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=None,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                new_callable=AsyncMock,
+                return_value=ready,
+            ),
         ):
             response = client.post(
                 "/speech/tts/voice/download",
                 headers={"Accept": "application/json"},
             )
-        assert response.status_code == 400
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["state"] == "downloading"
+        assert payload["enabled"] is False
 
     def test_voice_download_schedules_work(self, client, voice_config):
         """Download returns status after scheduling Piper voice install."""

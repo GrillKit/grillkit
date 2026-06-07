@@ -4,31 +4,28 @@
 
 import pytest
 
+from app.interview.domain.serialization import (
+    parse_selection_spec,
+    selection_to_spec,
+)
 from app.interview.domain.value_objects import (
     InterviewSelection,
+    PlannedQuestion,
     TrackQuestionPools,
     TrackSelection,
 )
 from app.interview.services.rules.selection import (
-    parse_selection_spec,
     plan_questions,
-    selection_to_spec,
     validate_question_count,
 )
-from app.questions import Question
 
 
-def _question(qid: str, lang_marker: str = "") -> Question:
-    """Build a minimal Question for planning tests."""
-    return Question(
+def _question(qid: str, lang_marker: str = "") -> PlannedQuestion:
+    """Build a minimal planned question for planning tests."""
+    return PlannedQuestion(
         id=qid,
-        type="knowledge",
-        difficulty=1,
-        tags=[],
         text=f"Question {qid} {lang_marker}",
         code=None,
-        follow_ups=[],
-        expected_points=[],
     )
 
 

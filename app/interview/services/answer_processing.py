@@ -19,7 +19,6 @@ from app.interview.domain.exceptions import (
     QuestionTimerNotExpiredError,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_evaluation_persistence import (
     AnswerEvaluationPersistenceService,
 )
@@ -99,26 +98,26 @@ async def _evaluate_last_follow_up_in_background(
     """
     try:
         if audio_wav is not None:
-            evaluation, _, _ = await AnswerAiEvaluationService.evaluate_with_audio(
+            evaluation, _, _ = await InterviewEvaluatorService.evaluate_submission(
+                provider=provider,
+                locale=locale,
                 answer_round=round_num,
                 question_text=question_text,
                 question_code=question_code,
-                audio_wav=audio_wav,
                 initial_question_text=initial_question_text,
                 initial_answer_text=initial_answer_text,
-                provider=provider,
-                locale=locale,
+                audio_wav=audio_wav,
             )
         else:
-            evaluation, _, _ = await AnswerAiEvaluationService.evaluate(
+            evaluation, _, _ = await InterviewEvaluatorService.evaluate_submission(
+                provider=provider,
+                locale=locale,
                 answer_round=round_num,
                 question_text=question_text,
                 question_code=question_code,
-                answer_text=answer_text,
                 initial_question_text=initial_question_text,
                 initial_answer_text=initial_answer_text,
-                provider=provider,
-                locale=locale,
+                answer_text=answer_text,
             )
         AnswerEvaluationPersistenceService.persist_evaluation_only(
             interview_id=interview_id,
@@ -408,15 +407,15 @@ class AnswerProcessingService:
             follow_up_needed,
             follow_up_text,
         ) = await asyncio.shield(
-            AnswerAiEvaluationService.evaluate(
+            InterviewEvaluatorService.evaluate_submission(
+                provider=provider,
+                locale=ctx.locale,
                 answer_round=ctx.round_num,
                 question_text=ctx.question_text,
                 question_code=ctx.question_code,
-                answer_text=ctx.answer_text,
                 initial_question_text=ctx.initial_question_text,
                 initial_answer_text=ctx.initial_answer_text,
-                provider=provider,
-                locale=ctx.locale,
+                answer_text=ctx.answer_text,
             )
         )
 
@@ -523,15 +522,15 @@ class AnswerProcessingService:
             name=f"audio-transcript-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
         )
         evaluation_task = asyncio.create_task(
-            AnswerAiEvaluationService.evaluate_with_audio(
+            InterviewEvaluatorService.evaluate_submission(
+                provider=provider,
+                locale=ctx.locale,
                 answer_round=ctx.round_num,
                 question_text=ctx.question_text,
                 question_code=ctx.question_code,
-                audio_wav=wav_bytes,
                 initial_question_text=ctx.initial_question_text,
                 initial_answer_text=ctx.initial_answer_text,
-                provider=provider,
-                locale=ctx.locale,
+                audio_wav=wav_bytes,
             ),
             name=f"audio-eval-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
         )

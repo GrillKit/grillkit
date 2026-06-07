@@ -10,7 +10,7 @@ import pytest
 from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.llm_models import LLMModelEntry
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.page import InterviewPageService
+from app.interview.services.page import InterviewPageRender, InterviewPageService
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import QuestionVoicePageContext
 from app.speech.schemas.page import SpeechModelPageContext
@@ -56,6 +56,15 @@ def _question_voice_page_context() -> QuestionVoicePageContext:
         tts_voice_status=None,
         tts_voice_banner=False,
     )
+
+
+def _full_template_context(page_context) -> dict:
+    """Merge interview, speech, and question-voice keys for page tests."""
+    return {
+        **page_context.model_dump(),
+        **_speech_model_page_context().model_dump(),
+        **_question_voice_page_context().model_dump(),
+    }
 
 
 def _active_interview_read(interview_id: str) -> InterviewRead:
@@ -245,24 +254,13 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.load_interview",
-                return_value=interview,
-            ),
-            patch(
-                "app.interview.api.routes.preload_whisper_for_active_interview",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.interview.api.routes.InterviewPageService.build_page_context",
-                return_value=page_context,
-            ),
-            patch(
-                "app.interview.api.routes.SpeechModelPageService.build_page_context",
-                return_value=_speech_model_page_context(),
-            ),
-            patch(
-                "app.interview.api.routes.QuestionVoicePageService.build_page_context",
-                new=AsyncMock(return_value=_question_voice_page_context()),
+                "app.interview.api.routes.InterviewPageService.prepare_page",
+                new=AsyncMock(
+                    return_value=InterviewPageRender(
+                        redirect_url=None,
+                        template_context=_full_template_context(page_context),
+                    )
+                ),
             ),
         ):
             response = client.get("/interview/audio-ui-1")
@@ -288,24 +286,13 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.load_interview",
-                return_value=interview,
-            ),
-            patch(
-                "app.interview.api.routes.preload_whisper_for_active_interview",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.interview.api.routes.InterviewPageService.build_page_context",
-                return_value=page_context,
-            ),
-            patch(
-                "app.interview.api.routes.SpeechModelPageService.build_page_context",
-                return_value=_speech_model_page_context(),
-            ),
-            patch(
-                "app.interview.api.routes.QuestionVoicePageService.build_page_context",
-                new=AsyncMock(return_value=_question_voice_page_context()),
+                "app.interview.api.routes.InterviewPageService.prepare_page",
+                new=AsyncMock(
+                    return_value=InterviewPageRender(
+                        redirect_url=None,
+                        template_context=_full_template_context(page_context),
+                    )
+                ),
             ),
         ):
             response = client.get("/interview/audio-ui-2")

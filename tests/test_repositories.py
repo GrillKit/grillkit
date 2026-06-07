@@ -10,11 +10,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.entities import Interview as DomainInterview
-from app.interview.domain.exceptions import AnswerNotFoundError
-from app.interview.domain.value_objects import InterviewSelection, TrackSelection
-from app.interview.repositories.answer import AnswerRepository
+from app.interview.domain.value_objects import (
+    InterviewSelection,
+    PlannedQuestion,
+    TrackSelection,
+)
 from app.interview.repositories.interview import InterviewRepository
-from app.questions import Question
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
@@ -197,15 +198,10 @@ class TestInterviewRepository:
             )
         )
         planned = (
-            Question(
+            PlannedQuestion(
                 id="q1",
-                type="technical",
-                difficulty=1,
-                tags=[],
                 text="Question one",
                 code=None,
-                follow_ups=[],
-                expected_points=[],
             ),
         )
         aggregate = DomainInterview.start(
@@ -288,7 +284,7 @@ class TestInterviewRepository:
         repo = InterviewRepository(db_session)
         aggregate = repo.get_aggregate("session-1")
         assert aggregate is not None
-        updated = aggregate.with_timed_out_round(a1.id, "en")
+        updated = aggregate.with_timed_out_round(a1.id, "Time expired.")
         repo.save_aggregate(updated)
         db_session.commit()
 
@@ -342,100 +338,3 @@ class TestInterviewRepository:
         assert follow_up.id != DomainAnswer.NEW_ID
         assert follow_up.question_text == "Tell me more."
         assert follow_up.answer_text is None
-
-
-# ======================================================================
-# AnswerRepository
-# ======================================================================
-
-
-class TestAnswerRepository:
-    """Tests for AnswerRepository."""
-
-    def test_get_by_interview_question_round(self, db_session):
-        """Test finding an answer by session, question, and round."""
-        _create_test_interview(db_session)
-        _create_test_answer(db_session, question_id="q1", round_num=0)
-        _create_test_answer(db_session, question_id="q1", round_num=1)
-
-        repo = AnswerRepository(db_session)
-        ans0 = repo.get_by_interview_question_round("session-1", "q1", 0)
-        ans1 = repo.get_by_interview_question_round("session-1", "q1", 1)
-
-        assert ans0.round == 0
-        assert ans1.round == 1
-
-    def test_get_by_interview_question_round_not_found(self, db_session):
-        """Test raises when no answer matches."""
-        repo = AnswerRepository(db_session)
-        with pytest.raises(AnswerNotFoundError, match="Answer not found"):
-            repo.get_by_interview_question_round("s1", "q99", 0)
-
-    def test_get_max_round(self, db_session):
-        """Test get_max_round returns highest round number."""
-        _create_test_interview(db_session)
-        _create_test_answer(db_session, question_id="q1", round_num=0)
-        _create_test_answer(db_session, question_id="q1", round_num=1)
-        _create_test_answer(db_session, question_id="q1", round_num=3)
-
-        repo = AnswerRepository(db_session)
-        assert repo.get_max_round("session-1", "q1") == 3
-
-    def test_get_max_round_none_exist(self, db_session):
-        """Test get_max_round returns 0 when no answers exist."""
-        repo = AnswerRepository(db_session)
-        assert repo.get_max_round("session-1", "q1") == 0
-
-    def test_list_answered(self, db_session):
-        """Test list_answered returns only answers with non-null answer_text."""
-        _create_test_interview(db_session)
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-        a1.answer_text = "My answer"
-        _create_test_answer(db_session, question_id="q2", order=2)  # no text
-        a3 = _create_test_answer(db_session, question_id="q3", order=3)
-        a3.answer_text = "Another answer"
-        db_session.commit()
-
-        repo = AnswerRepository(db_session)
-        results = repo.list_answered("session-1")
-        assert len(results) == 2
-        assert results[0].question_id == "q1"
-        assert results[1].question_id == "q3"
-
-    def test_list_by_interview(self, db_session):
-        """Test list_by_interview returns all answers ordered."""
-        _create_test_interview(db_session)
-        _create_test_answer(db_session, question_id="q2", order=2)
-        _create_test_answer(db_session, question_id="q1", order=1)
-        db_session.commit()
-
-        repo = AnswerRepository(db_session)
-        results = repo.list_by_interview("session-1")
-        assert len(results) == 2
-        assert results[0].question_id == "q1"  # order=1 first
-        assert results[1].question_id == "q2"  # order=2 second
-
-    def test_set_answer_text(self, db_session):
-        """Test set_answer_text updates the answer text."""
-        _create_test_interview(db_session)
-        ans = _create_test_answer(db_session)
-
-        repo = AnswerRepository(db_session)
-        repo.set_answer_text(ans, "Updated answer")
-        db_session.commit()
-
-        reloaded = repo.get_by_interview_question_round("session-1", "q1", 0)
-        assert reloaded.answer_text == "Updated answer"
-
-    def test_set_evaluation(self, db_session):
-        """Test set_evaluation updates score and feedback."""
-        _create_test_interview(db_session)
-        ans = _create_test_answer(db_session)
-
-        repo = AnswerRepository(db_session)
-        repo.set_evaluation(ans, score=4, feedback="Good answer")
-        db_session.commit()
-
-        reloaded = repo.get_by_interview_question_round("session-1", "q1", 0)
-        assert reloaded.score == 4
-        assert reloaded.feedback == "Good answer"

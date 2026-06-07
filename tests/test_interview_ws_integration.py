@@ -8,10 +8,10 @@ import json
 from app.ai.base import GenerationResult, Message
 from app.interview.api.deps import get_ai_provider
 from app.interview.domain.entities import Answer as DomainAnswer
-from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import FakeProvider, answer_evaluation_json
+from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
 
 
@@ -41,36 +41,32 @@ def _seed_interview(interview_id: str = "ws-int-1") -> str:
     Returns:
         The interview id.
     """
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        uow.interviews.add(
-            Interview(
-                id=interview_id,
-                locale="en",
-                selection_spec=minimal_selection_spec(categories=["basics"]),
-                question_count=2,
-                question_ids=json.dumps(["q1", "q2"]),
-                status="active",
-            )
-        )
-        uow.answers.add(
+    return persist_interview_with_answers(
+        Interview(
+            id=interview_id,
+            locale="en",
+            selection_spec=minimal_selection_spec(categories=["basics"]),
+            question_count=2,
+            question_ids=json.dumps(["q1", "q2"]),
+            status="active",
+        ),
+        [
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=0,
                 question_text="Question one?",
-            )
-        )
-        uow.answers.add(
+            ),
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
-    return interview_id
+            ),
+        ],
+    )
 
 
 def test_websocket_answer_runs_full_processing_pipeline(
@@ -146,19 +142,17 @@ def test_websocket_timeout_scores_zero(client, isolated_db, override_ws_ai_provi
     """WS timeout records zero score and advances without AI."""
     interview_id = "ws-timeout-1"
     started = datetime.now(UTC) - timedelta(seconds=120)
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        uow.interviews.add(
-            Interview(
-                id=interview_id,
-                locale="en",
-                selection_spec=minimal_selection_spec(categories=["basics"]),
-                question_count=2,
-                question_ids=json.dumps(["q1", "q2"]),
-                question_time_limit_seconds=60,
-                status="active",
-            )
-        )
-        uow.answers.add(
+    persist_interview_with_answers(
+        Interview(
+            id=interview_id,
+            locale="en",
+            selection_spec=minimal_selection_spec(categories=["basics"]),
+            question_count=2,
+            question_ids=json.dumps(["q1", "q2"]),
+            question_time_limit_seconds=60,
+            status="active",
+        ),
+        [
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
@@ -166,17 +160,16 @@ def test_websocket_timeout_scores_zero(client, isolated_db, override_ws_ai_provi
                 round=0,
                 question_text="Question one?",
                 started_at=started,
-            )
-        )
-        uow.answers.add(
+            ),
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
+            ),
+        ],
+    )
 
     override_ws_ai_provider(client, [])
 

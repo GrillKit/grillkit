@@ -1,6 +1,6 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Whisper speech model metadata and normalization for speech services."""
+"""Whisper speech model metadata and normalization shared across features."""
 
 from dataclasses import dataclass
 from typing import Final, Literal

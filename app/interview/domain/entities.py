@@ -14,9 +14,7 @@ from app.interview.domain.exceptions import (
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,
 )
-from app.interview.domain.value_objects import InterviewSelection
-from app.questions import Question
-from app.shared.locales import TIMEOUT_FEEDBACK_MESSAGES, localized_string
+from app.interview.domain.value_objects import InterviewSelection, PlannedQuestion
 
 InterviewStatus = Literal["active", "completed"]
 
@@ -190,7 +188,7 @@ class Interview:
         *,
         selection: InterviewSelection,
         locale: str,
-        planned_questions: tuple[Question, ...],
+        planned_questions: tuple[PlannedQuestion, ...],
         question_time_limit_seconds: int | None = None,
         started_at: datetime | None = None,
     ) -> Interview:
@@ -297,17 +295,16 @@ class Interview:
         )
         return replace(self, answers=answers)
 
-    def with_timed_out_round(self, answer_id: int, locale: str) -> Interview:
+    def with_timed_out_round(self, answer_id: int, feedback: str) -> Interview:
         """Return aggregate with a timed-out round scored zero.
 
         Args:
             answer_id: Primary key of the answer row that expired.
-            locale: Interview locale for timeout feedback text.
+            feedback: User-facing timeout feedback text.
 
         Returns:
             A new aggregate with timeout marker text, score 0, and feedback.
         """
-        feedback = self.timeout_feedback(locale)
         answers = tuple(
             replace(
                 answer,
@@ -388,18 +385,6 @@ class Interview:
             created_at=created_at,
         )
         return replace(self, answers=self.answers + (follow_up,)), follow_up
-
-    @staticmethod
-    def timeout_feedback(locale: str) -> str:
-        """Localized feedback text for a timed-out answer.
-
-        Args:
-            locale: Interview locale code (e.g. ``en``, ``ru``).
-
-        Returns:
-            Short feedback string shown to the user.
-        """
-        return localized_string(locale, TIMEOUT_FEEDBACK_MESSAGES)
 
     def find_first_unanswered(self) -> Answer | None:
         """Return the first unanswered answer in display order.
@@ -512,20 +497,3 @@ class Interview:
             overall_feedback=overall_feedback,
             completed_at=when,
         )
-
-    def next_question_client_payload(self, answer: Answer) -> dict[str, Any]:
-        """Build WebSocket/API payload for the next unanswered question.
-
-        Args:
-            answer: Next unanswered answer round.
-
-        Returns:
-            Dict with question fields for the client.
-        """
-        return {
-            "question_id": answer.question_id,
-            "order": answer.order,
-            "question_text": answer.question_text,
-            "question_code": answer.question_code,
-            "round": answer.round,
-        }

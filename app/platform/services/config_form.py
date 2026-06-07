@@ -5,9 +5,9 @@
 from app.ai.llm_models import normalize_model_id
 from app.platform.services.config import AppConfig, ConfigService
 from app.platform.services.llm_catalog import LLMCatalogService
-from app.question_voice.services.rules.voices import default_voice_for_locale
 from app.shared.locales import normalize_locale
-from app.speech.services.rules.speech_models import normalize_speech_model_size
+from app.shared.speech_models import normalize_speech_model_size
+from app.shared.tts_voices import default_voice_for_locale
 
 
 class ConfigFormService:

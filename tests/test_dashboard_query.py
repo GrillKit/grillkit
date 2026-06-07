@@ -105,7 +105,10 @@ def test_list_dashboard_rows(monkeypatch):
     class FakeInterviews:
         @staticmethod
         def list_recent(limit=20):
-            return [completed, active]
+            return [
+                interview_from_orm(completed),
+                interview_from_orm(active),
+            ]
 
     class FakeUow:
         def __init__(self, auto_commit=False):

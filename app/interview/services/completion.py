@@ -10,10 +10,7 @@ import logging
 
 from app.ai.base import AIProvider
 from app.interview.domain.exceptions import InterviewNotFoundError
-from app.interview.repositories.mappers import (
-    interview_read_to_domain,
-    interview_to_read,
-)
+from app.interview.repositories.mappers import interview_to_read
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.evaluator.service import InterviewEvaluatorService
@@ -22,11 +19,7 @@ from app.interview.services.events import (
     InterviewCompletedEvent,
     InterviewEvent,
 )
-from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.selection import (
-    get_interview_selection,
-    selection_sources_summary,
-)
+from app.interview.services.rules.selection import selection_sources_summary
 
 logger = logging.getLogger(__name__)
 
@@ -57,37 +50,39 @@ class InterviewCompletionService:
         Raises:
             InterviewNotFoundError: If the interview does not exist.
         """
-        interview = InterviewQuery.get_interview_or_raise(interview_id)
+        with InterviewUnitOfWork() as uow:
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
 
-        questions_answers = [
-            {
-                "question_id": a.question_id,
-                "question_text": a.question_text,
-                "answer_text": a.answer_text,
-                "score": a.score,
-                "round": a.round,
-            }
-            for a in interview.answers
-            if a.answer_text is not None
-        ]
+            questions_answers = [
+                {
+                    "question_id": answer.question_id,
+                    "question_text": answer.question_text,
+                    "answer_text": answer.answer_text,
+                    "score": answer.score,
+                    "round": answer.round,
+                }
+                for answer in aggregate.answers
+                if answer.answer_text is not None
+            ]
+            normalized_breakdown = aggregate.per_question_score_breakdown()
+            locale = aggregate.locale
+            sources_text = selection_sources_summary(aggregate.selection)
 
         events: list[InterviewEvent] = [EvaluatingEvent()]
 
-        sources_text = selection_sources_summary(get_interview_selection(interview))
         interview_eval = await InterviewEvaluatorService.evaluate_interview(
             provider=provider,
             questions_answers=questions_answers,
             sources_text=sources_text,
-            locale=interview.locale,
+            locale=locale,
         )
 
-        session = interview_read_to_domain(interview)
-        normalized_breakdown = session.per_question_score_breakdown()
         interview_eval = interview_eval.model_copy(
             update={"score_breakdown": normalized_breakdown}
         )
 
-        score = 0
         with InterviewUnitOfWork(auto_commit=True) as uow:
             aggregate = uow.interviews.get_aggregate(interview_id)
             if aggregate is None:
@@ -95,10 +90,10 @@ class InterviewCompletionService:
             completed = aggregate.with_session_completed(interview_eval.model_dump())
             score = completed.score or 0
             uow.interviews.save_aggregate(completed)
-            interview = interview_to_read(completed)
+            interview_read = interview_to_read(completed)
 
         max_score = DashboardBuilder.compute_max_score(
-            interview, interview_eval.score_breakdown or None
+            interview_read, interview_eval.score_breakdown or None
         )
         events.append(
             InterviewCompletedEvent(

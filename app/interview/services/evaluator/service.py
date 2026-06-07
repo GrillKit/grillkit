@@ -265,6 +265,115 @@ class InterviewEvaluatorService:
         )
 
     @staticmethod
+    def _follow_up_decision(
+        evaluation: AnswerEvaluation | FollowUpEvaluation,
+        answer_round: int,
+    ) -> tuple[bool, str | None]:
+        """Decide whether another follow-up round is needed after evaluation.
+
+        Args:
+            evaluation: Parsed AI evaluation for the submitted round.
+            answer_round: Follow-up round that was evaluated (0 = initial).
+
+        Returns:
+            Tuple of (follow_up_needed, follow_up_question_text).
+        """
+        if answer_round == 0:
+            if not isinstance(evaluation, AnswerEvaluation):
+                raise TypeError("Round 0 evaluation must be AnswerEvaluation")
+            follow_up_needed = evaluation.follow_up_needed and bool(
+                evaluation.follow_up_question
+            )
+            return follow_up_needed, evaluation.follow_up_question
+        if not isinstance(evaluation, FollowUpEvaluation):
+            raise TypeError("Follow-up round evaluation must be FollowUpEvaluation")
+        follow_up_needed = (
+            evaluation.needs_further_follow_up
+            and bool(evaluation.follow_up_question)
+            and answer_round < InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH
+        )
+        return follow_up_needed, evaluation.follow_up_question
+
+    @staticmethod
+    async def evaluate_submission(
+        *,
+        provider: AIProvider,
+        locale: str,
+        answer_round: int,
+        question_text: str,
+        question_code: str | None,
+        initial_question_text: str,
+        initial_answer_text: str,
+        answer_text: str | None = None,
+        audio_wav: bytes | None = None,
+    ) -> tuple[AnswerEvaluation | FollowUpEvaluation, bool, str | None]:
+        """Evaluate one answer round and decide whether a follow-up is needed.
+
+        Args:
+            provider: Configured AI provider instance.
+            locale: Locale for AI feedback and follow-up questions.
+            answer_round: Follow-up round (0 = initial).
+            question_text: Text of the question being answered.
+            question_code: Optional code snippet for the question.
+            initial_question_text: Original question text (round 0).
+            initial_answer_text: User's initial answer text (round 0).
+            answer_text: User answer text for text-mode evaluation.
+            audio_wav: Spoken answer WAV for multimodal evaluation.
+
+        Returns:
+            Tuple of (evaluation, follow_up_needed, follow_up_text).
+
+        Raises:
+            ValueError: If neither or both of ``answer_text`` and ``audio_wav`` are set.
+        """
+        if (answer_text is None) == (audio_wav is None):
+            raise ValueError("Provide exactly one of answer_text or audio_wav")
+
+        evaluation: AnswerEvaluation | FollowUpEvaluation
+        if answer_round == 0:
+            if audio_wav is not None:
+                evaluation = await InterviewEvaluatorService.evaluate_answer_with_audio(
+                    provider=provider,
+                    question_text=question_text,
+                    audio_wav=audio_wav,
+                    question_code=question_code,
+                    locale=locale,
+                )
+            else:
+                evaluation = await InterviewEvaluatorService.evaluate_answer(
+                    provider=provider,
+                    question_text=question_text,
+                    answer_text=answer_text or "",
+                    question_code=question_code,
+                    locale=locale,
+                )
+        elif audio_wav is not None:
+            evaluation = await InterviewEvaluatorService.evaluate_follow_up_with_audio(
+                provider=provider,
+                question_text=initial_question_text,
+                initial_answer=initial_answer_text,
+                follow_up_question=question_text,
+                audio_wav=audio_wav,
+                question_code=question_code,
+                locale=locale,
+            )
+        else:
+            evaluation = await InterviewEvaluatorService.evaluate_follow_up(
+                provider=provider,
+                question_text=initial_question_text,
+                initial_answer=initial_answer_text,
+                follow_up_question=question_text,
+                follow_up_answer=answer_text or "",
+                question_code=question_code,
+                locale=locale,
+            )
+
+        follow_up_needed, follow_up_text = (
+            InterviewEvaluatorService._follow_up_decision(evaluation, answer_round)
+        )
+        return evaluation, follow_up_needed, follow_up_text
+
+    @staticmethod
     async def evaluate_interview(
         provider: AIProvider,
         questions_answers: list[dict[str, Any]],

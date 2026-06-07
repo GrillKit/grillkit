@@ -15,6 +15,7 @@ from app.interview.domain.exceptions import (
 from app.interview.domain.value_objects import (
     InterviewSelection,
     InterviewSelectionHolder,
+    PlannedQuestion,
     TrackQuestionPools,
     TrackSelection,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "InterviewNotFoundError",
     "InterviewSelection",
     "InterviewSelectionHolder",
+    "PlannedQuestion",
     "QuestionTimerNotEnabledError",
     "QuestionTimerNotExpiredError",
     "TrackQuestionPools",

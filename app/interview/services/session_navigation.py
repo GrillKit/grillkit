@@ -4,8 +4,27 @@
 
 from typing import Any
 
+from app.interview.domain.entities import Answer
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
+
+
+def next_question_payload(answer: Answer) -> dict[str, Any]:
+    """Build WebSocket/API payload for the next unanswered question.
+
+    Args:
+        answer: Next unanswered answer round.
+
+    Returns:
+        Dict with question fields for the client.
+    """
+    return {
+        "question_id": answer.question_id,
+        "order": answer.order,
+        "question_text": answer.question_text,
+        "question_code": answer.question_code,
+        "round": answer.round,
+    }
 
 
 class SessionNavigationService:
@@ -61,4 +80,4 @@ class SessionNavigationService:
         timer_remaining = activated.remaining_seconds(
             updated.question_time_limit_seconds
         )
-        return updated.next_question_client_payload(activated), timer_remaining
+        return next_question_payload(activated), timer_remaining

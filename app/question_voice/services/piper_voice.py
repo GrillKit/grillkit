@@ -17,11 +17,6 @@ from app.question_voice.services.piper_storage import (
     is_voice_installed,
     voice_dir,
 )
-from app.question_voice.services.rules.voices import (
-    PiperVoiceSpec,
-    normalize_tts_voice_id,
-    voice_spec_for_id,
-)
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
 from app.shared.infrastructure.hf_download_progress import (
@@ -34,6 +29,11 @@ from app.shared.infrastructure.model_download import (
     promote_staging_dir,
 )
 from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
+from app.shared.tts_voices import (
+    PiperVoiceSpec,
+    normalize_tts_voice_id,
+    voice_spec_for_id,
+)
 
 PIPER_VOICES_REPO_ID = "rhasspy/piper-voices"
 

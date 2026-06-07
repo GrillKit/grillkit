@@ -10,15 +10,31 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Changed
 
-- Cross-feature interview reads moved from `interview/api/access` to `interview/services/access`; Whisper transcriber resolution consolidated in `speech/services/transcriber_resolver`
-- Overall feedback JSON parsing lives in `interview/services/rules/feedback` (repository mappers import it instead of `schemas/mappers`)
+- Interview WebSocket, NDJSON audio-answer, and wire JSON mapping live in `interview/api/` (`ws_session.py`, `audio_answer.py`, `ws_protocol.py`); use cases return `InterviewEvent` only
+- Interview page and WebSocket/audio routes delegate to use-case services; speech runtime preload runs in `interview/api/routes` via `SpeechRuntimeCoordinator`
+- Cross-feature active-session reads use `InterviewQuery.get_active_interview_or_raise` (removed `interview/services/access.py`)
+- Persistence serialization (`selection_spec`, `overall_feedback`) moved to `interview/domain/serialization`; repository mappers no longer import `services/rules`
+- Round timer start on interview page load uses aggregate `save_aggregate` instead of direct ORM answer mutations
+- `load_active_interview_or_raise` via `InterviewQuery.get_active_interview_or_raise`
+- Interview page template context assembled in `InterviewPageService.build_full_template_context` (speech and question-voice keys); `interview/api/routes` no longer imports speech/question_voice page services
+- `InterviewRepository.list_recent` returns domain aggregates; dashboard maps them via `interview_to_read` only
+- Answer-round AI evaluation consolidated in `InterviewEvaluatorService.evaluate_submission` (removed `AnswerAiEvaluationService`)
+- Platform config uses shared speech/TTS catalogs (`app/shared/speech_models.py`, `app/shared/tts_voices.py`) and `WhisperReadinessService` instead of importing speech/question_voice feature rules
 
 ### Fixed
+
+- Configuration speech model panel tracks the selected Whisper size and locale in the form (status, download, and save now refer to the same model)
+- Whisper and Piper voices can be downloaded from Configuration before any LLM model is saved; adding an audio-capable catalog entry no longer requires Whisper to be installed first
 
 ### Removed
 
 - Dead `platform/api/llm_page_context.py` and legacy ORM→read helpers in `interview/schemas/mappers.py`
 - Unused `pydeps` runtime dependency
+- `AnswerRepository`, `uow.answers`, and unused `speech/api/preload.py`
+- `AnswerAiEvaluationService` (logic moved to `InterviewEvaluatorService.evaluate_submission`)
+- Completed plan `docs/plans/domain-layer-migration.md`
+- Unused `follow_ups` and `expected_points` fields from `Question` loader (`app/questions.py`); legacy YAML keys are ignored
+- `speech/services/rules/` and `question_voice/services/rules/` (catalogs moved to `app/shared/`)
 
 ## 2026.5.31
 

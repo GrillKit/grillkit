@@ -11,12 +11,12 @@ from typing import Any
 from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.entities import InterviewStatus
-from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.rules.feedback import parse_overall_feedback
-from app.interview.services.rules.selection import (
+from app.interview.domain.serialization import (
+    parse_overall_feedback,
     parse_selection_spec,
     selection_to_spec,
 )
+from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.shared.infrastructure.models import Answer as OrmAnswer
 from app.shared.infrastructure.models import Interview as OrmInterview
 

@@ -19,12 +19,12 @@ from app.shared.infrastructure.model_download import (
     promote_staging_dir,
 )
 from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
-from app.speech.schemas.status import WhisperModelStatusRead
-from app.speech.services.rules.speech_models import (
+from app.shared.speech_models import (
     SpeechModelSpec,
     normalize_speech_model_size,
     speech_model_spec_for_size,
 )
+from app.speech.schemas.status import WhisperModelStatusRead
 from app.speech.services.whisper_runtime import WhisperRuntime
 from app.speech.services.whisper_storage import (
     is_installed,

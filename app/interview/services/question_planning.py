@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Load question banks and build interview question plans."""
 
-from app.interview.domain.value_objects import InterviewSelection, TrackQuestionPools
+from app.interview.domain.value_objects import (
+    InterviewSelection,
+    PlannedQuestion,
+    TrackQuestionPools,
+)
 from app.interview.services.rules.selection import plan_questions, track_label
 from app.questions import (
     Question,
@@ -13,6 +17,18 @@ from app.questions import (
     load_category,
 )
 from app.shared.locales import normalize_locale
+
+
+def _to_planned(question: Question) -> PlannedQuestion:
+    """Map a YAML question bank row to a domain planned question.
+
+    Args:
+        question: Loaded question from ``app.questions``.
+
+    Returns:
+        Domain value object for interview creation.
+    """
+    return PlannedQuestion(id=question.id, text=question.text, code=question.code)
 
 
 def validate_selection(selection: InterviewSelection) -> None:
@@ -79,9 +95,10 @@ def load_track_pools(
         pools.append(
             TrackQuestionPools(
                 source=source,
-                full_pool=tuple(full_pool),
+                full_pool=tuple(_to_planned(q) for q in full_pool),
                 category_pools={
-                    category: tuple(pool) for category, pool in category_pools.items()
+                    category: tuple(_to_planned(q) for q in pool)
+                    for category, pool in category_pools.items()
                 },
             )
         )
@@ -92,7 +109,7 @@ def build_question_plan(
     selection: InterviewSelection,
     question_count: int,
     locale: str = "en",
-) -> list[Question]:
+) -> list[PlannedQuestion]:
     """Build ordered question list for a multi-source interview.
 
     Args:
@@ -101,7 +118,7 @@ def build_question_plan(
         locale: Locale for question text.
 
     Returns:
-        Ordered list of Question instances.
+        Ordered list of planned domain questions.
 
     Raises:
         ValueError: If validation fails or pools are empty.

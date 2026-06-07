@@ -7,7 +7,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.questions import Question
+
+@dataclass(frozen=True, slots=True)
+class PlannedQuestion:
+    """Question snapshot used when starting an interview session.
+
+    Attributes:
+        id: Unique question identifier from the question bank.
+        text: Localized question text shown to the user.
+        code: Optional code snippet, or None when not applicable.
+    """
+
+    id: str
+    text: str
+    code: str | None
 
 
 class InterviewSelectionHolder(Protocol):
@@ -67,5 +80,5 @@ class TrackQuestionPools:
     """
 
     source: TrackSelection
-    full_pool: tuple[Question, ...]
-    category_pools: dict[str, tuple[Question, ...]]
+    full_pool: tuple[PlannedQuestion, ...]
+    category_pools: dict[str, tuple[PlannedQuestion, ...]]

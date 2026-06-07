@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for interview aggregate behavior."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.interview.domain.entities import Answer, Interview
@@ -10,33 +12,23 @@ from app.interview.domain.exceptions import (
     InterviewNotActiveError,
     UnansweredAnswerNotFoundError,
 )
-from app.interview.repositories.mappers import interview_read_to_domain
-from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.questions import Question
+from app.interview.domain.serialization import parse_selection_spec
+from app.interview.domain.value_objects import (
+    InterviewSelection,
+    PlannedQuestion,
+    TrackSelection,
+)
 from tests.helpers.selection import minimal_selection_spec
 
 _SPEC = minimal_selection_spec()
+_EPOCH = datetime.min.replace(tzinfo=UTC)
 
 
-def _session(*, status: str = "active", answers: list[AnswerRead]) -> Interview:
-    """Build a domain interview from a read-model fixture."""
-    read = InterviewRead(
-        id="s1",
-        status=status,
-        locale="en",
-        selection_spec=_SPEC,
-        question_ids="[]",
-        question_count=len(answers),
-        question_time_limit_seconds=None,
-        answers=answers,
-    )
-    return interview_read_to_domain(read)
-
-
-def _answer(**kwargs) -> AnswerRead:
-    """Build an AnswerRead with defaults for domain tests."""
+def _answer(**kwargs) -> Answer:
+    """Build a domain answer with defaults for aggregate tests."""
     defaults = {
         "id": 1,
+        "interview_id": "s1",
         "question_id": "q1",
         "order": 1,
         "round": 0,
@@ -44,10 +36,30 @@ def _answer(**kwargs) -> AnswerRead:
         "question_code": None,
         "answer_text": None,
         "score": None,
+        "feedback": None,
         "started_at": None,
+        "created_at": _EPOCH,
     }
     defaults.update(kwargs)
-    return AnswerRead(**defaults)
+    return Answer(**defaults)
+
+
+def _session(*, status: str = "active", answers: list[Answer]) -> Interview:
+    """Build a domain interview for aggregate behavior tests."""
+    return Interview(
+        id="s1",
+        locale="en",
+        selection=parse_selection_spec(_SPEC),
+        question_count=len(answers),
+        question_ids=tuple(answer.question_id for answer in answers),
+        question_time_limit_seconds=None,
+        status=status,
+        score=None,
+        overall_feedback=None,
+        started_at=datetime(2026, 5, 23, 12, 0, 0, tzinfo=UTC),
+        completed_at=None,
+        answers=tuple(answers),
+    )
 
 
 def test_total_score():
@@ -55,7 +67,7 @@ def test_total_score():
     session = _session(
         answers=[
             _answer(question_id="q1", score=4),
-            _answer(question_id="q2", order=2, question_text="Q2", score=3),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2", score=3),
         ]
     )
     assert session.total_score() == 7
@@ -66,7 +78,7 @@ def test_find_first_unanswered():
     session = _session(
         answers=[
             _answer(answer_text="done"),
-            _answer(question_id="q2", order=2, question_text="Q2"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
         ]
     )
     current = session.find_first_unanswered()
@@ -79,7 +91,7 @@ def test_find_unanswered_for_question():
     session = _session(
         answers=[
             _answer(answer_text="done"),
-            _answer(question_id="q2", order=2, question_text="Q2"),
+            _answer(id=2, question_id="q2", order=2, question_text="Q2"),
         ]
     )
     current = session.find_unanswered_for_question("q2")
@@ -98,8 +110,14 @@ def test_find_next_unanswered_after():
     session = _session(
         answers=[
             _answer(answer_text="done"),
-            _answer(question_id="q2", order=2, question_text="Q2", answer_text="done"),
-            _answer(question_id="q3", order=3, question_text="Q3"),
+            _answer(
+                id=2,
+                question_id="q2",
+                order=2,
+                question_text="Q2",
+                answer_text="done",
+            ),
+            _answer(id=3, question_id="q3", order=3, question_text="Q3"),
         ]
     )
     nxt = session.find_next_unanswered_after(1)
@@ -142,11 +160,11 @@ def test_with_timed_out_round_sets_marker_score_and_feedback():
             _answer(id=2, question_id="q2", order=2, question_text="Q2"),
         ]
     )
-    updated = session.with_timed_out_round(1, "en")
+    updated = session.with_timed_out_round(1, "Time is up.")
     timed = updated.answers[0]
     assert timed.answer_text == Answer.TIME_EXPIRED_ANSWER_TEXT
     assert timed.score == 0
-    assert timed.feedback
+    assert timed.feedback == "Time is up."
     assert updated.answers[1].answer_text is None
 
 
@@ -206,23 +224,25 @@ def test_with_answer_text_updates_single_row():
 
 def test_start_timer_for_answer_sets_started_at():
     """start_timer_for_answer activates the timer on the target row only."""
-    from datetime import UTC, datetime
-
     when = datetime(2026, 6, 1, 10, 0, 0, tzinfo=UTC)
-    read = InterviewRead(
+    session = Interview(
         id="s1",
-        status="active",
         locale="en",
-        selection_spec=_SPEC,
-        question_ids="[]",
+        selection=parse_selection_spec(_SPEC),
         question_count=2,
+        question_ids=("q1", "q2"),
         question_time_limit_seconds=90,
-        answers=[
+        status="active",
+        score=None,
+        overall_feedback=None,
+        started_at=datetime(2026, 5, 23, 12, 0, 0, tzinfo=UTC),
+        completed_at=None,
+        answers=(
             _answer(id=1, question_id="q1"),
             _answer(id=2, question_id="q2", order=2, question_text="Q2"),
-        ],
+        ),
     )
-    timed = interview_read_to_domain(read).start_timer_for_answer(2, when=when)
+    timed = session.start_timer_for_answer(2, when=when)
     assert timed.answers[0].started_at is None
     assert timed.answers[1].started_at == when
 
@@ -246,23 +266,14 @@ def test_per_question_score_breakdown():
     assert breakdown["q2"] == {"score": 5, "max": Interview.MAX_SCORE_PER_ROUND}
 
 
-def _planned_question(question_id: str, *, text: str = "What is a list?") -> Question:
-    return Question(
-        id=question_id,
-        type="technical",
-        difficulty=1,
-        tags=[],
-        text=text,
-        code=None,
-        follow_ups=[],
-        expected_points=[],
-    )
+def _planned_question(
+    question_id: str, *, text: str = "What is a list?"
+) -> PlannedQuestion:
+    return PlannedQuestion(id=question_id, text=text, code=None)
 
 
 def test_interview_start_builds_active_aggregate():
     """Interview.start creates answer rows and question_ids from the plan."""
-    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
-
     selection = InterviewSelection(
         sources=(
             TrackSelection(
@@ -295,8 +306,6 @@ def test_interview_start_builds_active_aggregate():
 
 def test_interview_start_with_timer_starts_first_round():
     """Interview.start sets started_at on the first answer when a limit is set."""
-    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
-
     selection = InterviewSelection(
         sources=(
             TrackSelection(
@@ -321,8 +330,6 @@ def test_interview_start_with_timer_starts_first_round():
 
 def test_with_session_completed_sets_final_state():
     """with_session_completed marks the session completed with total score."""
-    from datetime import UTC, datetime
-
     when = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
     session = _session(
         answers=[
@@ -345,8 +352,6 @@ def test_with_session_completed_sets_final_state():
 
 def test_interview_start_empty_plan_raises():
     """Interview.start rejects an empty question plan."""
-    from app.interview.domain.value_objects import InterviewSelection, TrackSelection
-
     selection = InterviewSelection(
         sources=(
             TrackSelection(
