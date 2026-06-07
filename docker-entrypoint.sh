@@ -3,6 +3,7 @@ set -eu
 
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
+export HOME="/app/data"
 
 mkdir -p /app/data/db
 
