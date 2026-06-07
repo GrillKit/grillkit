@@ -12,6 +12,11 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Fixed
 
+- Configuration speech model panel tracks the selected Whisper size and locale in the form (status, download, and save now refer to the same model)
+- Per-question timer stops when the interview is ended or completed (including during final evaluation)
+- Configuration question voice panel tracks the selected interview language in the form (status and download now refer to the matching Piper voice)
+- Whisper and Piper voices can be downloaded from Configuration before any LLM model is saved; adding an audio-capable catalog entry no longer requires Whisper to be installed first
+
 ### Removed
 
 ## 2026.5.31

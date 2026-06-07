@@ -410,7 +410,7 @@ class TestConfigService:
     def test_check_whisper_ready_when_missing(self, monkeypatch):
         """Audio-enabled save is blocked when Whisper is not installed."""
         monkeypatch.setattr(
-            "app.platform.services.config.is_installed",
+            "app.platform.services.config.WhisperReadinessService.is_model_installed",
             lambda _size: False,
         )
         ok, message = ConfigService.check_whisper_ready("small")
@@ -438,6 +438,33 @@ class TestConfigService:
         mock_provider.probe_audio_input.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_test_catalog_model_audio_skips_whisper(
+        self, mock_provider_factory, monkeypatch
+    ):
+        """Catalog add probes audio support without requiring Whisper."""
+        mock_provider = AsyncMock()
+        mock_provider.validate = AsyncMock(return_value=True)
+        mock_provider.probe_audio_input = AsyncMock(return_value=True)
+        mock_provider.close = AsyncMock()
+        mock_provider_factory.from_config.return_value = mock_provider
+        monkeypatch.setattr(
+            "app.platform.services.config.WhisperReadinessService.is_model_installed",
+            lambda _size: False,
+        )
+        config = AppConfig(
+            provider_type="openai-compatible",
+            base_url="http://localhost",
+            model="gpt-4o",
+            api_key="test_key",
+        )
+        success, message = await ConfigService.test_catalog_model(
+            config,
+            accepts_audio_input=True,
+        )
+        assert success is True
+        assert message == "Audio connection successful"
+
+    @pytest.mark.asyncio
     async def test_test_interview_model_audio_requires_whisper(
         self, mock_provider_factory, monkeypatch
     ):
@@ -447,7 +474,7 @@ class TestConfigService:
         )
         mock_provider_factory.from_config.return_value.close = AsyncMock()
         monkeypatch.setattr(
-            "app.platform.services.config.is_installed",
+            "app.platform.services.config.WhisperReadinessService.is_model_installed",
             lambda _size: False,
         )
         config = AppConfig(

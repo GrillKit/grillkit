@@ -6,18 +6,18 @@ from fastapi import HTTPException
 import pytest
 
 from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
-from app.interview.api.routes import _ai_error_message
-from app.shared.exceptions import (
+from app.interview.domain.exceptions import (
     AnswerNotFoundError,
     InterviewNotActiveError,
     InterviewNotFoundError,
     UnansweredAnswerNotFoundError,
 )
+from app.interview.services.ai_errors import ai_error_message_for_client
 
 
 def test_ai_error_message_model_not_found():
     """Model-missing API errors get an actionable WebSocket message."""
-    msg = _ai_error_message(
+    msg = ai_error_message_for_client(
         ValueError(
             "API error: Error code: 404 - "
             "{'error': {'message': \"model 'qwen' not found\"}}"
@@ -29,7 +29,7 @@ def test_ai_error_message_model_not_found():
 
 def test_ai_error_message_timeout():
     """Timeout API errors suggest checking config timeout."""
-    msg = _ai_error_message(ValueError("API error: Request timed out."))
+    msg = ai_error_message_for_client(ValueError("API error: Request timed out."))
     assert "timed out" in msg.lower()
     assert "/config" in msg
 

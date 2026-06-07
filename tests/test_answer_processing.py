@@ -8,60 +8,24 @@ import json
 
 import pytest
 
+from app.interview.domain.entities import Answer as DomainAnswer
+from app.interview.domain.exceptions import InterviewNotActiveError
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_processing import AnswerProcessingService
+from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
     EvaluatingEvent,
 )
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.timer import TIME_EXPIRED_ANSWER_TEXT
-from app.shared.exceptions import InterviewNotActiveError
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
+from tests.helpers.interview_seed import (
+    persist_interview_with_answers,
+    seed_two_question_interview,
+)
 from tests.helpers.selection import minimal_selection_spec
-
-
-def _seed_two_question_interview(interview_id: str = "ap-test-1") -> str:
-    """Persist an active interview with two unanswered questions.
-
-    Args:
-        interview_id: Interview primary key.
-
-    Returns:
-        The interview id.
-    """
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
-            id=interview_id,
-            locale="en",
-            selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
-            status="active",
-        )
-        uow.interviews.add(interview)
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q1",
-                order=1,
-                round=0,
-                question_text="Question one?",
-            )
-        )
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q2",
-                order=2,
-                round=0,
-                question_text="Question two?",
-            )
-        )
-    return interview_id
 
 
 @pytest.mark.asyncio
@@ -69,7 +33,7 @@ async def test_process_answer_persists_score_and_next_question(
     isolated_db, fake_ai_provider
 ):
     """Initial answer is scored and the client receives the next question."""
-    interview_id = _seed_two_question_interview()
+    interview_id = seed_two_question_interview()
     provider = fake_ai_provider(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
@@ -109,7 +73,7 @@ async def test_process_answer_persists_score_and_next_question(
 @pytest.mark.asyncio
 async def test_process_answer_creates_follow_up_round(isolated_db, fake_ai_provider):
     """When AI requests a follow-up, a new unanswered round row is created."""
-    interview_id = _seed_two_question_interview("ap-test-2")
+    interview_id = seed_two_question_interview("ap-test-2")
     provider = fake_ai_provider(
         [
             answer_evaluation_json(
@@ -148,45 +112,44 @@ async def test_process_follow_up_answer_without_another_follow_up(
 ):
     """Answering a follow-up round persists score and advances to the next question."""
     interview_id = "ap-test-3"
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    initial = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=0,
+        question_text="Original question?",
+    )
+    initial.answer_text = "First answer"
+    initial.score = 3
+    initial.feedback = "OK"
+    first_follow_up = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=1,
+        question_text="Follow-up question?",
+    )
+    persist_interview_with_answers(
+        Interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=2,
             question_ids=json.dumps(["q1", "q2"]),
             status="active",
-        )
-        uow.interviews.add(interview)
-        initial = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=0,
-            question_text="Original question?",
-        )
-        initial.answer_text = "First answer"
-        initial.score = 3
-        initial.feedback = "OK"
-        uow.answers.add(initial)
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q1",
-                order=1,
-                round=1,
-                question_text="Follow-up question?",
-            )
-        )
-        uow.answers.add(
+        ),
+        [
+            initial,
+            first_follow_up,
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
+            ),
+        ],
+    )
 
     provider = fake_ai_provider(
         [follow_up_evaluation_json(score=4, needs_further_follow_up=False)]
@@ -221,56 +184,54 @@ async def test_last_follow_up_advances_immediately_and_evaluates_in_background(
 ):
     """The last follow-up round advances without waiting for AI evaluation."""
     interview_id = "ap-test-last-follow-up"
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    initial = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=0,
+        question_text="Original question?",
+    )
+    initial.answer_text = "First answer"
+    initial.score = 3
+    initial.feedback = "OK"
+    first_follow_up = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=1,
+        question_text="First follow-up?",
+    )
+    first_follow_up.answer_text = "First follow-up answer"
+    first_follow_up.score = 3
+    first_follow_up.feedback = "OK"
+    persist_interview_with_answers(
+        Interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=2,
             question_ids=json.dumps(["q1", "q2"]),
             status="active",
-        )
-        uow.interviews.add(interview)
-        initial = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=0,
-            question_text="Original question?",
-        )
-        initial.answer_text = "First answer"
-        initial.score = 3
-        initial.feedback = "OK"
-        uow.answers.add(initial)
-        first_follow_up = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=1,
-            question_text="First follow-up?",
-        )
-        first_follow_up.answer_text = "First follow-up answer"
-        first_follow_up.score = 3
-        first_follow_up.feedback = "OK"
-        uow.answers.add(first_follow_up)
-        uow.answers.add(
+        ),
+        [
+            initial,
+            first_follow_up,
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=2,
                 question_text="Second follow-up?",
-            )
-        )
-        uow.answers.add(
+            ),
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
+            ),
+        ],
+    )
 
     provider = fake_ai_provider(
         [follow_up_evaluation_json(score=4, needs_further_follow_up=False)]
@@ -317,16 +278,15 @@ async def test_process_answer_rejects_completed_interview(
 ):
     """Completed interviews cannot accept new answers."""
     interview_id = "ap-test-4"
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    persist_interview_with_answers(
+        Interview(
             id=interview_id,
             selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=1,
             question_ids=json.dumps(["q1"]),
             status="completed",
-        )
-        uow.interviews.add(interview)
-        uow.answers.add(
+        ),
+        [
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
@@ -334,7 +294,8 @@ async def test_process_answer_rejects_completed_interview(
                 round=0,
                 question_text="Done?",
             )
-        )
+        ],
+    )
 
     provider = fake_ai_provider([answer_evaluation_json()])
 
@@ -363,8 +324,8 @@ def _seed_timed_interview(
     Returns:
         The interview id.
     """
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    return persist_interview_with_answers(
+        Interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
@@ -372,9 +333,8 @@ def _seed_timed_interview(
             question_ids=json.dumps(["q1", "q2"]),
             question_time_limit_seconds=limit_seconds,
             status="active",
-        )
-        uow.interviews.add(interview)
-        uow.answers.add(
+        ),
+        [
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
@@ -382,18 +342,16 @@ def _seed_timed_interview(
                 round=0,
                 question_text="Question one?",
                 started_at=started_at,
-            )
-        )
-        uow.answers.add(
+            ),
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
-    return interview_id
+            ),
+        ],
+    )
 
 
 @pytest.mark.asyncio
@@ -434,7 +392,7 @@ async def test_process_timeout_scores_zero_and_advances(isolated_db):
     reloaded = InterviewQuery.get_interview(interview_id)
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
-    assert q1.answer_text == TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
     assert q1.score == 0
     q2 = next(a for a in reloaded.answers if a.question_id == "q2")
     assert q2.started_at is not None
@@ -448,8 +406,11 @@ async def test_timeout_ignored_while_answer_pending_evaluation(
     started = datetime.now(UTC) - timedelta(seconds=30)
     interview_id = _seed_timed_interview(started_at=started)
     with InterviewUnitOfWork(auto_commit=True) as uow:
-        row = uow.answers.get_by_interview_question_round(interview_id, "q1", 0)
-        uow.answers.set_answer_text(row, "Answer in progress.")
+        aggregate = uow.interviews.get_aggregate(interview_id)
+        assert aggregate is not None
+        current = aggregate.find_answer("q1", 0)
+        updated = aggregate.with_answer_text(current.id, "Answer in progress.")
+        uow.interviews.save_aggregate(updated)
 
     events = await AnswerProcessingService.process_timeout_submission(
         interview_id=interview_id,
@@ -478,13 +439,17 @@ async def test_timeout_during_ai_evaluation_preserves_score(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
 
-    orig_eval = AnswerAiEvaluationService.evaluate
+    orig_eval = InterviewEvaluatorService.evaluate_submission
 
     async def slow_eval(**kwargs):
         await asyncio.sleep(0.05)
         return await orig_eval(**kwargs)
 
-    monkeypatch.setattr(AnswerAiEvaluationService, "evaluate", staticmethod(slow_eval))
+    monkeypatch.setattr(
+        InterviewEvaluatorService,
+        "evaluate_submission",
+        staticmethod(slow_eval),
+    )
 
     events: list = []
     gen = AnswerProcessingService.stream_answer_submission(
@@ -535,4 +500,4 @@ async def test_late_answer_submission_treated_as_timeout(isolated_db, fake_ai_pr
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
     assert q1.score == 0
-    assert q1.answer_text == TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT

@@ -12,7 +12,7 @@ from faster_whisper import WhisperModel
 from app.ai.faster_whisper_transcriber import FasterWhisperTranscriber
 from app.ai.speech_transcriber import SpeechTranscriber
 from app.shared.infrastructure.in_process_runtime import InProcessArtifactRuntime
-from app.speech.services.rules.speech_models import normalize_speech_model_size
+from app.shared.speech_models import normalize_speech_model_size
 from app.speech.services.whisper_storage import is_installed, model_dir
 
 logger = logging.getLogger(__name__)

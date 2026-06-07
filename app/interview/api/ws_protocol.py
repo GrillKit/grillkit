@@ -1,9 +1,10 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""WebSocket JSON protocol mapping for interview sessions."""
+"""WebSocket and NDJSON wire protocol mapping for interview sessions."""
 
 from typing import Any
 
+from app.interview.domain.exceptions import InterviewDomainError
 from app.interview.schemas.ws import (
     AnswerFeedbackMessage,
     AnswerSavedMessage,
@@ -20,6 +21,25 @@ from app.interview.services.events import (
     InterviewEvent,
     TranscriptEvent,
 )
+
+__all__ = [
+    "domain_error_to_wire",
+    "event_to_message",
+    "events_to_messages",
+    "server_message_from_event",
+]
+
+
+def domain_error_to_wire(exc: InterviewDomainError) -> dict[str, str]:
+    """Build a WebSocket error payload from a domain exception.
+
+    Args:
+        exc: Domain error raised by the service layer.
+
+    Returns:
+        JSON-serializable error dict for the client.
+    """
+    return {"type": "error", "message": str(exc)}
 
 
 def server_message_from_event(
@@ -76,7 +96,7 @@ def event_to_message(event: InterviewEvent) -> dict[str, Any]:
     """Convert a semantic interview event to a WebSocket JSON message.
 
     Args:
-        event: Domain event from the application service layer.
+        event: Event from the application service layer.
 
     Returns:
         JSON-serializable message dict for the client.

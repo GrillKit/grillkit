@@ -10,17 +10,15 @@ import pytest
 from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.llm_models import LLMModelEntry
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.page import InterviewPageService
+from app.interview.services.page import InterviewPageRender, InterviewPageService
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import QuestionVoicePageContext
 from app.speech.schemas.page import SpeechModelPageContext
 from app.speech.schemas.status import WhisperModelStatusRead
 from tests.fakes import answer_evaluation_json
+from tests.helpers.interview_seed import seed_two_question_interview
 from tests.helpers.selection import minimal_selection_spec
-from tests.test_audio_answer_processing import (
-    FakeTranscriber,
-    _seed_two_question_interview,
-)
+from tests.helpers.transcription import FakeTranscriber
 
 
 def _parse_ndjson(body: str) -> list[dict]:
@@ -58,6 +56,15 @@ def _question_voice_page_context() -> QuestionVoicePageContext:
         tts_voice_status=None,
         tts_voice_banner=False,
     )
+
+
+def _full_template_context(page_context) -> dict:
+    """Merge interview, speech, and question-voice keys for page tests."""
+    return {
+        **page_context.model_dump(),
+        **_speech_model_page_context().model_dump(),
+        **_question_voice_page_context().model_dump(),
+    }
 
 
 def _active_interview_read(interview_id: str) -> InterviewRead:
@@ -106,7 +113,7 @@ class TestAudioAnswerApi:
             "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
-        interview_id = _seed_two_question_interview("audio-api-1")
+        interview_id = seed_two_question_interview("audio-api-1")
         override_ws_ai_provider(
             audio_api_client,
             [answer_evaluation_json(score=5, follow_up_needed=False)],
@@ -139,7 +146,7 @@ class TestAudioAnswerApi:
             "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
-        interview_id = _seed_two_question_interview("audio-api-invalid")
+        interview_id = seed_two_question_interview("audio-api-invalid")
 
         response = audio_api_client.post(
             f"/interview/{interview_id}/audio-answer",
@@ -154,7 +161,7 @@ class TestAudioAnswerApi:
         self, audio_api_client, isolated_db, monkeypatch
     ):
         """HTTP 400 when the configured catalog model does not accept audio."""
-        interview_id = _seed_two_question_interview("audio-api-disabled")
+        interview_id = seed_two_question_interview("audio-api-disabled")
         monkeypatch.setattr(
             "app.platform.services.config.ConfigService.get_config",
             lambda: AppConfig(
@@ -196,12 +203,12 @@ class TestAudioAnswerApi:
             staticmethod(lambda: None),
         )
         override_ws_ai_provider(client, [])
-        interview_id = _seed_two_question_interview("audio-api-no-whisper")
+        interview_id = seed_two_question_interview("audio-api-no-whisper")
         client.app.state.speech_transcriber = None
         wav_bytes = minimal_wav_bytes()
 
         with patch(
-            "app.interview.api.routes.is_installed",
+            "app.speech.services.transcriber_resolver.is_installed",
             return_value=False,
         ):
             response = client.post(
@@ -247,24 +254,13 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.load_interview",
-                return_value=interview,
-            ),
-            patch(
-                "app.interview.api.routes.preload_whisper_for_active_interview",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.interview.api.routes.InterviewPageService.build_page_context",
-                return_value=page_context,
-            ),
-            patch(
-                "app.interview.api.routes.SpeechModelPageService.build_page_context",
-                return_value=_speech_model_page_context(),
-            ),
-            patch(
-                "app.interview.api.routes.QuestionVoicePageService.build_page_context",
-                new=AsyncMock(return_value=_question_voice_page_context()),
+                "app.interview.api.routes.InterviewPageService.prepare_page",
+                new=AsyncMock(
+                    return_value=InterviewPageRender(
+                        redirect_url=None,
+                        template_context=_full_template_context(page_context),
+                    )
+                ),
             ),
         ):
             response = client.get("/interview/audio-ui-1")
@@ -290,24 +286,13 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.load_interview",
-                return_value=interview,
-            ),
-            patch(
-                "app.interview.api.routes.preload_whisper_for_active_interview",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.interview.api.routes.InterviewPageService.build_page_context",
-                return_value=page_context,
-            ),
-            patch(
-                "app.interview.api.routes.SpeechModelPageService.build_page_context",
-                return_value=_speech_model_page_context(),
-            ),
-            patch(
-                "app.interview.api.routes.QuestionVoicePageService.build_page_context",
-                new=AsyncMock(return_value=_question_voice_page_context()),
+                "app.interview.api.routes.InterviewPageService.prepare_page",
+                new=AsyncMock(
+                    return_value=InterviewPageRender(
+                        redirect_url=None,
+                        template_context=_full_template_context(page_context),
+                    )
+                ),
             ),
         ):
             response = client.get("/interview/audio-ui-2")

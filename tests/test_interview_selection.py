@@ -4,29 +4,28 @@
 
 import pytest
 
-from app.interview.services.rules.selection import (
+from app.interview.domain.serialization import (
+    parse_selection_spec,
+    selection_to_spec,
+)
+from app.interview.domain.value_objects import (
     InterviewSelection,
+    PlannedQuestion,
     TrackQuestionPools,
     TrackSelection,
-    parse_selection_spec,
+)
+from app.interview.services.rules.selection import (
     plan_questions,
-    selection_to_spec,
     validate_question_count,
 )
-from app.questions import Question
 
 
-def _question(qid: str, lang_marker: str = "") -> Question:
-    """Build a minimal Question for planning tests."""
-    return Question(
+def _question(qid: str, lang_marker: str = "") -> PlannedQuestion:
+    """Build a minimal planned question for planning tests."""
+    return PlannedQuestion(
         id=qid,
-        type="knowledge",
-        difficulty=1,
-        tags=[],
         text=f"Question {qid} {lang_marker}",
         code=None,
-        follow_ups=[],
-        expected_points=[],
     )
 
 
@@ -36,13 +35,13 @@ class TestValidateQuestionCount:
     def test_rejects_count_below_topic_count(self):
         """question_count must be at least the number of selected topics."""
         selection = InterviewSelection(
-            sources=[
+            sources=(
                 TrackSelection(
                     track="python",
                     level="junior",
-                    categories=["basics", "oop"],
-                )
-            ]
+                    categories=("basics", "oop"),
+                ),
+            )
         )
         with pytest.raises(ValueError, match="at least 2"):
             validate_question_count(selection, 1)
@@ -54,21 +53,21 @@ class TestPlanQuestions:
     def test_one_question_per_topic_minimum(self):
         """Plan includes at least one question per selected topic."""
         selection = InterviewSelection(
-            sources=[
+            sources=(
                 TrackSelection(
                     track="python",
                     level="junior",
-                    categories=["basics", "oop"],
-                )
-            ]
+                    categories=("basics", "oop"),
+                ),
+            )
         )
         pools = [
             TrackQuestionPools(
                 source=selection.sources[0],
-                full_pool=[_question("basics-1"), _question("oop-1")],
+                full_pool=(_question("basics-1"), _question("oop-1")),
                 category_pools={
-                    "basics": [_question("basics-1")],
-                    "oop": [_question("oop-1")],
+                    "basics": (_question("basics-1"),),
+                    "oop": (_question("oop-1"),),
                 },
             )
         ]
@@ -81,21 +80,21 @@ class TestPlanQuestions:
     def test_orders_by_track_blocks(self, monkeypatch):
         """Questions are grouped by track in source order."""
         selection = InterviewSelection(
-            sources=[
+            sources=(
                 TrackSelection(
                     track="python",
                     level="junior",
-                    categories=["basics"],
+                    categories=("basics",),
                 ),
                 TrackSelection(
                     track="database",
                     level="junior",
-                    categories=["sql"],
+                    categories=("sql",),
                 ),
-            ]
+            )
         )
-        py_pool = [_question("py-1", "py"), _question("py-2", "py")]
-        db_pool = [_question("db-1", "db"), _question("db-2", "db")]
+        py_pool = (_question("py-1", "py"), _question("py-2", "py"))
+        db_pool = (_question("db-1", "db"), _question("db-2", "db"))
         pools = [
             TrackQuestionPools(
                 source=selection.sources[0],
@@ -125,17 +124,17 @@ class TestSelectionSpec:
     def test_round_trip(self):
         """selection_to_spec and parse_selection_spec preserve data."""
         selection = InterviewSelection(
-            sources=[
+            sources=(
                 TrackSelection(
                     track="python",
                     level="junior",
-                    categories=["basics"],
-                )
-            ]
+                    categories=("basics",),
+                ),
+            )
         )
         raw = selection_to_spec(selection)
         parsed = parse_selection_spec(raw)
         assert parsed.sources[0].track == "python"
-        assert parsed.sources[0].categories == ["basics"]
+        assert parsed.sources[0].categories == ("basics",)
         assert '"track":"python"' in raw
         assert '"language"' not in raw

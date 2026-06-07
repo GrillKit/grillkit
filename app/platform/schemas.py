@@ -8,11 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.ai.llm_models import validate_new_model_id
 from app.question_voice.schemas import PiperVoiceStatusRead
-from app.speech.schemas.status import WhisperModelStatusRead
-from app.speech.services.rules.speech_models import (
+from app.shared.speech_models import (
     SPEECH_MODEL_BY_SIZE,
     SpeechModelSpec,
 )
+from app.speech.schemas.status import WhisperModelStatusRead
 
 if TYPE_CHECKING:
     from app.platform.services.config import AppConfig

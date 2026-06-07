@@ -108,39 +108,35 @@ class TestUnitOfWork:
             loaded = uow.interviews.get("uow-test-5")
             assert loaded is None
 
-    def test_repository_accessors(self, patch_session_local):
-        """Test that .sessions and .answers return the correct repository types."""
+    def test_interview_repository_accessor(self, patch_session_local):
+        """Test that ``.interviews`` returns the interview repository type."""
         with InterviewUnitOfWork() as uow:
-            from app.interview.repositories.answer import AnswerRepository
             from app.interview.repositories.interview import InterviewRepository
 
             assert isinstance(uow.interviews, InterviewRepository)
-            assert isinstance(uow.answers, AnswerRepository)
 
-    def test_repositories_share_same_session(self, patch_session_local):
-        """Test that .sessions and .answers use the same underlying DB session."""
+    def test_nested_answers_persist_with_interview(self, patch_session_local):
+        """Answer rows added via ``Interview.answers`` are loaded with the session."""
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            session = Interview(
+            interview = Interview(
                 id="uow-test-6", selection_spec=minimal_selection_spec()
             )
-            uow.interviews.add(session)
-
-            answer = Answer(
-                interview_id="uow-test-6",
-                question_id="q1",
-                order=1,
-                round=0,
-                question_text="What?",
-            )
-            uow.answers.add(answer)
+            interview.answers = [
+                Answer(
+                    interview_id="uow-test-6",
+                    question_id="q1",
+                    order=1,
+                    round=0,
+                    question_text="What?",
+                )
+            ]
+            uow.interviews.add(interview)
 
         with InterviewUnitOfWork() as uow:
             loaded_session = uow.interviews.get("uow-test-6")
             assert loaded_session is not None
-            loaded_answer = uow.answers.get_by_interview_question_round(
-                "uow-test-6", "q1", 0
-            )
-            assert loaded_answer is not None
+            assert len(loaded_session.answers) == 1
+            assert loaded_session.answers[0].question_id == "q1"
 
     def test_flush(self, patch_session_local):
         """Test flush() sends changes to DB without committing."""
@@ -174,10 +170,8 @@ class TestUnitOfWork:
         assert uow._session is not None
 
     def test_lazy_repository_initialization(self, patch_session_local):
-        """Test that repositories are created lazily."""
+        """Test that the interview repository is created lazily."""
         uow = InterviewUnitOfWork()
         assert uow._interviews_repo is None
-        assert uow._answers_repo is None
         _ = uow.interviews
         assert uow._interviews_repo is not None
-        assert uow._answers_repo is None

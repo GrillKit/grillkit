@@ -4,6 +4,7 @@
 
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import PiperVoiceStatusRead, QuestionVoicePageContext
+from app.question_voice.services.piper_voice import PiperVoiceService
 from app.question_voice.services.status import QuestionVoiceStatusService
 
 
@@ -29,14 +30,11 @@ class QuestionVoicePageService:
         Returns:
             Frozen page context for templates.
         """
-        if config is None or not config.question_voice_enabled:
-            return QuestionVoicePageContext(
-                tts_voice_status=None,
-                tts_voice_banner=False,
-            )
-
-        status, _enabled = QuestionVoiceStatusService.resolve_for_config(config)
+        voice_id, locale = QuestionVoiceStatusService.resolve_tts_target(config)
+        status = PiperVoiceService.get_status(voice_id, locale)
+        show_banner = config is not None and config.question_voice_enabled
         return QuestionVoicePageContext(
             tts_voice_status=status,
-            tts_voice_banner=QuestionVoicePageService._show_voice_banner(status),
+            tts_voice_banner=show_banner
+            and QuestionVoicePageService._show_voice_banner(status),
         )

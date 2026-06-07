@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 import wave
 
 from app.question_voice.services.piper_storage import is_voice_installed, voice_dir
-from app.question_voice.services.rules.voices import normalize_tts_voice_id
 from app.shared.infrastructure.in_process_runtime import InProcessArtifactRuntime
+from app.shared.tts_voices import normalize_tts_voice_id
 
 if TYPE_CHECKING:
     from piper import PiperVoice

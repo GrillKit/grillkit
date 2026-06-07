@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.completion import InterviewCompletionService
 from app.interview.services.evaluator.service import InterviewEvaluation
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import FakeProvider
+from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
 
 
@@ -21,26 +21,27 @@ async def test_complete_interview_persists_completed_status(isolated_db):
     """After completion, interview is stored as completed with score and time."""
     interview_id = "completion-persist-1"
 
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    persist_interview_with_answers(
+        Interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=1,
             question_ids=json.dumps(["q1"]),
             status="active",
-        )
-        uow.interviews.add(interview)
-        answer = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=0,
-            question_text="What is Python?",
-        )
-        answer.answer_text = "A programming language"
-        answer.score = 5
-        uow.answers.add(answer)
+        ),
+        [
+            Answer(
+                interview_id=interview_id,
+                question_id="q1",
+                order=1,
+                round=0,
+                question_text="What is Python?",
+                answer_text="A programming language",
+                score=5,
+            )
+        ],
+    )
 
     mock_eval = InterviewEvaluation(
         overall_feedback="Good work",

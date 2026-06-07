@@ -4,19 +4,19 @@
 
 from __future__ import annotations
 
-from app.interview.repositories.answer import AnswerRepository
 from app.interview.repositories.interview import InterviewRepository
 from app.shared.infrastructure.uow import UnitOfWork
 
 
 class InterviewUnitOfWork(UnitOfWork):
-    """Unit of Work exposing interview and answer repositories.
+    """Unit of Work exposing the interview repository.
 
     Usage::
 
         with InterviewUnitOfWork() as uow:
-            session = uow.interviews.get(interview_id)
-            uow.interviews.mark_completed(session, score=0)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            completed = aggregate.with_session_completed({"summary": "..."})
+            uow.interviews.save_aggregate(completed)
             uow.commit()
     """
 
@@ -28,7 +28,6 @@ class InterviewUnitOfWork(UnitOfWork):
         """
         super().__init__(auto_commit=auto_commit)
         self._interviews_repo: InterviewRepository | None = None
-        self._answers_repo: AnswerRepository | None = None
 
     @property
     def interviews(self) -> InterviewRepository:
@@ -36,10 +35,3 @@ class InterviewUnitOfWork(UnitOfWork):
         if self._interviews_repo is None:
             self._interviews_repo = InterviewRepository(self.session)
         return self._interviews_repo
-
-    @property
-    def answers(self) -> AnswerRepository:
-        """Access the ``AnswerRepository`` bound to this UoW."""
-        if self._answers_repo is None:
-            self._answers_repo = AnswerRepository(self.session)
-        return self._answers_repo

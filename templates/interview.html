@@ -220,21 +220,34 @@
     const llmRequestTimeoutSeconds = {{ llm_request_timeout_seconds | tojson }};
     let currentRound = {{ current_round }};
     let isSubmitting = false;
+    let interviewFinished = false;
     window.isSubmitting = false;
     let evaluationWatchdogTimer = null;
+
+    function stopQuestionTimer() {
+        if (window.grillkitQuestionTimer) {
+            window.grillkitQuestionTimer.stop();
+        }
+        const timerRow = document.getElementById("interview-timer-row");
+        const timerLabel = document.getElementById("interview-timer-label");
+        if (timerRow) {
+            timerRow.hidden = true;
+        }
+        if (timerLabel) {
+            timerLabel.hidden = true;
+        }
+    }
 
     window.grillkitOnTimerExpired = function () {
         if (isSubmitting) return;
         isSubmitting = true;
         window.isSubmitting = true;
         enableForm(false);
-        if (window.grillkitQuestionTimer) {
-            window.grillkitQuestionTimer.stop();
-        }
+        stopQuestionTimer();
     };
 
     function restartQuestionTimer(remainingSeconds) {
-        if (!questionTimerEnabled || !window.grillkitQuestionTimer) return;
+        if (interviewFinished || !questionTimerEnabled || !window.grillkitQuestionTimer) return;
         const seconds = remainingSeconds != null
             ? remainingSeconds
             : questionTimeLimitSeconds;
@@ -338,15 +351,15 @@
                 if (data.timed_out) {
                     showTimeoutBubble(data.feedback);
                 }
-                if (window.grillkitQuestionTimer) {
-                    window.grillkitQuestionTimer.stop();
-                }
+                stopQuestionTimer();
                 showNextAfterFeedback(data);
                 break;
 
             case 'interview_completed':
                 clearEvaluationWatchdog();
                 showEvaluating(false);
+                interviewFinished = true;
+                stopQuestionTimer();
                 handleSessionCompleted(data);
                 break;
 
@@ -418,9 +431,7 @@
         enableForm(false);
         showAnswerBubble();
 
-        if (window.grillkitQuestionTimer) {
-            window.grillkitQuestionTimer.stop();
-        }
+        stopQuestionTimer();
 
         ws.send(JSON.stringify({
             type: 'answer',
@@ -435,6 +446,8 @@
         if (isSubmitting) return;
         isSubmitting = true;
         window.isSubmitting = true;
+        interviewFinished = true;
+        stopQuestionTimer();
 
         document.getElementById('end-btn') && (document.getElementById('end-btn').disabled = true);
         showEvaluating(true);
@@ -517,9 +530,7 @@
             }
         } else {
             updateProgressDisplay(null);
-            if (window.grillkitQuestionTimer) {
-                window.grillkitQuestionTimer.stop();
-            }
+            stopQuestionTimer();
             isSubmitting = false;
             window.isSubmitting = false;
             const answerSection = document.getElementById('answer-section');

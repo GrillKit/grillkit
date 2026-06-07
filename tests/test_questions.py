@@ -68,8 +68,6 @@ def temp_questions_dir(tmp_path, monkeypatch):
                     "text": "What is the difference between a list and a tuple?",
                     "code": None,
                 },
-                "follow_ups": ["When would you choose a tuple over a list?"],
-                "expected_points": ["Lists are mutable, tuples are immutable"],
             },
         ],
     }
@@ -92,8 +90,6 @@ def temp_questions_dir(tmp_path, monkeypatch):
                     "text": "Implement bubble sort.",
                     "code": "def bubble_sort(arr):\n    pass",
                 },
-                "follow_ups": [],
-                "expected_points": [],
             },
         ],
     }
@@ -113,8 +109,6 @@ def temp_questions_dir(tmp_path, monkeypatch):
                 "difficulty": 4,
                 "tags": ["scalability", "database"],
                 "question": {"text": "Design a URL shortener.", "code": None},
-                "follow_ups": [],
-                "expected_points": [],
             },
         ],
     }
@@ -134,8 +128,6 @@ def temp_questions_dir(tmp_path, monkeypatch):
                 "difficulty": 1,
                 "tags": ["variables"],
                 "question": {"text": "Explain var, let, and const.", "code": None},
-                "follow_ups": [],
-                "expected_points": [],
             },
         ],
     }
@@ -163,8 +155,6 @@ class TestQuestions:
         assert q.tags == ["list", "tuple"]
         assert q.text == "What is the difference between a list and a tuple?"
         assert q.code is None
-        assert q.follow_ups == ["When would you choose a tuple over a list?"]
-        assert q.expected_points == ["Lists are mutable, tuples are immutable"]
 
     def test_load_category_non_existent(self, temp_questions_dir):
         """Test loading a non-existent category returns an empty list."""
@@ -227,16 +217,12 @@ class TestQuestions:
                     "type": "knowledge",
                     "difficulty": 1,
                     "question": {"text": "Q1"},
-                    "follow_ups": [],
-                    "expected_points": [],
                 },
                 {
                     "id": "mq-002",
                     "type": "coding",
                     "difficulty": 2,
                     "question": {"text": "Q2"},
-                    "follow_ups": [],
-                    "expected_points": [],
                 },
             ],
         }
@@ -260,7 +246,7 @@ class TestQuestions:
 
 
 class TestQuestionLocalization:
-    """Tests for multilingual question text and follow-ups in YAML banks."""
+    """Tests for multilingual question text in YAML banks."""
 
     @pytest.fixture
     def i18n_questions_dir(self, tmp_path, monkeypatch):
@@ -286,11 +272,6 @@ class TestQuestionLocalization:
                         },
                         "code": "x = 1",
                     },
-                    "follow_ups": {
-                        "en": ["English follow-up?"],
-                        "ru": ["Русский уточняющий вопрос?"],
-                    },
-                    "expected_points": ["Point in English"],
                 },
                 {
                     "id": "i18n-002",
@@ -300,14 +281,12 @@ class TestQuestionLocalization:
                         "text": {"en": "English only question."},
                         "code": None,
                     },
-                    "follow_ups": {"en": ["English only follow-up."]},
                 },
                 {
                     "id": "legacy-001",
                     "type": "knowledge",
                     "difficulty": 1,
                     "question": {"text": "Legacy plain string question.", "code": None},
-                    "follow_ups": ["Legacy follow-up."],
                 },
             ],
         )
@@ -315,13 +294,12 @@ class TestQuestionLocalization:
         return questions_root
 
     def test_load_resolves_requested_locale(self, i18n_questions_dir):
-        """Localized maps return text and follow-ups for the requested locale."""
+        """Localized maps return text for the requested locale."""
         questions = load_category("python", "junior", "i18n", locale="ru")
         by_id = {q.id: q for q in questions}
 
         q = by_id["i18n-001"]
         assert q.text == "Русский текст вопроса."
-        assert q.follow_ups == ["Русский уточняющий вопрос?"]
         assert q.code == "x = 1"
 
     def test_load_normalizes_locale_code(self, i18n_questions_dir):
@@ -330,15 +308,12 @@ class TestQuestionLocalization:
         assert questions[0].text == "Русский текст вопроса."
 
     def test_missing_locale_falls_back_to_english(self, i18n_questions_dir):
-        """Missing translation falls back to ``en`` for text and follow-ups."""
+        """Missing translation falls back to ``en`` for question text."""
         questions = load_category("python", "junior", "i18n", locale="fr")
         by_id = {q.id: q for q in questions}
 
         assert by_id["i18n-001"].text == "English question text."
-        assert by_id["i18n-001"].follow_ups == ["English follow-up?"]
-
         assert by_id["i18n-002"].text == "English only question."
-        assert by_id["i18n-002"].follow_ups == ["English only follow-up."]
 
     def test_legacy_plain_string_text(self, i18n_questions_dir):
         """Plain-string ``question.text`` is accepted as English for any locale."""
@@ -346,7 +321,6 @@ class TestQuestionLocalization:
             questions = load_category("python", "junior", "i18n", locale=locale)
             legacy = next(q for q in questions if q.id == "legacy-001")
             assert legacy.text == "Legacy plain string question."
-            assert legacy.follow_ups == ["Legacy follow-up."]
 
     def test_code_not_localized(self, i18n_questions_dir):
         """``question.code`` is shared across locales."""

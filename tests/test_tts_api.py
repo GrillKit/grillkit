@@ -35,9 +35,24 @@ class TestTtsStatusApi:
             model="gpt-4",
             question_voice_enabled=False,
         )
-        with patch(
-            "app.platform.services.config.ConfigService.get_config",
-            return_value=config,
+        missing = PiperVoiceStatusRead(
+            voice_id="en_US-lessac-medium",
+            locale="en",
+            locale_label="English",
+            state="missing",
+            percent=0,
+            message="Question voice is not installed.",
+            voice_display_name="Lessac (US English, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=config,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                return_value=missing,
+            ),
         ):
             response = client.get(
                 "/speech/tts/status",
@@ -79,17 +94,67 @@ class TestTtsStatusApi:
         assert payload["state"] == "ready"
         assert payload["enabled"] is True
 
-    def test_voice_download_requires_config(self, client):
-        """Download returns 400 when provider config is missing."""
-        with patch(
-            "app.platform.services.config.ConfigService.get_config",
-            return_value=None,
+    def test_status_locale_query_overrides_saved_config(self, client, voice_config):
+        """Status endpoint honors locale query param over saved config on Configuration."""
+        missing = PiperVoiceStatusRead(
+            voice_id="ru_RU-dmitri-medium",
+            locale="ru",
+            locale_label="Russian",
+            state="missing",
+            percent=0,
+            message="Question voice is not installed.",
+            voice_display_name="Dmitri (Russian, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=voice_config,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                return_value=missing,
+            ) as get_status,
+        ):
+            response = client.get(
+                "/speech/tts/status?locale=ru",
+                headers={"Accept": "application/json"},
+            )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["voice_id"] == "ru_RU-dmitri-medium"
+        assert payload["locale"] == "ru"
+        get_status.assert_called_once_with("ru_RU-dmitri-medium", "ru")
+
+    def test_voice_download_without_config_uses_defaults(self, client):
+        """Download schedules work before provider config is saved."""
+        ready = PiperVoiceStatusRead(
+            voice_id="en_US-lessac-medium",
+            locale="en",
+            locale_label="English",
+            state="downloading",
+            percent=5,
+            message="Downloading question voice…",
+            voice_display_name="Lessac (US English, medium)",
+        )
+        with (
+            patch(
+                "app.platform.services.config.ConfigService.get_config",
+                return_value=None,
+            ),
+            patch(
+                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                new_callable=AsyncMock,
+                return_value=ready,
+            ),
         ):
             response = client.post(
                 "/speech/tts/voice/download",
                 headers={"Accept": "application/json"},
             )
-        assert response.status_code == 400
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["state"] == "downloading"
+        assert payload["enabled"] is False
 
     def test_voice_download_schedules_work(self, client, voice_config):
         """Download returns status after scheduling Piper voice install."""
@@ -138,20 +203,20 @@ class TestQuestionAudioApi:
             model="gpt-4",
             question_voice_enabled=False,
         )
-        from app.interview.services.rules.selection import (
+        from app.interview.domain.value_objects import (
             InterviewSelection,
             TrackSelection,
         )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(
-                sources=[
+                sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
-                        categories=["data-structures"],
-                    )
-                ]
+                        categories=("data-structures",),
+                    ),
+                )
             ),
             locale="en",
             question_count=1,
@@ -175,20 +240,20 @@ class TestQuestionAudioApi:
         """Enabled voice returns WAV from cache when available."""
         del temp_questions_dir
         monkeypatch.setattr("random.shuffle", lambda items: None)
-        from app.interview.services.rules.selection import (
+        from app.interview.domain.value_objects import (
             InterviewSelection,
             TrackSelection,
         )
 
         interview = InterviewCreationService.create_interview(
             selection=InterviewSelection(
-                sources=[
+                sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
-                        categories=["data-structures"],
-                    )
-                ]
+                        categories=("data-structures",),
+                    ),
+                )
             ),
             locale="en",
             question_count=1,

@@ -19,7 +19,6 @@ dependencies = [
     "huggingface-hub>=1.15.0",
     "piper-tts>=1.4.2",
     "alembic>=1.18.4",
-    "pydeps>=3.0.6",
 ]
 
 [project.optional-dependencies]

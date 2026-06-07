@@ -3,6 +3,8 @@
 """Speech model page context builder for HTML templates."""
 
 from app.platform.services.config import AppConfig
+from app.shared.locales import DEFAULT_LOCALE
+from app.shared.speech_models import DEFAULT_SPEECH_MODEL_SIZE
 from app.speech.schemas.page import SpeechModelPageContext
 from app.speech.services.whisper_model import WhisperModelService
 
@@ -24,17 +26,9 @@ class SpeechModelPageService:
         Returns:
             Frozen page context for templates.
         """
-        if config is None:
-            return SpeechModelPageContext(
-                speech_model_status=None,
-                speech_model_banner=False,
-                status=None,
-            )
-
-        status = whisper_model_service.get_status(
-            config.speech_model_size,
-            config.locale,
-        )
+        size = config.speech_model_size if config else DEFAULT_SPEECH_MODEL_SIZE
+        locale = config.locale if config else DEFAULT_LOCALE
+        status = whisper_model_service.get_status(size, locale)
         return SpeechModelPageContext(
             speech_model_status=status,
             speech_model_banner=status.state == "missing",

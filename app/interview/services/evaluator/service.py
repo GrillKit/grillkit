@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """AI-powered interview evaluation service."""
 
-from typing import Any
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
 
 from app.ai.base import AIProvider, Message
 from app.interview.services.evaluator.models import (
@@ -29,6 +31,8 @@ __all__ = [
     "looks_like_json_schema_fragment",
 ]
 
+T = TypeVar("T", bound=BaseModel)
+
 
 class InterviewEvaluatorService:
     """Service for AI-powered evaluation of interview answers.
@@ -38,6 +42,69 @@ class InterviewEvaluatorService:
     """
 
     MAX_FOLLOW_UP_DEPTH = 2
+
+    @staticmethod
+    def _format_question(question_text: str, question_code: str | None) -> str:
+        """Append optional code block to question text for prompts.
+
+        Args:
+            question_text: Base question text.
+            question_code: Optional code snippet.
+
+        Returns:
+            Question text, with code block when provided.
+        """
+        if question_code:
+            return f"{question_text}\n\nCode:\n{question_code}"
+        return question_text
+
+    @staticmethod
+    async def _evaluate_with_schema(
+        provider: AIProvider,
+        *,
+        locale: str,
+        instructions: str,
+        response_model: type[T],
+        user_text: str,
+        audio_wav: bytes | None = None,
+        max_tokens: int = 1000,
+    ) -> T:
+        """Run a structured evaluation via text or multimodal generation.
+
+        Args:
+            provider: Configured AI provider instance.
+            locale: Locale for AI feedback.
+            instructions: Evaluator instruction template constant.
+            response_model: Pydantic model for parsed JSON output.
+            user_text: User message text (full content for text mode; context for audio).
+            audio_wav: Optional WAV bytes for multimodal evaluation.
+            max_tokens: Maximum tokens for the model response.
+
+        Returns:
+            Parsed evaluation model instance.
+
+        Raises:
+            ValueError: If AI response is invalid or connection fails.
+        """
+        system_prompt = build_prompt_with_schema(
+            build_evaluator_instructions(locale, instructions),
+            response_model,
+        )
+        messages = [Message(role="system", content=system_prompt)]
+        if audio_wav is not None:
+            result = await provider.generate_with_audio(
+                messages=messages,
+                audio_wav=audio_wav,
+                user_text=user_text,
+                temperature=0.3,
+                max_tokens=max_tokens,
+            )
+        else:
+            messages.append(Message(role="user", content=user_text))
+            result = await provider.generate(
+                messages=messages, temperature=0.3, max_tokens=max_tokens
+            )
+        return parse_json_response(result.content, response_model)
 
     @staticmethod
     async def evaluate_answer(
@@ -62,28 +129,17 @@ class InterviewEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = question_text
-        if question_code:
-            question += f"\n\nCode:\n{question_code}"
-
-        instructions = build_evaluator_instructions(
-            locale, ANSWER_EVALUATION_INSTRUCTIONS
+        question = InterviewEvaluatorService._format_question(
+            question_text, question_code
         )
-        system_prompt = build_prompt_with_schema(instructions, AnswerEvaluation)
-
-        messages = [
-            Message(role="system", content=system_prompt),
-            Message(
-                role="user",
-                content=f"Question:\n{question}\n\nAnswer:\n{answer_text}",
-            ),
-        ]
-
-        result = await provider.generate(
-            messages=messages, temperature=0.3, max_tokens=1000
+        user_text = f"Question:\n{question}\n\nAnswer:\n{answer_text}"
+        return await InterviewEvaluatorService._evaluate_with_schema(
+            provider,
+            locale=locale,
+            instructions=ANSWER_EVALUATION_INSTRUCTIONS,
+            response_model=AnswerEvaluation,
+            user_text=user_text,
         )
-
-        return parse_json_response(result.content, AnswerEvaluation)
 
     @staticmethod
     async def evaluate_answer_with_audio(
@@ -108,27 +164,17 @@ class InterviewEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = question_text
-        if question_code:
-            question += f"\n\nCode:\n{question_code}"
-
-        instructions = build_evaluator_instructions(
-            locale, ANSWER_EVALUATION_INSTRUCTIONS
+        question = InterviewEvaluatorService._format_question(
+            question_text, question_code
         )
-        system_prompt = build_prompt_with_schema(instructions, AnswerEvaluation)
-
-        messages = [Message(role="system", content=system_prompt)]
-        user_text = f"Question:\n{question}"
-
-        result = await provider.generate_with_audio(
-            messages=messages,
+        return await InterviewEvaluatorService._evaluate_with_schema(
+            provider,
+            locale=locale,
+            instructions=ANSWER_EVALUATION_INSTRUCTIONS,
+            response_model=AnswerEvaluation,
+            user_text=f"Question:\n{question}",
             audio_wav=audio_wav,
-            user_text=user_text,
-            temperature=0.3,
-            max_tokens=1000,
         )
-
-        return parse_json_response(result.content, AnswerEvaluation)
 
     @staticmethod
     async def evaluate_follow_up(
@@ -157,33 +203,22 @@ class InterviewEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = question_text
-        if question_code:
-            question += f"\n\nCode:\n{question_code}"
-
-        instructions = build_evaluator_instructions(
-            locale, FOLLOW_UP_EVALUATION_INSTRUCTIONS
+        question = InterviewEvaluatorService._format_question(
+            question_text, question_code
         )
-        system_prompt = build_prompt_with_schema(instructions, FollowUpEvaluation)
-
-        messages = [
-            Message(role="system", content=system_prompt),
-            Message(
-                role="user",
-                content=(
-                    f"Original Question:\n{question}\n\n"
-                    f"Initial Answer:\n{initial_answer}\n\n"
-                    f"Follow-up Question:\n{follow_up_question}\n\n"
-                    f"Follow-up Answer:\n{follow_up_answer}"
-                ),
-            ),
-        ]
-
-        result = await provider.generate(
-            messages=messages, temperature=0.3, max_tokens=1000
+        user_text = (
+            f"Original Question:\n{question}\n\n"
+            f"Initial Answer:\n{initial_answer}\n\n"
+            f"Follow-up Question:\n{follow_up_question}\n\n"
+            f"Follow-up Answer:\n{follow_up_answer}"
         )
-
-        return parse_json_response(result.content, FollowUpEvaluation)
+        return await InterviewEvaluatorService._evaluate_with_schema(
+            provider,
+            locale=locale,
+            instructions=FOLLOW_UP_EVALUATION_INSTRUCTIONS,
+            response_model=FollowUpEvaluation,
+            user_text=user_text,
+        )
 
     @staticmethod
     async def evaluate_follow_up_with_audio(
@@ -212,31 +247,131 @@ class InterviewEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = question_text
-        if question_code:
-            question += f"\n\nCode:\n{question_code}"
-
-        instructions = build_evaluator_instructions(
-            locale, FOLLOW_UP_EVALUATION_INSTRUCTIONS
+        question = InterviewEvaluatorService._format_question(
+            question_text, question_code
         )
-        system_prompt = build_prompt_with_schema(instructions, FollowUpEvaluation)
-
-        messages = [Message(role="system", content=system_prompt)]
         user_text = (
             f"Original Question:\n{question}\n\n"
             f"Initial Answer:\n{initial_answer}\n\n"
             f"Follow-up Question:\n{follow_up_question}"
         )
-
-        result = await provider.generate_with_audio(
-            messages=messages,
-            audio_wav=audio_wav,
+        return await InterviewEvaluatorService._evaluate_with_schema(
+            provider,
+            locale=locale,
+            instructions=FOLLOW_UP_EVALUATION_INSTRUCTIONS,
+            response_model=FollowUpEvaluation,
             user_text=user_text,
-            temperature=0.3,
-            max_tokens=1000,
+            audio_wav=audio_wav,
         )
 
-        return parse_json_response(result.content, FollowUpEvaluation)
+    @staticmethod
+    def _follow_up_decision(
+        evaluation: AnswerEvaluation | FollowUpEvaluation,
+        answer_round: int,
+    ) -> tuple[bool, str | None]:
+        """Decide whether another follow-up round is needed after evaluation.
+
+        Args:
+            evaluation: Parsed AI evaluation for the submitted round.
+            answer_round: Follow-up round that was evaluated (0 = initial).
+
+        Returns:
+            Tuple of (follow_up_needed, follow_up_question_text).
+        """
+        if answer_round == 0:
+            if not isinstance(evaluation, AnswerEvaluation):
+                raise TypeError("Round 0 evaluation must be AnswerEvaluation")
+            follow_up_needed = evaluation.follow_up_needed and bool(
+                evaluation.follow_up_question
+            )
+            return follow_up_needed, evaluation.follow_up_question
+        if not isinstance(evaluation, FollowUpEvaluation):
+            raise TypeError("Follow-up round evaluation must be FollowUpEvaluation")
+        follow_up_needed = (
+            evaluation.needs_further_follow_up
+            and bool(evaluation.follow_up_question)
+            and answer_round < InterviewEvaluatorService.MAX_FOLLOW_UP_DEPTH
+        )
+        return follow_up_needed, evaluation.follow_up_question
+
+    @staticmethod
+    async def evaluate_submission(
+        *,
+        provider: AIProvider,
+        locale: str,
+        answer_round: int,
+        question_text: str,
+        question_code: str | None,
+        initial_question_text: str,
+        initial_answer_text: str,
+        answer_text: str | None = None,
+        audio_wav: bytes | None = None,
+    ) -> tuple[AnswerEvaluation | FollowUpEvaluation, bool, str | None]:
+        """Evaluate one answer round and decide whether a follow-up is needed.
+
+        Args:
+            provider: Configured AI provider instance.
+            locale: Locale for AI feedback and follow-up questions.
+            answer_round: Follow-up round (0 = initial).
+            question_text: Text of the question being answered.
+            question_code: Optional code snippet for the question.
+            initial_question_text: Original question text (round 0).
+            initial_answer_text: User's initial answer text (round 0).
+            answer_text: User answer text for text-mode evaluation.
+            audio_wav: Spoken answer WAV for multimodal evaluation.
+
+        Returns:
+            Tuple of (evaluation, follow_up_needed, follow_up_text).
+
+        Raises:
+            ValueError: If neither or both of ``answer_text`` and ``audio_wav`` are set.
+        """
+        if (answer_text is None) == (audio_wav is None):
+            raise ValueError("Provide exactly one of answer_text or audio_wav")
+
+        evaluation: AnswerEvaluation | FollowUpEvaluation
+        if answer_round == 0:
+            if audio_wav is not None:
+                evaluation = await InterviewEvaluatorService.evaluate_answer_with_audio(
+                    provider=provider,
+                    question_text=question_text,
+                    audio_wav=audio_wav,
+                    question_code=question_code,
+                    locale=locale,
+                )
+            else:
+                evaluation = await InterviewEvaluatorService.evaluate_answer(
+                    provider=provider,
+                    question_text=question_text,
+                    answer_text=answer_text or "",
+                    question_code=question_code,
+                    locale=locale,
+                )
+        elif audio_wav is not None:
+            evaluation = await InterviewEvaluatorService.evaluate_follow_up_with_audio(
+                provider=provider,
+                question_text=initial_question_text,
+                initial_answer=initial_answer_text,
+                follow_up_question=question_text,
+                audio_wav=audio_wav,
+                question_code=question_code,
+                locale=locale,
+            )
+        else:
+            evaluation = await InterviewEvaluatorService.evaluate_follow_up(
+                provider=provider,
+                question_text=initial_question_text,
+                initial_answer=initial_answer_text,
+                follow_up_question=question_text,
+                follow_up_answer=answer_text or "",
+                question_code=question_code,
+                locale=locale,
+            )
+
+        follow_up_needed, follow_up_text = (
+            InterviewEvaluatorService._follow_up_decision(evaluation, answer_round)
+        )
+        return evaluation, follow_up_needed, follow_up_text
 
     @staticmethod
     async def evaluate_interview(
@@ -275,25 +410,14 @@ class InterviewEvaluatorService:
             )
 
         summary_text = "\n\n".join(qa_summary)
-
-        instructions = build_evaluator_instructions(
-            locale, SESSION_EVALUATION_INSTRUCTIONS
+        user_text = (
+            f"Sources:\n{sources_text}\n\nQuestions and Answers:\n{summary_text}"
         )
-        system_prompt = build_prompt_with_schema(instructions, InterviewEvaluation)
-
-        messages = [
-            Message(role="system", content=system_prompt),
-            Message(
-                role="user",
-                content=(
-                    f"Sources:\n{sources_text}\n\n"
-                    f"Questions and Answers:\n{summary_text}"
-                ),
-            ),
-        ]
-
-        result = await provider.generate(
-            messages=messages, temperature=0.3, max_tokens=1500
+        return await InterviewEvaluatorService._evaluate_with_schema(
+            provider,
+            locale=locale,
+            instructions=SESSION_EVALUATION_INSTRUCTIONS,
+            response_model=InterviewEvaluation,
+            user_text=user_text,
+            max_tokens=1500,
         )
-
-        return parse_json_response(result.content, InterviewEvaluation)

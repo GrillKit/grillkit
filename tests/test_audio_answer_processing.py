@@ -5,13 +5,11 @@
 import asyncio
 import json
 
-import numpy as np
 import pytest
 
 from app.ai.audio_probe import minimal_wav_bytes
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.answer_ai_evaluation import AnswerAiEvaluationService
 from app.interview.services.answer_processing import AnswerProcessingService
+from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
@@ -21,67 +19,12 @@ from app.interview.services.events import (
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
+from tests.helpers.interview_seed import (
+    persist_interview_with_answers,
+    seed_two_question_interview,
+)
 from tests.helpers.selection import minimal_selection_spec
-
-
-class FakeTranscriber:
-    """Deterministic speech transcriber for tests."""
-
-    def __init__(self, text: str = "spoken answer text") -> None:
-        """Initialize with a fixed transcript.
-
-        Args:
-            text: Text returned from ``transcribe``.
-        """
-        self.text = text
-        self.last_audio: np.ndarray | None = None
-
-    async def transcribe(self, audio: np.ndarray, locale: str) -> str:
-        """Store audio samples and return the configured transcript.
-
-        Args:
-            audio: Mono float32 samples.
-            locale: Interview locale (ignored).
-
-        Returns:
-            Configured transcript text.
-        """
-        del locale
-        self.last_audio = audio
-        return self.text
-
-
-def _seed_two_question_interview(interview_id: str = "audio-ap-1") -> str:
-    """Persist an active interview with two unanswered questions."""
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
-            id=interview_id,
-            locale="en",
-            selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
-            status="active",
-        )
-        uow.interviews.add(interview)
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q1",
-                order=1,
-                round=0,
-                question_text="Question one?",
-            )
-        )
-        uow.answers.add(
-            Answer(
-                interview_id=interview_id,
-                question_id="q2",
-                order=2,
-                round=0,
-                question_text="Question two?",
-            )
-        )
-    return interview_id
+from tests.helpers.transcription import FakeTranscriber
 
 
 @pytest.mark.asyncio
@@ -94,7 +37,7 @@ async def test_process_audio_answer_runs_transcription_and_evaluation(
         "require_audio_answer_enabled",
         staticmethod(lambda: None),
     )
-    interview_id = _seed_two_question_interview()
+    interview_id = seed_two_question_interview("audio-ap-1")
     provider = fake_ai_provider(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
@@ -137,7 +80,7 @@ async def test_process_audio_answer_rejects_invalid_wav(
         "require_audio_answer_enabled",
         staticmethod(lambda: None),
     )
-    interview_id = _seed_two_question_interview()
+    interview_id = seed_two_question_interview("audio-ap-1")
     provider = fake_ai_provider([answer_evaluation_json()])
     transcriber = FakeTranscriber()
 
@@ -162,56 +105,54 @@ async def test_process_audio_answer_last_follow_up_fast_path(
         staticmethod(lambda: None),
     )
     interview_id = "audio-ap-last-follow-up"
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        interview = Interview(
+    initial = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=0,
+        question_text="Original question?",
+    )
+    initial.answer_text = "First answer"
+    initial.score = 3
+    initial.feedback = "OK"
+    first_follow_up = Answer(
+        interview_id=interview_id,
+        question_id="q1",
+        order=1,
+        round=1,
+        question_text="First follow-up?",
+    )
+    first_follow_up.answer_text = "First follow-up answer"
+    first_follow_up.score = 3
+    first_follow_up.feedback = "OK"
+    persist_interview_with_answers(
+        Interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
             question_count=2,
             question_ids=json.dumps(["q1", "q2"]),
             status="active",
-        )
-        uow.interviews.add(interview)
-        initial = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=0,
-            question_text="Original question?",
-        )
-        initial.answer_text = "First answer"
-        initial.score = 3
-        initial.feedback = "OK"
-        uow.answers.add(initial)
-        first_follow_up = Answer(
-            interview_id=interview_id,
-            question_id="q1",
-            order=1,
-            round=1,
-            question_text="First follow-up?",
-        )
-        first_follow_up.answer_text = "First follow-up answer"
-        first_follow_up.score = 3
-        first_follow_up.feedback = "OK"
-        uow.answers.add(first_follow_up)
-        uow.answers.add(
+        ),
+        [
+            initial,
+            first_follow_up,
             Answer(
                 interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=2,
                 question_text="Second follow-up?",
-            )
-        )
-        uow.answers.add(
+            ),
             Answer(
                 interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
-            )
-        )
+            ),
+        ],
+    )
 
     provider = fake_ai_provider(
         [
@@ -224,15 +165,15 @@ async def test_process_audio_answer_last_follow_up_fast_path(
     transcriber = FakeTranscriber("second follow-up spoken")
     wav_bytes = minimal_wav_bytes()
 
-    orig_eval = AnswerAiEvaluationService.evaluate_with_audio
+    orig_eval = InterviewEvaluatorService.evaluate_submission
 
     async def slow_audio_eval(**kwargs):
         await asyncio.sleep(0.05)
         return await orig_eval(**kwargs)
 
     monkeypatch.setattr(
-        AnswerAiEvaluationService,
-        "evaluate_with_audio",
+        InterviewEvaluatorService,
+        "evaluate_submission",
         staticmethod(slow_audio_eval),
     )
 

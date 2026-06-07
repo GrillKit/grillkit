@@ -4,15 +4,13 @@
 
 from typing import Any
 
+from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.schemas.mappers import interview_read_from_orm
-from app.interview.services.answer_timer import RoundTimerService
 from app.interview.services.evaluator.service import (
     AnswerEvaluation,
     FollowUpEvaluation,
 )
 from app.interview.services.events import AnswerFeedbackEvent
-from app.interview.services.query import InterviewQuery
 from app.interview.services.session_navigation import SessionNavigationService
 
 
@@ -45,14 +43,10 @@ class AnswerEvaluationPersistenceService:
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-            session = interview_read_from_orm(db_interview)
-
             next_question_data, timer_remaining = (
                 SessionNavigationService.advance_to_next_unanswered(
                     uow,
-                    db_interview,
-                    session,
+                    interview_id,
                     question_id=question_id,
                     round_num=round_num,
                 )
@@ -85,12 +79,16 @@ class AnswerEvaluationPersistenceService:
             evaluation: Parsed AI evaluation.
         """
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id=interview_id,
-                question_id=question_id,
-                round_num=round_num,
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            updated = aggregate.with_evaluation(
+                question_id,
+                round_num,
+                evaluation.score,
+                evaluation.feedback,
             )
-            uow.answers.set_evaluation(db_answer, evaluation.score, evaluation.feedback)
+            uow.interviews.save_aggregate(updated)
 
     @staticmethod
     def persist(
@@ -121,35 +119,45 @@ class AnswerEvaluationPersistenceService:
         timer_remaining: int | None = None
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            db_interview = InterviewQuery.get_orm_or_raise(interview_id, uow=uow)
-            session = interview_read_from_orm(db_interview)
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            aggregate.ensure_active()
 
-            db_answer = uow.answers.get_by_interview_question_round(
-                interview_id=interview_id,
-                question_id=question_id,
-                round_num=round_num,
+            updated = aggregate.with_evaluation(
+                question_id,
+                round_num,
+                evaluation.score,
+                evaluation.feedback,
             )
-            uow.answers.set_evaluation(db_answer, evaluation.score, evaluation.feedback)
-
+            follow_up_round: int | None = None
             if follow_up_needed:
-                max_round = uow.answers.get_max_round(interview_id, question_id)
-                follow_up = uow.answers.add_follow_up(
-                    interview_id=interview_id,
-                    question_id=question_id,
-                    round_num=max_round + 1,
-                    question_text=follow_up_text or "",
+                updated, pending = updated.with_follow_up(
+                    question_id, follow_up_text or ""
                 )
+                follow_up_round = pending.round
+
+            uow.interviews.save_aggregate(updated)
+
+            if follow_up_needed and follow_up_round is not None:
                 uow.flush()
-                RoundTimerService.activate_timed_round(uow, db_interview, follow_up)
-                timer_remaining = RoundTimerService.remaining_for_answer(
-                    db_interview, follow_up
+                reloaded = uow.interviews.get_aggregate(interview_id)
+                if reloaded is None:
+                    raise InterviewNotFoundError(interview_id)
+                follow_up = reloaded.find_answer(question_id, follow_up_round)
+                timed = reloaded.start_timer_for_answer(follow_up.id)
+                uow.interviews.save_aggregate(timed)
+                activated = next(
+                    answer for answer in timed.answers if answer.id == follow_up.id
+                )
+                timer_remaining = activated.remaining_seconds(
+                    timed.question_time_limit_seconds
                 )
             else:
                 next_question_data, timer_remaining = (
                     SessionNavigationService.advance_to_next_unanswered(
                         uow,
-                        db_interview,
-                        session,
+                        interview_id,
                         question_id=question_id,
                         round_num=round_num,
                     )

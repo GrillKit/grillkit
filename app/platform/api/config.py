@@ -16,8 +16,8 @@ from app.platform.services.llm_catalog import LLMCatalogService
 from app.platform.services.page import ConfigPageService
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 from app.shared.locales import DEFAULT_LOCALE
+from app.shared.speech_models import DEFAULT_SPEECH_MODEL_SIZE
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.services.rules.speech_models import DEFAULT_SPEECH_MODEL_SIZE
 from app.speech.services.whisper_model import WhisperModelService
 from app.templating import templates
 
@@ -245,7 +245,7 @@ async def add_llm_model(
             speech_model_size=speech_model_size,
             locale=config.locale if config is not None else DEFAULT_LOCALE,
         )
-        success, test_message = await ConfigService.test_interview_model(
+        success, test_message = await ConfigService.test_catalog_model(
             probe_config,
             accepts_audio_input=payload.accepts_audio_input,
         )

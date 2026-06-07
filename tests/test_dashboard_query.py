@@ -9,8 +9,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.interview.repositories.interview import InterviewRepository
+from app.interview.repositories.mappers import interview_from_orm, interview_to_read
 from app.interview.schemas.dashboard import DashboardRowRead
-from app.interview.schemas.mappers import interview_read_from_orm
 from app.interview.services.dashboard import DashboardBuilder
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
@@ -49,7 +49,7 @@ def test_interview_display_title():
         id="x",
         selection_spec=minimal_selection_spec(categories=["data-structures"]),
     )
-    read_model = interview_read_from_orm(interview)
+    read_model = interview_to_read(interview_from_orm(interview))
     assert DashboardBuilder.interview_display_title(read_model) == "Python Interview"
 
 
@@ -105,7 +105,10 @@ def test_list_dashboard_rows(monkeypatch):
     class FakeInterviews:
         @staticmethod
         def list_recent(limit=20):
-            return [completed, active]
+            return [
+                interview_from_orm(completed),
+                interview_from_orm(active),
+            ]
 
     class FakeUow:
         def __init__(self, auto_commit=False):

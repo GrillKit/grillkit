@@ -4,9 +4,8 @@
 
 from pathlib import Path
 
-from app.interview.api.access import get_current_unanswered, load_interview_or_raise
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.rules.progress import require_active
+from app.interview.services.query import InterviewQuery
 from app.platform.services.config import ConfigService
 from app.platform.services.speech_settings import question_voice_settings_from_config
 from app.question_voice.services.tts_cache import TtsCacheService
@@ -40,8 +39,7 @@ async def get_question_audio_path(
     if not voice_settings.enabled:
         raise QuestionVoiceDisabledError()
 
-    interview = load_interview_or_raise(interview_id)
-    require_active(interview)
+    interview = InterviewQuery.get_active_interview_or_raise(interview_id)
     answer = _resolve_answer(interview, answer_id)
     return await TtsCacheService.get_or_fetch(
         voice_settings.voice_id,
@@ -76,7 +74,7 @@ def _resolve_answer(
                 return answer
         raise ValueError(f"Answer not found in interview: {answer_id}")
 
-    current = get_current_unanswered(interview)
+    current = InterviewQuery.get_current_unanswered(interview)
     if current is None:
         raise ValueError("No unanswered question in this interview")
     if not current.question_text.strip():
