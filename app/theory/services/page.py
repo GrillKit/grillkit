@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Theory section page context builder."""
 
+from app.interview.domain.serialization import parse_session_spec
 from app.interview.schemas.interview import InterviewRead
 from app.interview.services.query import InterviewQuery
 from app.theory.repositories.uow import TheoryUnitOfWork
@@ -57,6 +58,14 @@ class TheoryPageService:
         Returns:
             Theory page context, or None when the session has no theory tasks.
         """
+        session = parse_session_spec(
+            interview.selection_spec,
+            question_count=interview.question_count,
+            task_time_limit_seconds=interview.question_time_limit_seconds,
+        )
+        if not session.theory.enabled:
+            return None
+
         if not interview.answers:
             with TheoryUnitOfWork() as uow:
                 section = uow.theory_sections.get_aggregate(interview.id)

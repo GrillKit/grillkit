@@ -10,9 +10,12 @@ from tests.helpers.interview_seed import seed_two_question_interview
 class TestTheoryCanonicalRoutes:
     """Theory section transport under /interview/{id}/theory/."""
 
-    def test_theory_websocket_answer_success(self, client, isolated_db):
+    def test_theory_websocket_answer_success(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
         """Canonical theory WebSocket path accepts answers."""
         interview_id = seed_two_question_interview("theory-ws-1")
+        override_ws_ai_provider(client, [])
         with patch(
             "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
         ) as mock_stream:

@@ -98,18 +98,32 @@ class DashboardBuilder:
             if breakdown_total > 0:
                 return breakdown_total
 
-        theory_max = sum(
-            TheorySection.MAX_SCORE_PER_ROUND
-            for answer in interview.answers
-            if answer.answer_text is not None
+        session = parse_session_spec(
+            interview.selection_spec,
+            question_count=interview.question_count,
+            task_time_limit_seconds=interview.question_time_limit_seconds,
         )
-        if theory_max > 0:
-            return theory_max
 
-        with CodingUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview.id)
-            if section is not None:
-                return section.max_score()
+        if session.theory.enabled:
+            if interview.answers:
+                theory_max = sum(
+                    TheorySection.MAX_SCORE_PER_ROUND
+                    for _answer in interview.answers
+                )
+            else:
+                theory_max = (
+                    interview.question_count * TheorySection.MAX_SCORE_PER_ROUND
+                )
+            if theory_max > 0:
+                return theory_max
+
+        if session.coding.enabled:
+            with CodingUnitOfWork() as uow:
+                section = uow.coding_sections.get_aggregate(interview.id)
+                if section is not None:
+                    return section.max_score()
+            if interview.question_count > 0:
+                return interview.question_count * TheorySection.MAX_SCORE_PER_ROUND
 
         return 0
 

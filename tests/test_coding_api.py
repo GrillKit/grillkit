@@ -106,9 +106,12 @@ class TestCodingStateApi:
 class TestCodingWebSocket:
     """Tests for WS /interview/{id}/coding/ws."""
 
-    def test_submit_streams_saved_evaluating_and_feedback(self, client, isolated_db):
+    def test_submit_streams_saved_evaluating_and_feedback(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
         """Submit persists code, evaluates with AI, and returns feedback."""
         interview_id, task_id = seed_active_coding_interview("coding-ws-1")
+        override_ws_ai_provider(client, [])
         evaluation = CodingAnswerEvaluation(
             score=4,
             feedback="Nice work.",
@@ -141,9 +144,10 @@ class TestCodingWebSocket:
             assert feedback["task_id"] == task_id
             assert feedback["feedback"] == "Nice work."
 
-    def test_submit_requires_fields(self, client, isolated_db):
+    def test_submit_requires_fields(self, client, isolated_db, override_ws_ai_provider):
         """Submit rejects messages without task_id or source_code."""
         interview_id, _task_id = seed_active_coding_interview("coding-ws-2")
+        override_ws_ai_provider(client, [])
         with client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws:
             ws.send_json({"type": "submit", "task_id": "cod-001"})
             error = ws.receive_json()
