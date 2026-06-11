@@ -107,8 +107,7 @@ class DashboardBuilder:
         if session.theory.enabled:
             if interview.answers:
                 theory_max = sum(
-                    TheorySection.MAX_SCORE_PER_ROUND
-                    for _answer in interview.answers
+                    TheorySection.MAX_SCORE_PER_ROUND for _answer in interview.answers
                 )
             else:
                 theory_max = (
