@@ -8,37 +8,27 @@ from datetime import UTC, datetime
 import json
 from typing import Any
 
-from app.interview.domain.entities import Answer as DomainAnswer
+from app.coding.domain.entities import CodingSection as DomainCodingSection
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.entities import InterviewStatus
 from app.interview.domain.serialization import (
     parse_overall_feedback,
-    parse_selection_spec,
-    selection_to_spec,
+    parse_session_spec,
+    session_to_spec,
 )
-from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.shared.infrastructure.models import Answer as OrmAnswer
+from app.interview.schemas.interview import InterviewRead
+from app.interview.services.scoring import (
+    completed_score_fallback,
+    score_from_overall_feedback,
+)
 from app.shared.infrastructure.models import Interview as OrmInterview
+from app.theory.domain.entities import TheorySection as DomainTheorySection
+from app.theory.repositories.mappers import (
+    theory_section_from_orm,
+    theory_task_read_from_domain,
+)
 
 _EPOCH = datetime.min.replace(tzinfo=UTC)
-
-
-def _question_ids_from_json(raw: str) -> tuple[str, ...]:
-    """Parse ``question_ids`` JSON into an ordered tuple.
-
-    Args:
-        raw: JSON array string from persistence.
-
-    Returns:
-        Question IDs in display order.
-    """
-    try:
-        parsed = json.loads(raw or "[]")
-    except json.JSONDecodeError:
-        return ()
-    if not isinstance(parsed, list):
-        return ()
-    return tuple(str(item) for item in parsed)
 
 
 def _question_ids_to_json(question_ids: tuple[str, ...]) -> str:
@@ -53,113 +43,37 @@ def _question_ids_to_json(question_ids: tuple[str, ...]) -> str:
     return json.dumps(list(question_ids), separators=(",", ":"))
 
 
-def domain_answer_to_orm(answer: DomainAnswer) -> OrmAnswer:
-    """Map a domain answer to a new ORM row for insert.
+def _resolve_completed_score(
+    shell: DomainInterview,
+    theory: DomainTheorySection | None,
+    coding: DomainCodingSection | None,
+) -> int | None:
+    """Resolve display score for a completed session read model.
 
     Args:
-        answer: Domain answer (typically ``id`` is ``Answer.NEW_ID``).
+        shell: Interview shell aggregate.
+        theory: Theory section aggregate, if present.
+        coding: Coding section aggregate, if present.
 
     Returns:
-        Detached ORM Answer ready to be added to a session.
+        Display score from feedback or section totals, or None while active.
     """
-    return OrmAnswer(
-        interview_id=answer.interview_id,
-        question_id=answer.question_id,
-        order=answer.order,
-        round=answer.round,
-        question_text=answer.question_text,
-        question_code=answer.question_code,
-        answer_text=answer.answer_text,
-        score=answer.score,
-        feedback=answer.feedback,
-        started_at=answer.started_at,
-        created_at=answer.created_at,
-    )
+    if shell.status != "completed":
+        return None
+    score = score_from_overall_feedback(shell.overall_feedback)
+    if score is not None:
+        return score
+    return completed_score_fallback(shell, theory, coding)
 
 
-def answer_from_orm(answer: OrmAnswer) -> DomainAnswer:
-    """Map an ORM answer row to a domain answer.
+def interview_shell_from_orm(interview: OrmInterview) -> DomainInterview:
+    """Map an ORM interview row to a shell domain aggregate.
 
     Args:
-        answer: SQLAlchemy Answer instance.
+        interview: SQLAlchemy Interview row.
 
     Returns:
-        Immutable domain Answer.
-    """
-    return DomainAnswer(
-        id=answer.id,
-        interview_id=answer.interview_id,
-        question_id=answer.question_id,
-        order=answer.order,
-        round=answer.round,
-        question_text=answer.question_text,
-        question_code=answer.question_code,
-        answer_text=answer.answer_text,
-        score=answer.score,
-        feedback=answer.feedback,
-        started_at=answer.started_at,
-        created_at=answer.created_at,
-    )
-
-
-def answer_read_from_domain(answer: DomainAnswer) -> AnswerRead:
-    """Map a domain answer to a read model.
-
-    Args:
-        answer: Domain answer entity.
-
-    Returns:
-        Immutable AnswerRead for services and API.
-    """
-    return AnswerRead(
-        id=answer.id,
-        question_id=answer.question_id,
-        order=answer.order,
-        round=answer.round,
-        question_text=answer.question_text,
-        question_code=answer.question_code,
-        answer_text=answer.answer_text,
-        score=answer.score,
-        feedback=answer.feedback,
-        started_at=answer.started_at,
-    )
-
-
-def answer_read_to_domain(answer: AnswerRead, interview_id: str) -> DomainAnswer:
-    """Map a read-model answer into a domain answer for rule evaluation.
-
-    Args:
-        answer: Answer read snapshot.
-        interview_id: Parent interview UUID.
-
-    Returns:
-        Domain answer with a placeholder ``created_at`` when unknown.
-    """
-    created_at = answer.started_at if answer.started_at is not None else _EPOCH
-    return DomainAnswer(
-        id=answer.id,
-        interview_id=interview_id,
-        question_id=answer.question_id,
-        order=answer.order,
-        round=answer.round,
-        question_text=answer.question_text,
-        question_code=answer.question_code,
-        answer_text=answer.answer_text,
-        score=answer.score,
-        feedback=answer.feedback,
-        started_at=answer.started_at,
-        created_at=created_at,
-    )
-
-
-def interview_from_orm(interview: OrmInterview) -> DomainInterview:
-    """Map an ORM interview row to a domain aggregate.
-
-    Args:
-        interview: SQLAlchemy Interview with answers loaded.
-
-    Returns:
-        Immutable domain Interview.
+        Immutable interview shell without section tasks.
     """
     status: InterviewStatus = (
         "completed" if interview.status == "completed" else "active"
@@ -167,119 +81,154 @@ def interview_from_orm(interview: OrmInterview) -> DomainInterview:
     return DomainInterview(
         id=interview.id,
         locale=interview.locale or "en",
-        selection=parse_selection_spec(interview.selection_spec),
-        question_count=interview.question_count or 0,
-        question_ids=_question_ids_from_json(interview.question_ids or "[]"),
-        question_time_limit_seconds=interview.question_time_limit_seconds,
+        session_mode=interview.session_mode,  # type: ignore[arg-type]
+        selection=parse_session_spec(interview.selection_spec),
         status=status,
-        score=interview.score,
         overall_feedback=parse_overall_feedback(interview.overall_feedback),
         started_at=interview.started_at,
         completed_at=interview.completed_at,
-        answers=tuple(answer_from_orm(a) for a in interview.answers),
     )
 
 
-def interview_read_to_domain(interview: InterviewRead) -> DomainInterview:
-    """Map an interview read model to a domain aggregate for rules.
+def compose_interview_read(
+    shell: DomainInterview,
+    theory: DomainTheorySection | None,
+    coding: DomainCodingSection | None = None,
+) -> InterviewRead:
+    """Compose an interview read model from shell and optional section aggregates.
 
     Args:
-        interview: Interview read snapshot with answers.
+        shell: Interview shell aggregate.
+        theory: Theory section aggregate with tasks, if present.
+        coding: Coding section aggregate, used for coding-only score fallback.
 
     Returns:
-        Domain interview aggregate.
+        Immutable InterviewRead for services, API, and templates.
     """
-    status: InterviewStatus = (
-        "completed" if interview.status == "completed" else "active"
+    score = _resolve_completed_score(shell, theory, coding)
+
+    if theory is None:
+        return InterviewRead(
+            id=shell.id,
+            status=shell.status,
+            locale=shell.locale,
+            selection_spec=session_to_spec(shell.selection),
+            question_ids="[]",
+            question_count=0,
+            question_time_limit_seconds=None,
+            answers=[],
+            score=score,
+            overall_feedback=shell.overall_feedback,
+            started_at=shell.started_at,
+            completed_at=shell.completed_at,
+        )
+
+    answers = [theory_task_read_from_domain(task) for task in theory.tasks]
+
+    return InterviewRead(
+        id=shell.id,
+        status=shell.status,
+        locale=theory.locale,
+        selection_spec=session_to_spec(shell.selection),
+        question_ids=_question_ids_to_json(theory.question_ids),
+        question_count=theory.question_count,
+        question_time_limit_seconds=theory.task_time_limit_seconds,
+        answers=answers,
+        score=score,
+        overall_feedback=shell.overall_feedback,
+        started_at=shell.started_at,
+        completed_at=shell.completed_at,
     )
-    return DomainInterview(
-        id=interview.id,
-        locale=interview.locale,
-        selection=parse_selection_spec(interview.selection_spec),
-        question_count=interview.question_count,
-        question_ids=_question_ids_from_json(interview.question_ids),
-        question_time_limit_seconds=interview.question_time_limit_seconds,
-        status=status,
-        score=interview.score,
-        overall_feedback=interview.overall_feedback,
-        started_at=interview.started_at or _EPOCH,
-        completed_at=interview.completed_at,
-        answers=tuple(
-            answer_read_to_domain(answer, interview.id) for answer in interview.answers
-        ),
+
+
+def interview_from_orm(interview: OrmInterview) -> DomainInterview:
+    """Map an ORM interview row to a shell domain aggregate.
+
+    Args:
+        interview: SQLAlchemy Interview row.
+
+    Returns:
+        Interview shell aggregate.
+    """
+    return interview_shell_from_orm(interview)
+
+
+def interview_read_from_orm(
+    interview: OrmInterview,
+    *,
+    coding: DomainCodingSection | None = None,
+) -> InterviewRead:
+    """Map an ORM interview row and section aggregates to a read model.
+
+    Args:
+        interview: SQLAlchemy Interview with optional theory section loaded.
+        coding: Coding section aggregate for coding-only score fallback.
+
+    Returns:
+        Composed interview read model.
+    """
+    shell = interview_shell_from_orm(interview)
+    theory = (
+        theory_section_from_orm(interview.theory_section)
+        if interview.theory_section is not None
+        else None
     )
+    return compose_interview_read(shell, theory, coding)
 
 
 def interview_to_read(interview: DomainInterview) -> InterviewRead:
-    """Map a domain aggregate to a read model.
+    """Map a shell aggregate to a minimal read model without theory tasks.
+
+    Prefer ``compose_interview_read`` when section data is available.
 
     Args:
-        interview: Domain interview aggregate.
+        interview: Interview shell aggregate.
 
     Returns:
-        Immutable InterviewRead for services and API.
+        Interview read model without answers.
     """
-    return InterviewRead(
+    return compose_interview_read(interview, None)
+
+
+def interview_shell_to_orm(interview: DomainInterview) -> OrmInterview:
+    """Map a new interview shell to a detached ORM row.
+
+    Args:
+        interview: Domain shell from ``Interview.start_shell``.
+
+    Returns:
+        ORM Interview without nested section rows.
+    """
+    return OrmInterview(
         id=interview.id,
-        status=interview.status,
         locale=interview.locale,
-        selection_spec=selection_to_spec(interview.selection),
-        question_ids=_question_ids_to_json(interview.question_ids),
-        question_count=interview.question_count,
-        question_time_limit_seconds=interview.question_time_limit_seconds,
-        answers=[answer_read_from_domain(a) for a in interview.answers],
-        score=interview.score,
-        overall_feedback=interview.overall_feedback,
+        selection_spec=session_to_spec(interview.selection),
+        session_mode=interview.session_mode,
+        status=interview.status,
+        overall_feedback=(
+            json.dumps(interview.overall_feedback, separators=(",", ":"))
+            if interview.overall_feedback is not None
+            else None
+        ),
         started_at=interview.started_at,
         completed_at=interview.completed_at,
     )
-
-
-def interview_to_orm(interview: DomainInterview) -> OrmInterview:
-    """Map a new domain aggregate to a detached ORM interview row.
-
-    Args:
-        interview: Domain aggregate from ``Interview.start``.
-
-    Returns:
-        ORM Interview with nested answer rows ready for ``session.add``.
-    """
-    orm_interview = OrmInterview(
-        id=interview.id,
-        locale=interview.locale,
-        selection_spec=selection_to_spec(interview.selection),
-        question_count=interview.question_count,
-        question_ids=_question_ids_to_json(interview.question_ids),
-        question_time_limit_seconds=interview.question_time_limit_seconds,
-        status=interview.status,
-        score=interview.score,
-        overall_feedback=None,
-        started_at=interview.started_at,
-        completed_at=interview.completed_at,
-    )
-    orm_interview.answers = [
-        domain_answer_to_orm(answer) for answer in interview.answers
-    ]
-    return orm_interview
 
 
 def interview_to_orm_fields(interview: DomainInterview) -> dict[str, Any]:
-    """Extract ORM-mutable interview fields from a domain aggregate.
+    """Extract ORM-mutable interview shell fields from a domain aggregate.
 
     Args:
-        interview: Domain interview aggregate.
+        interview: Domain interview shell aggregate.
 
     Returns:
         Dict of column names to values for partial ORM updates.
     """
     return {
         "locale": interview.locale,
-        "selection_spec": selection_to_spec(interview.selection),
-        "question_count": interview.question_count,
-        "question_ids": _question_ids_to_json(interview.question_ids),
-        "question_time_limit_seconds": interview.question_time_limit_seconds,
+        "selection_spec": session_to_spec(interview.selection),
+        "session_mode": interview.session_mode,
         "status": interview.status,
-        "score": interview.score,
         "overall_feedback": (
             json.dumps(interview.overall_feedback, separators=(",", ":"))
             if interview.overall_feedback is not None

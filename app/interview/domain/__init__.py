@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Interview domain model: entities, value objects, and exceptions."""
 
-from app.interview.domain.entities import Answer, Interview
+from app.interview.domain.entities import Interview
 from app.interview.domain.exceptions import (
     AnswerNotFoundError,
     InterviewDomainError,
@@ -16,12 +16,14 @@ from app.interview.domain.value_objects import (
     InterviewSelection,
     InterviewSelectionHolder,
     PlannedQuestion,
+    SectionBranchSpec,
+    SessionMode,
+    SessionSelection,
     TrackQuestionPools,
     TrackSelection,
 )
 
 __all__ = [
-    "Answer",
     "AnswerNotFoundError",
     "Interview",
     "InterviewDomainError",
@@ -30,6 +32,9 @@ __all__ = [
     "InterviewSelection",
     "InterviewSelectionHolder",
     "PlannedQuestion",
+    "SectionBranchSpec",
+    "SessionMode",
+    "SessionSelection",
     "QuestionTimerNotEnabledError",
     "QuestionTimerNotExpiredError",
     "TrackQuestionPools",

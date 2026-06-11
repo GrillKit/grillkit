@@ -83,34 +83,6 @@ questions:
       - "s[::-1] reverses the string"
       - "Slicing handles out-of-range gracefully; indexing raises IndexError"
 
-  - id: "str-004"
-    type: "coding"
-    difficulty: 2
-    tags: ["join", "split", "concatenation"]
-    question:
-      text:
-        en: "Why is ''.join(list) preferred over string concatenation in a loop?"
-        ru: "Почему ''.join(list) предпочтительнее конкатенации строк в цикле?"
-      code: |
-        items = ["a", "b", "c"]
-        # Bad approach
-        result = ""
-        for item in items:
-            result += item
-        # Good approach
-        result = "".join(items)
-    follow_ups:
-      en:
-        - "How does .join() work internally?"
-        - "What is the opposite of .join()?"
-      ru:
-        - "Как .join() работает внутри?"
-        - "Что является противоположностью .join()?"
-    expected_points:
-      - "String concatenation in loop creates many intermediate objects (O(n²))"
-      - ".join() allocates once, computes final size"
-      - "Opposite: .split() splits string into list"
-
   - id: "str-005"
     type: "knowledge"
     difficulty: 2

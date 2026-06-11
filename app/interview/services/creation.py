@@ -1,61 +1,97 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Interview creation service."""
+"""Interview session creation service."""
 
 import logging
 from uuid import uuid4
 
+from app.coding.domain.entities import CodingSectionStatus
+from app.coding.services.creation import CodingSectionCreationService
+from app.coding.services.planning import build_coding_task_plan
 from app.interview.domain.entities import Interview
-from app.interview.domain.value_objects import InterviewSelection
-from app.interview.repositories.mappers import interview_to_read
+from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.domain.value_objects import SessionMode, SessionSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
-from app.interview.services.question_planning import build_question_plan
-from app.interview.services.rules.selection import validate_question_count
+from app.interview.services.sections import phase_order_for_mode
 from app.shared.locales import normalize_locale
+from app.theory.services.creation import TheorySectionCreationService
 
 logger = logging.getLogger(__name__)
 
 
-class InterviewCreationService:
-    """Service for creating interview sessions."""
+def _initial_coding_status(session_mode: SessionMode) -> CodingSectionStatus:
+    """Return the initial coding section status for a session mode.
+
+    Args:
+        session_mode: Session mode from setup.
+
+    Returns:
+        ``active`` when coding is the first user-facing phase, else ``pending``.
+    """
+    order = phase_order_for_mode(session_mode)
+    return "active" if order and order[0] == "coding" else "pending"
+
+
+class SessionCreationService:
+    """Orchestrates interview shell and section creation."""
 
     @staticmethod
-    def create_interview(
-        selection: InterviewSelection,
+    def create_session(
+        session: SessionSelection,
         locale: str = "en",
-        question_count: int = 5,
-        question_time_limit_seconds: int | None = None,
     ) -> InterviewRead:
-        """Create a new interview session with selected questions.
+        """Create a new interview session from a v2 session selection.
 
-        Loads questions from YAML banks per selection, builds a plan with at
-        least one question per topic, then persists the session atomically.
+        Persists an interview shell and enabled section rows atomically in one
+        transaction.
 
         Args:
-            selection: Track/level/topic selection from setup.
+            session: Full session selection from setup (v2).
             locale: Locale for AI feedback and follow-ups (default: "en").
-            question_count: Number of questions for this session (default: 5).
-            question_time_limit_seconds: Per-round time limit, or None to disable.
 
         Returns:
-            Read model for the created interview with answers pre-populated.
+            Read model for the created session with answers pre-populated.
 
         Raises:
             ValueError: If validation fails or no questions are available.
         """
         locale = normalize_locale(locale)
-        validate_question_count(selection, question_count)
-        selected = build_question_plan(selection, question_count, locale=locale)
+
         interview_id = str(uuid4())
-        aggregate = Interview.start(
+        shell = Interview.start_shell(
             interview_id,
-            selection=selection,
+            selection=session,
             locale=locale,
-            planned_questions=tuple(selected),
-            question_time_limit_seconds=question_time_limit_seconds,
         )
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            persisted = uow.interviews.create_aggregate(aggregate)
-            return interview_to_read(persisted)
+            uow.interviews.create_shell(shell)
+            if session.theory.enabled:
+                TheorySectionCreationService.create(
+                    interview_id,
+                    selection=session.theory_selection,
+                    locale=locale,
+                    question_count=session.theory.question_count,
+                    task_time_limit_seconds=session.theory.task_time_limit_seconds,
+                    uow=uow,
+                )
+            if session.coding.enabled:
+                planned_tasks = build_coding_task_plan(
+                    session.coding_selection,
+                    session.coding.question_count,
+                    locale=locale,
+                )
+                CodingSectionCreationService.create(
+                    interview_id,
+                    selection=session.coding_selection,
+                    locale=locale,
+                    planned_tasks=planned_tasks,
+                    task_time_limit_seconds=session.coding.task_time_limit_seconds,
+                    status=_initial_coding_status(session.session_mode),
+                    uow=uow,
+                )
+            read_model = uow.interviews.get_read_model(interview_id)
+            if read_model is None:
+                raise InterviewNotFoundError(interview_id)
+            return read_model

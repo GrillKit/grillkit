@@ -94,11 +94,21 @@ If bind-mounted `data/` is not writable (Linux UID mismatch):
 PUID=$(id -u) PGID=$(id -g) docker compose up --build
 ```
 
+**Coding sessions** (Monaco + code execution) require [Judge0 CE](https://github.com/judge0/judge0). Start the optional `coding` profile:
+
+```bash
+docker compose --profile coding up --build
+```
+
+Judge0 listens on port `2358` inside the Compose network (`JUDGE0_URL=http://judge0-server:2358` for the `app` service). For local development without Docker, run Judge0 separately and point `JUDGE0_URL` at `http://localhost:2358`.
+
+On some Linux hosts Judge0 needs **cgroup v1** (`systemd.unified_cgroup_hierarchy=0` in GRUB). Set `CODING_ENABLED=false` to hide coding modes when Judge0 is unavailable.
+
 ### First-time flow
 
 1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save.
-2. **New interview** (`/setup`) — enable one or more question-bank tracks (level per track), select multiple topics, set total question count (at least one per selected topic; interview locale is read-only from config).
-3. **Interview** (`/interview/{id}`) — page loads history; text answers and completion go over WebSocket.
+2. **New interview** (`/setup`) — pick a **session mode** (theory only, coding only, or combined). Configure theory and/or coding tracks, topics, task counts, and per-task timers. Coding modes require Judge0 (see **Coding sessions** above).
+3. **Interview** (`/interview/{id}`) — theory answers over `WS /theory/ws`; coding uses Monaco + Run (`POST /coding/run`) and Submit (`WS /coding/ws`). End interview from the sidebar at any time.
 
 Without saved provider config, `/setup` redirects to `/config`.
 
@@ -141,6 +151,10 @@ Optional environment variables (full list in [ARCHITECTURE.md](ARCHITECTURE.md#p
 | `HF_TOKEN` | Hugging Face token for faster Whisper/Piper downloads |
 | `WHISPER_DEVICE` | `cpu` or `cuda` |
 | `WHISPER_COMPUTE_TYPE` | `int8` or `float16` |
+| `CODING_ENABLED` | Enable coding session modes (default `true`; requires healthy Judge0) |
+| `JUDGE0_URL` | Judge0 API base URL (default `http://localhost:2358`) |
+| `JUDGE0_AUTH_TOKEN` | Optional Judge0 `X-Auth-Token` header |
+| `CODING_MAX_RUNS_PER_TASK` | Max Run attempts per coding task (default `20`) |
 
 ## Roadmap
 
@@ -148,7 +162,6 @@ Optional environment variables (full list in [ARCHITECTURE.md](ARCHITECTURE.md#p
 
 - Session-wide time limit (total interview duration)
 - More question banks and categories
-- Code editor in the interview UI
 - Custom question banks, PWA / standalone frontend
 
 ## For developers

@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
+from app.coding.repositories.coding_section import CodingSectionRepository
 from app.interview.repositories.interview import InterviewRepository
 from app.shared.infrastructure.uow import UnitOfWork
+from app.theory.repositories.theory_section import TheorySectionRepository
 
 
 class InterviewUnitOfWork(UnitOfWork):
@@ -28,6 +30,8 @@ class InterviewUnitOfWork(UnitOfWork):
         """
         super().__init__(auto_commit=auto_commit)
         self._interviews_repo: InterviewRepository | None = None
+        self._theory_sections_repo: TheorySectionRepository | None = None
+        self._coding_sections_repo: CodingSectionRepository | None = None
 
     @property
     def interviews(self) -> InterviewRepository:
@@ -35,3 +39,17 @@ class InterviewUnitOfWork(UnitOfWork):
         if self._interviews_repo is None:
             self._interviews_repo = InterviewRepository(self.session)
         return self._interviews_repo
+
+    @property
+    def theory_sections(self) -> TheorySectionRepository:
+        """Access the ``TheorySectionRepository`` bound to this UoW."""
+        if self._theory_sections_repo is None:
+            self._theory_sections_repo = TheorySectionRepository(self.session)
+        return self._theory_sections_repo
+
+    @property
+    def coding_sections(self) -> CodingSectionRepository:
+        """Access the ``CodingSectionRepository`` bound to this UoW."""
+        if self._coding_sections_repo is None:
+            self._coding_sections_repo = CodingSectionRepository(self.session)
+        return self._coding_sections_repo

@@ -84,39 +84,6 @@ questions:
       - "'None' specifically means absence of value, while other falsy values are legitimate values"
       - "Use 'is None' to check for None specifically"
 
-  - id: "bas-004"
-    type: "coding"
-    difficulty: 2
-    tags: ["type-conversion", "type-hints"]
-
-    question:
-      text:
-        en: "What is type hinting in Python 3.10+? Why is it useful? Describe the typing features added in Python 3.10."
-        ru: "Что такое аннотации типов (type hints) в Python 3.10+? Зачем они нужны? Опишите возможности typing, добавленные в Python 3.10."
-      code: |
-        # Rewrite this function with proper type hints (3.10+ syntax)
-        def process(data, options=None):
-            results = []
-            for item in data:
-                results.append(item * 2)
-            return results
-
-    follow_ups:
-      en:
-        - "What is the difference between List[int] and list[int]?"
-        - "What are TypeAlias and Union types in Python 3.10+?"
-        - "How does '|' syntax work for unions?"
-      ru:
-        - "В чём разница между List[int] и list[int]?"
-        - "Что такое TypeAlias и Union типы в Python 3.10+?"
-        - "Как работает синтаксис '|' для объединений?"
-
-    expected_points:
-      - "Type hints improve code readability and enable static type checking"
-      - "Python 3.10+: list[int] instead of typing.List[int], dict[str, int]"
-      - "Union: int | str instead of Union[int, str]"
-      - "Optional[x] is equivalent to x | None"
-
   - id: "bas-005"
     type: "knowledge"
     difficulty: 2

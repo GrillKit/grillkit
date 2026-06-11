@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for interview completion persistence."""
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.interview.services.completion import InterviewCompletionService
-from app.interview.services.evaluator.service import InterviewEvaluation
+from app.coding.repositories.uow import CodingUnitOfWork
+from app.interview.services.completion import SessionCompletionService
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
+from app.theory.services.evaluator.models import InterviewEvaluation
 from tests.fakes import FakeProvider
+from tests.helpers.coding_seed import seed_active_coding_interview
 from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
 
@@ -26,13 +27,10 @@ async def test_complete_interview_persists_completed_status(isolated_db):
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=1,
-            question_ids=json.dumps(["q1"]),
             status="active",
         ),
         [
             Answer(
-                interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=0,
@@ -47,15 +45,22 @@ async def test_complete_interview_persists_completed_status(isolated_db):
         overall_feedback="Good work",
         strengths_summary=["Clear answer"],
         topics_to_review=[],
-        score_breakdown={"q1": {"score": 99, "max": 999}},
+        score_breakdown={
+            "theory": {
+                "score": 99,
+                "max": 999,
+                "skipped": False,
+                "questions": {"q1": {"score": 99, "max": 999}},
+            }
+        },
     )
 
     with patch(
-        "app.interview.services.completion.InterviewEvaluatorService.evaluate_interview",
+        "app.interview.services.completion.SessionEvaluatorService.evaluate_session",
         new_callable=AsyncMock,
         return_value=mock_eval,
     ):
-        events = await InterviewCompletionService.complete_interview(
+        events = await SessionCompletionService.complete_session(
             interview_id,
             provider=FakeProvider([]),
         )
@@ -68,5 +73,55 @@ async def test_complete_interview_persists_completed_status(isolated_db):
     assert reloaded.score == 5
     assert reloaded.completed_at is not None
     assert reloaded.overall_feedback is not None
-    assert reloaded.overall_feedback["score_breakdown"]["q1"]["score"] == 5
-    assert reloaded.overall_feedback["score_breakdown"]["q1"]["max"] == 5
+    theory_breakdown = reloaded.overall_feedback["score_breakdown"]["theory"]
+    assert theory_breakdown["questions"]["q1"]["score"] == 5
+    assert theory_breakdown["questions"]["q1"]["max"] == 5
+
+
+@pytest.mark.asyncio
+async def test_complete_coding_only_session_includes_coding_breakdown(isolated_db):
+    """Completion merges coding section scores into the session breakdown."""
+    interview_id, _task_id = seed_active_coding_interview("coding-completion-1")
+    with CodingUnitOfWork(auto_commit=True) as uow:
+        section = uow.coding_sections.get_aggregate(interview_id)
+        assert section is not None
+        task = section.find_first_unsubmitted()
+        assert task is not None
+        submitted = section.with_submit_test_summary(
+            task.id,
+            {"status": "success"},
+            source_code="def solve():\n    return 1",
+        )
+        evaluated = submitted.with_evaluation(
+            task.task_id,
+            task.round,
+            score=4,
+            feedback="Good solution.",
+        )
+        uow.coding_sections.save_aggregate(evaluated)
+
+    mock_eval = InterviewEvaluation(
+        overall_feedback="Solid coding work",
+        strengths_summary=["Clean code"],
+        topics_to_review=[],
+        score_breakdown={},
+    )
+
+    with patch(
+        "app.interview.services.completion.SessionEvaluatorService.evaluate_session",
+        new_callable=AsyncMock,
+        return_value=mock_eval,
+    ):
+        events = await SessionCompletionService.complete_session(
+            interview_id,
+            provider=FakeProvider([]),
+        )
+
+    assert len(events) == 2
+    reloaded = InterviewQuery.get_interview(interview_id)
+    assert reloaded is not None
+    assert reloaded.status == "completed"
+    assert reloaded.score == 4
+    coding_breakdown = reloaded.overall_feedback["score_breakdown"]["coding"]
+    assert coding_breakdown["score"] == 4
+    assert coding_breakdown["questions"]["cod-001"]["score"] == 4

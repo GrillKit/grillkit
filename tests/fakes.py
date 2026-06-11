@@ -5,7 +5,14 @@
 from collections.abc import AsyncIterator
 
 from app.ai.base import AIProvider, GenerationResult, Message
-from app.interview.services.evaluator.models import AnswerEvaluation, FollowUpEvaluation
+from app.coding.services.evaluator.models import (
+    CodingAnswerEvaluation,
+)
+from app.shared.evaluation_models import SectionEvaluation
+from app.theory.services.evaluator.models import (
+    AnswerEvaluation,
+    FollowUpEvaluation,
+)
 
 
 def answer_evaluation_json(
@@ -35,6 +42,36 @@ def answer_evaluation_json(
     return payload.model_dump_json()
 
 
+def coding_answer_evaluation_json(
+    *,
+    score: int = 4,
+    feedback: str = "Solid code.",
+    follow_up_needed: bool = False,
+    follow_up_question: str | None = None,
+    follow_up_mode: str | None = None,
+) -> str:
+    """Build JSON text matching ``CodingAnswerEvaluation`` for a fake provider.
+
+    Args:
+        score: Rating 1-5.
+        feedback: Evaluation feedback text.
+        follow_up_needed: Whether a follow-up is requested.
+        follow_up_question: Follow-up prompt when needed.
+        follow_up_mode: Composer mode for the follow-up round.
+
+    Returns:
+        Serialized JSON string.
+    """
+    payload = CodingAnswerEvaluation(
+        score=score,
+        feedback=feedback,
+        follow_up_needed=follow_up_needed,
+        follow_up_question=follow_up_question,
+        follow_up_mode=follow_up_mode,  # type: ignore[arg-type]
+    )
+    return payload.model_dump_json()
+
+
 def follow_up_evaluation_json(
     *,
     score: int = 3,
@@ -58,6 +95,30 @@ def follow_up_evaluation_json(
         feedback=feedback,
         needs_further_follow_up=needs_further_follow_up,
         follow_up_question=follow_up_question,
+    )
+    return payload.model_dump_json()
+
+
+def section_evaluation_json(
+    *,
+    section_feedback: str = "Solid section performance.",
+    topics_to_review: list[str] | None = None,
+    strengths_summary: list[str] | None = None,
+) -> str:
+    """Build JSON text matching ``SectionEvaluation`` for a fake provider.
+
+    Args:
+        section_feedback: Section narrative feedback text.
+        topics_to_review: Topics to review for the section.
+        strengths_summary: Strength bullets for the section.
+
+    Returns:
+        Serialized JSON string.
+    """
+    payload = SectionEvaluation(
+        section_feedback=section_feedback,
+        topics_to_review=topics_to_review or [],
+        strengths_summary=strengths_summary or ["clear answers"],
     )
     return payload.model_dump_json()
 

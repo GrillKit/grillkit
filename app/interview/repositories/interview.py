@@ -2,28 +2,28 @@
 # SPDX-License-Identifier: Apache-2.0
 """Interview repository.
 
-Provides data access for ``Interview`` records, including
-eager-loading of related answers and lookups by ID.
+Provides data access for interview session shell rows.
 """
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.interview.domain.entities import Answer as DomainAnswer
+from app.coding.repositories.coding_section import CodingSectionRepository
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.mappers import (
-    domain_answer_to_orm,
     interview_from_orm,
-    interview_to_orm,
+    interview_read_from_orm,
+    interview_shell_to_orm,
     interview_to_orm_fields,
 )
-from app.shared.infrastructure.models import Interview
+from app.interview.schemas.interview import InterviewRead
+from app.shared.infrastructure.models import Interview, TheorySection
 from app.shared.repositories.base import SqlAlchemyRepository
 
 
 class InterviewRepository(SqlAlchemyRepository[Interview]):
-    """Repository for ``Interview`` entities.
+    """Repository for ``Interview`` shell entities.
 
     Attributes:
         _session: Active SQLAlchemy Session (inherited).
@@ -40,62 +40,79 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         super().__init__(session)
 
     def get(self, entity_id: str) -> Interview | None:
-        """Retrieve a session by ID with eagerly loaded answers.
+        """Retrieve a session shell by ID with theory section loaded.
 
         Args:
             entity_id: The session UUID.
 
         Returns:
-            Interview with answers loaded, or None.
+            Interview with theory section and tasks loaded, or None.
         """
         return (
             self._session.query(Interview)
-            .options(selectinload(Interview.answers))
+            .options(
+                selectinload(Interview.theory_section).selectinload(
+                    TheorySection.tasks
+                ),
+            )
             .filter_by(id=entity_id)
             .first()
         )
 
     def get_aggregate(self, entity_id: str) -> DomainInterview | None:
-        """Load a domain interview aggregate with answers.
+        """Load a domain interview shell aggregate.
 
         Args:
             entity_id: The session UUID.
 
         Returns:
-            Domain aggregate, or None when the session does not exist.
+            Domain shell aggregate, or None when the session does not exist.
         """
         orm_interview = self.get(entity_id)
         if orm_interview is None:
             return None
         return interview_from_orm(orm_interview)
 
-    def create_aggregate(self, interview: DomainInterview) -> DomainInterview:
-        """Insert a new interview aggregate and return it with assigned answer IDs.
+    def get_read_model(self, entity_id: str) -> InterviewRead | None:
+        """Load a composed interview read model with theory tasks.
 
         Args:
-            interview: Domain aggregate from ``Interview.start``.
+            entity_id: The session UUID.
 
         Returns:
-            Reloaded domain aggregate after flush.
+            Interview read model, or None when the session does not exist.
         """
-        orm_interview = interview_to_orm(interview)
+        orm_interview = self.get(entity_id)
+        if orm_interview is None:
+            return None
+        coding = CodingSectionRepository(self._session).get_aggregate(entity_id)
+        return interview_read_from_orm(orm_interview, coding=coding)
+
+    def create_shell(self, interview: DomainInterview) -> DomainInterview:
+        """Insert a new interview shell row.
+
+        Args:
+            interview: Domain shell from ``Interview.start_shell``.
+
+        Returns:
+            Reloaded domain shell after flush.
+
+        Raises:
+            InterviewNotFoundError: If reload fails after flush.
+        """
+        orm_interview = interview_shell_to_orm(interview)
         self._session.add(orm_interview)
         self._session.flush()
-        self._session.refresh(orm_interview)
         reloaded = self.get(interview.id)
         if reloaded is None:
             raise InterviewNotFoundError(interview.id)
         return interview_from_orm(reloaded)
 
     def save_aggregate(self, interview: DomainInterview) -> None:
-        """Persist mutable fields from a domain aggregate onto ORM rows.
-
-        Updates interview scalars and answer fields that may change during
-        navigation and answer submission (``answer_text``, ``score``,
-        ``feedback``, ``started_at``).
+        """Persist mutable shell fields from a domain aggregate onto the ORM row.
 
         Args:
-            interview: Domain aggregate previously loaded from this repository.
+            interview: Domain shell previously loaded from this repository.
 
         Raises:
             InterviewNotFoundError: If the session row no longer exists.
@@ -107,21 +124,8 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         for field, value in interview_to_orm_fields(interview).items():
             setattr(orm_interview, field, value)
 
-        orm_answers_by_id = {answer.id: answer for answer in orm_interview.answers}
-        for domain_answer in interview.answers:
-            if domain_answer.id == DomainAnswer.NEW_ID:
-                orm_interview.answers.append(domain_answer_to_orm(domain_answer))
-                continue
-            orm_answer = orm_answers_by_id.get(domain_answer.id)
-            if orm_answer is None:
-                continue
-            orm_answer.answer_text = domain_answer.answer_text
-            orm_answer.score = domain_answer.score
-            orm_answer.feedback = domain_answer.feedback
-            orm_answer.started_at = domain_answer.started_at
-
-    def list_recent(self, limit: int = 20) -> list[DomainInterview]:
-        """Return recent domain aggregates (active and completed), newest first.
+    def list_recent_read_models(self, limit: int = 20) -> list[InterviewRead]:
+        """Return recent interview read models, newest first.
 
         Sort key is ``completed_at`` when set, otherwise ``started_at``.
 
@@ -129,14 +133,25 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             limit: Maximum number of rows to return.
 
         Returns:
-            Domain interviews with answers loaded.
+            Composed interview read models with theory tasks when present.
         """
         sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
         orm_rows = (
             self._session.query(Interview)
-            .options(selectinload(Interview.answers))
+            .options(
+                selectinload(Interview.theory_section).selectinload(
+                    TheorySection.tasks
+                ),
+            )
             .order_by(sort_key.desc())
             .limit(limit)
             .all()
         )
-        return [interview_from_orm(row) for row in orm_rows]
+        coding_repo = CodingSectionRepository(self._session)
+        return [
+            interview_read_from_orm(
+                row,
+                coding=coding_repo.get_aggregate(row.id),
+            )
+            for row in orm_rows
+        ]

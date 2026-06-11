@@ -1,0 +1,36 @@
+category: "Exceptions"
+track: "python"
+level: "junior"
+
+description: "Python exception handling: try/except/finally, raising exceptions, and exception hierarchy"
+
+tasks:
+  - id: "exc-005"
+    difficulty: 1
+    tags: ["assert", "debugging"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `divide` uses `assert` to guard against division by zero. Assertions can be disabled
+          with `python -O` and are not meant for validating user input.
+
+          Your task:
+          Replace the assertion with explicit validation. Raise a suitable exception when `b`
+          is zero. Keep normal division behavior otherwise.
+        ru: |
+          Контекст:
+          `divide` проверяет делитель через `assert`, что не подходит для production.
+
+          Задача:
+          Замените assert явной проверкой и выбросом подходящего исключения при `b == 0`.
+      starter_code: |
+        def divide(a, b):
+            assert b != 0, "Division by zero!"
+            return a / b
+    expected_points:
+      - "No assert for input validation"
+      - "Raises ZeroDivisionError or ValueError on b == 0"
+      - "Returns quotient for valid inputs"

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.interview.services.creation import InterviewCreationService
+from app.interview.services.creation import SessionCreationService
 from app.interview.services.query import InterviewQuery
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import PiperVoiceStatusRead
@@ -204,22 +204,22 @@ class TestQuestionAudioApi:
             question_voice_enabled=False,
         )
         from app.interview.domain.value_objects import (
-            InterviewSelection,
+            SessionSelection,
             TrackSelection,
         )
 
-        interview = InterviewCreationService.create_interview(
-            selection=InterviewSelection(
+        interview = SessionCreationService.create_session(
+            SessionSelection.theory_only(
                 sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
                         categories=("data-structures",),
                     ),
-                )
+                ),
+                question_count=1,
             ),
             locale="en",
-            question_count=1,
         )
         with patch(
             "app.platform.services.config.ConfigService.get_config",
@@ -241,22 +241,22 @@ class TestQuestionAudioApi:
         del temp_questions_dir
         monkeypatch.setattr("random.shuffle", lambda items: None)
         from app.interview.domain.value_objects import (
-            InterviewSelection,
+            SessionSelection,
             TrackSelection,
         )
 
-        interview = InterviewCreationService.create_interview(
-            selection=InterviewSelection(
+        interview = SessionCreationService.create_session(
+            SessionSelection.theory_only(
                 sources=(
                     TrackSelection(
                         track="python",
                         level="junior",
                         categories=("data-structures",),
                     ),
-                )
+                ),
+                question_count=1,
             ),
             locale="en",
-            question_count=1,
         )
         reloaded = InterviewQuery.get_interview(interview.id)
         assert reloaded is not None

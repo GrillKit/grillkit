@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for setup API cascaded options."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.platform.services.config import AppConfig
 
@@ -67,6 +67,30 @@ class TestSetupOptions:
         ):
             response = client.get("/setup/options", params={"track": "java"})
         assert response.status_code == 404
+
+
+class TestSetupCodingOptions:
+    """Tests for GET /setup/coding-options and /setup/coding-available."""
+
+    def test_lists_coding_tracks(self, client):
+        """Coding options without params returns available coding tracks."""
+        with patch(
+            "app.interview.api.setup.coding_bank.list_tracks",
+            return_value=["python"],
+        ):
+            response = client.get("/setup/coding-options")
+        assert response.status_code == 200
+        assert response.json() == {"tracks": ["python"]}
+
+    def test_coding_available_endpoint(self, client):
+        """Coding availability endpoint reflects service flag."""
+        with patch(
+            "app.interview.api.setup.is_coding_available_async",
+            new=AsyncMock(return_value=True),
+        ):
+            response = client.get("/setup/coding-available")
+        assert response.status_code == 200
+        assert response.json() == {"available": True}
 
 
 class TestSetupConfigRedirect:
@@ -141,8 +165,9 @@ class TestSetupConfigRedirect:
         )
         captured: dict[str, object] = {}
 
-        def fake_create(**kwargs: object) -> MagicMock:
-            captured.update(kwargs)
+        def fake_create(session, locale: str = "en") -> MagicMock:
+            captured["session"] = session
+            captured["locale"] = locale
             interview = MagicMock()
             interview.id = "timer-setup-id"
             return interview
@@ -153,7 +178,7 @@ class TestSetupConfigRedirect:
                 return_value=mock_config,
             ),
             patch(
-                "app.interview.services.creation.InterviewCreationService.create_interview",
+                "app.interview.services.creation.SessionCreationService.create_session",
                 side_effect=fake_create,
             ),
         ):
@@ -173,8 +198,9 @@ class TestSetupConfigRedirect:
 
         assert response.status_code == 303
         assert response.headers["location"] == "/interview/timer-setup-id"
-        assert captured.get("question_time_limit_seconds") == 240
-        assert "selection" in captured
+        session = captured.get("session")
+        assert session is not None
+        assert session.theory.task_time_limit_seconds == 240
 
     def test_setup_post_rejects_question_count_below_topics(self, client):
         """POST /setup rejects when question count is below selected topic count."""

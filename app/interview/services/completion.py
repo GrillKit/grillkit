@@ -3,42 +3,49 @@
 """Session completion service.
 
 This module provides service for completing interview sessions and generating
-final AI evaluations.
+final AI evaluations from merged section summaries.
 """
 
+from dataclasses import replace
 import logging
 
 from app.ai.base import AIProvider
+from app.coding.services.query import CodingQueryService
+from app.coding.services.section import CodingSectionService
 from app.interview.domain.exceptions import InterviewNotFoundError
-from app.interview.repositories.mappers import interview_to_read
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.dashboard import DashboardBuilder
-from app.interview.services.evaluator.service import InterviewEvaluatorService
+from app.interview.services.evaluation_aggregator import (
+    SessionEvaluationAggregator,
+    attach_session_score_breakdown,
+)
 from app.interview.services.events import (
     EvaluatingEvent,
     InterviewCompletedEvent,
     InterviewEvent,
 )
 from app.interview.services.rules.selection import selection_sources_summary
+from app.interview.services.session_evaluator import SessionEvaluatorService
+from app.theory.services.query import TheoryQueryService
+from app.theory.services.section import TheorySectionService
 
 logger = logging.getLogger(__name__)
 
 
-class InterviewCompletionService:
+class SessionCompletionService:
     """Service for completing interview sessions."""
 
     @staticmethod
-    async def complete_interview(
+    async def complete_session(
         interview_id: str,
         provider: AIProvider,
     ) -> list[InterviewEvent]:
         """Complete a session and generate final AI evaluation.
 
         Orchestrates:
-        1. Build Q&A summary from all answers
-        2. Evaluate with AI
-        3. Save overall_feedback
-        4. Mark session as completed
+        1. Load per-section evaluation summaries
+        2. Merge summaries for session-level evaluation
+        3. Save overall_feedback and mark session completed
 
         Args:
             interview_id: The session UUID.
@@ -55,42 +62,80 @@ class InterviewCompletionService:
             if aggregate is None:
                 raise InterviewNotFoundError(interview_id)
 
-            questions_answers = [
-                {
-                    "question_id": answer.question_id,
-                    "question_text": answer.question_text,
-                    "answer_text": answer.answer_text,
-                    "score": answer.score,
-                    "round": answer.round,
-                }
-                for answer in aggregate.answers
-                if answer.answer_text is not None
-            ]
-            normalized_breakdown = aggregate.per_question_score_breakdown()
             locale = aggregate.locale
-            sources_text = selection_sources_summary(aggregate.selection)
+            session = aggregate.selection
+            sources_parts: list[str] = []
+            if session.theory.enabled:
+                theory_sources = TheoryQueryService.sources_text_for_section(
+                    interview_id
+                )
+                if theory_sources:
+                    sources_parts.append(theory_sources)
+            if session.coding.enabled:
+                coding_sources = CodingQueryService.sources_text_for_section(
+                    interview_id
+                )
+                if coding_sources:
+                    sources_parts.append(coding_sources)
+            sources_text = (
+                "; ".join(sources_parts)
+                if sources_parts
+                else selection_sources_summary(aggregate.selection.theory_selection)
+            )
+
+        await TheorySectionService.ensure_section_feedback(interview_id)
+        await CodingSectionService.ensure_section_feedback(interview_id)
+
+        theory_summary = TheoryQueryService.get_evaluation_summary(interview_id)
+        if (
+            theory_summary is not None
+            and session.theory.enabled
+            and not TheorySectionService.is_complete(interview_id)
+        ):
+            theory_summary = replace(
+                theory_summary,
+                skipped=True,
+                score=0,
+                max_score=0,
+            )
+
+        coding_summary = CodingQueryService.get_evaluation_summary(interview_id)
+        if (
+            coding_summary is not None
+            and session.coding.enabled
+            and not CodingSectionService.is_complete(interview_id)
+        ):
+            coding_summary = replace(
+                coding_summary,
+                skipped=True,
+                score=0,
+                max_score=0,
+            )
+
+        merged = SessionEvaluationAggregator.merge(theory_summary, coding_summary)
 
         events: list[InterviewEvent] = [EvaluatingEvent()]
 
-        interview_eval = await InterviewEvaluatorService.evaluate_interview(
+        session_eval = await SessionEvaluatorService.evaluate_session(
+            merged,
             provider=provider,
-            questions_answers=questions_answers,
-            sources_text=sources_text,
             locale=locale,
+            sources_text=sources_text,
         )
-
-        interview_eval = interview_eval.model_copy(
-            update={"score_breakdown": normalized_breakdown}
-        )
+        interview_eval = attach_session_score_breakdown(session_eval, merged)
 
         with InterviewUnitOfWork(auto_commit=True) as uow:
             aggregate = uow.interviews.get_aggregate(interview_id)
             if aggregate is None:
                 raise InterviewNotFoundError(interview_id)
             completed = aggregate.with_session_completed(interview_eval.model_dump())
-            score = completed.score or 0
             uow.interviews.save_aggregate(completed)
-            interview_read = interview_to_read(completed)
+            interview_read = uow.interviews.get_read_model(interview_id)
+            if interview_read is None:
+                raise InterviewNotFoundError(interview_id)
+            score = SessionEvaluationAggregator.total_score_from_breakdown(
+                interview_eval.score_breakdown
+            )
 
         max_score = DashboardBuilder.compute_max_score(
             interview_read, interview_eval.score_breakdown or None

@@ -1,0 +1,57 @@
+category: "Complete the code"
+track: "python"
+level: "middle"
+
+description: "Finish partial implementations: data structures, algorithms, and API design"
+
+tasks:
+  - id: "cc-cache-001"
+    difficulty: 3
+    tags: ["cache", "fifo", "deque", "data-structures"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          You are given a Cache class that stores key-value pairs with a maximum size (maxsize).
+          When a new item is added and the cache is full, the oldest item must be removed (FIFO policy).
+          Methods __init__, get, and set are started but incomplete.
+
+          Your task:
+          Implement get and set so that:
+          - get returns the value for an existing key, or None if the key is missing.
+          - set inserts or updates a key; on update, move the key to the end of the eviction order.
+          - when inserting a new key exceeds maxsize, remove the oldest key from both the queue and data.
+        ru: |
+          Контекст:
+          Дан класс Cache с ограничением maxsize и политикой вытеснения FIFO.
+          Методы __init__, get и set начаты, но не завершены.
+
+          Задача:
+          Реализуйте get и set:
+          - get возвращает значение или None, если ключа нет.
+          - set добавляет или обновляет ключ; при обновлении ключ уходит в конец очереди.
+          - при переполнении удаляется самый старый ключ из очереди и словаря.
+      starter_code: |
+        from collections import deque
+
+
+        class Cache:
+            def __init__(self, maxsize=10):
+                self.maxsize = maxsize
+                self.data = {}
+                self.order = deque()
+
+            def get(self, key):
+                # TODO: return value from data if key exists, else None
+                pass
+
+            def set(self, key, value):
+                # TODO: add or update key; maintain FIFO order; evict oldest when over maxsize
+                pass
+    expected_points:
+      - "get uses dict lookup and returns None for missing keys"
+      - "set removes old queue entry before re-appending on update"
+      - "eviction uses popleft on order and deletes key from data"
+      - "FIFO semantics preserved after updates and inserts"

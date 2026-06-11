@@ -9,7 +9,6 @@ from typing import ClassVar
 
 from huggingface_hub import snapshot_download
 
-from app.paths import WHISPER_MODELS_ROOT
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
 from app.shared.infrastructure.hf_download_progress import hf_progress_tqdm_factory
@@ -19,6 +18,7 @@ from app.shared.infrastructure.model_download import (
     promote_staging_dir,
 )
 from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
+from app.shared.paths import WHISPER_MODELS_ROOT
 from app.shared.speech_models import (
     SpeechModelSpec,
     normalize_speech_model_size,

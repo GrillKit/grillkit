@@ -369,7 +369,7 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error for unknown message type."""
         with (
             patch("app.interview.services.query.InterviewQuery.get_interview"),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json({"type": "unknown_command"})
             response = ws.receive_json()
@@ -392,10 +392,10 @@ class TestInterviewWebSocket:
 
         with (
             patch(
-                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
                 side_effect=mock_stream,
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json(
                 {
@@ -414,7 +414,7 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error when question_id or answer_text is missing."""
         with (
             patch("app.interview.services.query.InterviewQuery.get_interview"),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json({"type": "answer", "question_id": ""})
             response = ws.receive_json()
@@ -425,12 +425,12 @@ class TestInterviewWebSocket:
         """Test WebSocket rejects answer on completed session."""
         with (
             patch(
-                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotActiveError("test-id"), *args, **kwargs
                 ),
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json(
                 {
@@ -447,12 +447,12 @@ class TestInterviewWebSocket:
         """Test WebSocket returns error when session is not found."""
         with (
             patch(
-                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotFoundError("test-id"), *args, **kwargs
                 ),
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json(
                 {
@@ -474,7 +474,7 @@ class TestInterviewWebSocket:
                 "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json({"type": "ping"})
             response = ws.receive_json()
@@ -490,7 +490,7 @@ class TestInterviewWebSocket:
                 "app.interview.services.query.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json({"type": "ping"})
             response = ws.receive_json()
@@ -501,11 +501,11 @@ class TestInterviewWebSocket:
         """Test WebSocket complete message triggers session completion."""
         with (
             patch(
-                "app.interview.services.completion.InterviewCompletionService.complete_interview",
+                "app.interview.services.completion.SessionCompletionService.complete_session",
                 new_callable=AsyncMock,
                 return_value=[],
             ) as mock_complete,
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json({"type": "complete"})
             for _ in range(100):
@@ -521,12 +521,12 @@ class TestInterviewWebSocket:
         """Test WebSocket handles ValueError from service layer."""
         with (
             patch(
-                "app.interview.services.answer_processing.AnswerProcessingService.stream_answer_submission",
+                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     ValueError("Invalid question"), *args, **kwargs
                 ),
             ),
-            client.websocket_connect("/interview/test-id/ws") as ws,
+            client.websocket_connect("/interview/test-id/theory/ws") as ws,
         ):
             ws.send_json(
                 {

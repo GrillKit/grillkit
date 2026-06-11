@@ -8,18 +8,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.entities import Interview as DomainInterview
-from app.interview.domain.value_objects import (
-    InterviewSelection,
-    PlannedQuestion,
-    TrackSelection,
-)
+from app.interview.domain.value_objects import SessionSelection, TrackSelection
 from app.interview.repositories.interview import InterviewRepository
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
 from tests.helpers.selection import minimal_selection_spec
+from tests.helpers.theory_seed import attach_theory_section_to_answers
 
 
 @pytest.fixture
@@ -45,29 +41,43 @@ def db_session(engine):
 # ---------------------------------------------------------------------------
 
 
-def _create_test_interview(db_session, interview_id="session-1") -> Interview:
+def _create_test_interview(
+    db_session,
+    interview_id: str = "session-1",
+    *,
+    question_count: int = 3,
+) -> Interview:
     sess = Interview(
         id=interview_id,
         selection_spec=minimal_selection_spec(),
-        question_count=3,
-        question_ids='["q1","q2","q3"]',
         status="active",
     )
     db_session.add(sess)
+    db_session.flush()
+    attach_theory_section_to_answers(
+        db_session,
+        sess,
+        [],
+        question_count=question_count,
+    )
     db_session.commit()
     return sess
 
 
 def _create_test_answer(
     db_session,
-    interview_id="session-1",
-    question_id="q1",
-    order=1,
-    round_num=0,
-    question_text="What is Python?",
+    interview_id: str = "session-1",
+    question_id: str = "q1",
+    order: int = 1,
+    round_num: int = 0,
+    question_text: str = "What is Python?",
 ) -> Answer:
+    interview = db_session.get(Interview, interview_id)
+    assert interview is not None
+    section = interview.theory_section
+    assert section is not None
     ans = Answer(
-        interview_id=interview_id,
+        theory_section_id=section.id,
         question_id=question_id,
         order=order,
         round=round_num,
@@ -142,29 +152,24 @@ class TestSqlAlchemyRepository:
 
 
 class TestInterviewRepository:
-    """Tests for InterviewRepository."""
+    """Tests for InterviewRepository shell persistence."""
 
-    def test_get_eager_loads_answers(self, db_session):
-        """Test get() eagerly loads the answers relationship."""
+    def test_get_eager_loads_theory_tasks(self, db_session):
+        """Test get() eagerly loads theory section tasks."""
         _create_test_interview(db_session)
         _create_test_answer(db_session)
 
         repo = InterviewRepository(db_session)
         session = repo.get("session-1")
         assert session is not None
-        # answers should be loaded (no lazy-load error)
-        assert len(session.answers) == 1
+        assert session.theory_section is not None
+        assert len(session.theory_section.tasks) == 1
 
     def test_save_aggregate_persists_completed_session(self, db_session):
-        """save_aggregate writes completed status, score, and overall feedback."""
+        """save_aggregate writes completed status and overall feedback."""
         _create_test_interview(db_session, interview_id="session-1")
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-        a1.answer_text = "a"
-        a1.score = 4
-        a2 = _create_test_answer(db_session, question_id="q2", order=2)
-        a2.answer_text = "b"
-        a2.score = 3
-        db_session.commit()
+        _create_test_answer(db_session, question_id="q1", order=1)
+        _create_test_answer(db_session, question_id="q2", order=2)
 
         repo = InterviewRepository(db_session)
         aggregate = repo.get_aggregate("session-1")
@@ -176,7 +181,6 @@ class TestInterviewRepository:
         reloaded = repo.get_aggregate("session-1")
         assert reloaded is not None
         assert reloaded.status == "completed"
-        assert reloaded.score == 7
         assert reloaded.completed_at is not None
         assert isinstance(reloaded.completed_at, datetime)
         assert reloaded.overall_feedback == {"summary": "done"}
@@ -186,46 +190,37 @@ class TestInterviewRepository:
         repo = InterviewRepository(db_session)
         assert repo.get("nope") is None
 
-    def test_create_aggregate_inserts_interview_and_answers(self, db_session):
-        """create_aggregate persists a new domain aggregate with real answer IDs."""
-        selection = InterviewSelection(
+    def test_create_shell_inserts_interview(self, db_session):
+        """create_shell persists a new interview shell row."""
+        selection = SessionSelection.theory_only(
             sources=(
                 TrackSelection(
                     track="python",
                     level="junior",
                     categories=("basics",),
                 ),
-            )
-        )
-        planned = (
-            PlannedQuestion(
-                id="q1",
-                text="Question one",
-                code=None,
             ),
+            question_count=1,
+            task_time_limit_seconds=60,
         )
-        aggregate = DomainInterview.start(
+        shell = DomainInterview.start_shell(
             "new-session",
             selection=selection,
             locale="en",
-            planned_questions=planned,
-            question_time_limit_seconds=60,
         )
 
         repo = InterviewRepository(db_session)
-        persisted = repo.create_aggregate(aggregate)
+        persisted = repo.create_shell(shell)
         db_session.commit()
 
         assert persisted.id == "new-session"
-        assert persisted.question_count == 1
-        assert persisted.answers[0].id != DomainAnswer.NEW_ID
-        assert persisted.answers[0].started_at is not None
+        assert persisted.status == "active"
         reloaded = repo.get_aggregate("new-session")
         assert reloaded is not None
-        assert reloaded.answers[0].question_text == "Question one"
+        assert reloaded.locale == "en"
 
-    def test_get_aggregate_maps_domain_interview(self, db_session):
-        """get_aggregate returns a domain interview with answers."""
+    def test_get_aggregate_maps_domain_shell(self, db_session):
+        """get_aggregate returns a domain interview shell without tasks."""
         _create_test_interview(db_session)
         _create_test_answer(db_session, question_id="q1", order=1)
         _create_test_answer(db_session, question_id="q2", order=2)
@@ -236,105 +231,16 @@ class TestInterviewRepository:
         assert aggregate is not None
         assert aggregate.id == "session-1"
         assert aggregate.status == "active"
-        assert len(aggregate.answers) == 2
-        assert aggregate.answers[0].question_id == "q1"
 
-    def test_save_aggregate_persists_answer_started_at(self, db_session):
-        """save_aggregate writes answer timer state from the domain model."""
-        interview = _create_test_interview(db_session, interview_id="session-1")
-        interview.question_time_limit_seconds = 120
-        db_session.commit()
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-        _create_test_answer(db_session, question_id="q2", order=2)
+    def test_get_read_model_composes_theory_tasks(self, db_session):
+        """get_read_model composes answers from the linked theory section."""
+        _create_test_interview(db_session)
+        _create_test_answer(db_session, question_id="q1", order=1)
 
         repo = InterviewRepository(db_session)
-        aggregate = repo.get_aggregate("session-1")
-        assert aggregate is not None
-        updated = aggregate.start_timer_for_answer(a1.id)
-        repo.save_aggregate(updated)
-        db_session.commit()
+        read_model = repo.get_read_model("session-1")
 
-        reloaded = repo.get("session-1")
-        assert reloaded is not None
-        started = next(ans for ans in reloaded.answers if ans.id == a1.id)
-        assert started.started_at is not None
-
-    def test_save_aggregate_persists_answer_text(self, db_session):
-        """save_aggregate writes answer_text from the domain model."""
-        _create_test_interview(db_session, interview_id="session-1")
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-
-        repo = InterviewRepository(db_session)
-        aggregate = repo.get_aggregate("session-1")
-        assert aggregate is not None
-        updated = aggregate.with_answer_text(a1.id, "Lists are mutable.")
-        repo.save_aggregate(updated)
-        db_session.commit()
-
-        reloaded = repo.get_aggregate("session-1")
-        assert reloaded is not None
-        saved = next(ans for ans in reloaded.answers if ans.id == a1.id)
-        assert saved.answer_text == "Lists are mutable."
-
-    def test_save_aggregate_persists_timed_out_round(self, db_session):
-        """save_aggregate writes timeout marker, score, and feedback."""
-        _create_test_interview(db_session, interview_id="session-1")
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-
-        repo = InterviewRepository(db_session)
-        aggregate = repo.get_aggregate("session-1")
-        assert aggregate is not None
-        updated = aggregate.with_timed_out_round(a1.id, "Time expired.")
-        repo.save_aggregate(updated)
-        db_session.commit()
-
-        reloaded = repo.get_aggregate("session-1")
-        assert reloaded is not None
-        saved = next(ans for ans in reloaded.answers if ans.id == a1.id)
-        assert saved.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
-        assert saved.score == 0
-        assert saved.feedback
-
-    def test_save_aggregate_persists_evaluation(self, db_session):
-        """save_aggregate writes AI score and feedback from the domain model."""
-        _create_test_interview(db_session, interview_id="session-1")
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-        a1.answer_text = "my answer"
-        db_session.commit()
-
-        repo = InterviewRepository(db_session)
-        aggregate = repo.get_aggregate("session-1")
-        assert aggregate is not None
-        updated = aggregate.with_evaluation("q1", 0, 5, "Excellent.")
-        repo.save_aggregate(updated)
-        db_session.commit()
-
-        reloaded = repo.get_aggregate("session-1")
-        assert reloaded is not None
-        saved = reloaded.find_answer("q1", 0)
-        assert saved.score == 5
-        assert saved.feedback == "Excellent."
-
-    def test_save_aggregate_inserts_follow_up(self, db_session):
-        """save_aggregate inserts a new follow-up answer row."""
-        _create_test_interview(db_session, interview_id="session-1")
-        a1 = _create_test_answer(db_session, question_id="q1", order=1)
-        a1.answer_text = "done"
-        a1.score = 4
-        db_session.commit()
-
-        repo = InterviewRepository(db_session)
-        aggregate = repo.get_aggregate("session-1")
-        assert aggregate is not None
-        evaluated = aggregate.with_evaluation("q1", 0, 4, "Good.")
-        updated, _ = evaluated.with_follow_up("q1", "Tell me more.")
-        repo.save_aggregate(updated)
-        db_session.commit()
-
-        reloaded = repo.get_aggregate("session-1")
-        assert reloaded is not None
-        assert len(reloaded.answers) == 2
-        follow_up = reloaded.find_answer("q1", 1)
-        assert follow_up.id != DomainAnswer.NEW_ID
-        assert follow_up.question_text == "Tell me more."
-        assert follow_up.answer_text is None
+        assert read_model is not None
+        assert read_model.question_count == 3
+        assert len(read_model.answers) == 1
+        assert read_model.answers[0].question_id == "q1"

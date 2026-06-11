@@ -2,6 +2,8 @@
 
 {% set dictation_enabled = interview.status == "active" and current_question and speech_model_status and speech_model_status.state == "ready" %}
 {% set audio_answer_enabled = dictation_enabled and interview_model_accepts_audio %}
+{% set show_theory_panel = (theory is not defined or theory is not none) and (active_phase is not defined or active_phase == 'theory') %}
+{% set show_coding_panel = coding is defined and coding is not none and active_phase is defined and active_phase == 'coding' %}
 
 {% block title %}Interview - GrillKit{% endblock %}
 {% block body_class %}page-interview{% endblock %}
@@ -23,11 +25,6 @@
                 <a href="/config">Open Configuration</a> to retry loading the speech model.
             </div>
             {% endif %}
-            {% if interview.status == "completed" %}
-            <div class="alert alert-info">
-                <strong>Interview completed!</strong> Final score: {{ interview.score }} / {{ max_score }}
-            </div>
-            {% endif %}
         </div>
 
         <div class="interview-meta">
@@ -43,14 +40,34 @@
                 </dd>
                 <dt>AI language</dt>
                 <dd>{{ locale_label }}</dd>
-                <dt>Progress</dt>
+                {% if session_mode %}
+                <dt>Session</dt>
+                <dd><span class="session-mode-badge">{{ session_mode_label }}</span></dd>
+                {% endif %}
+                {% if theory is defined and theory is not none %}
+                <dt>Theory</dt>
                 <dd id="interview-progress">
-                    {% if current_question %}
-                    Question {{ current_question.order }} of {{ interview.question_count }}
+                    {% if theory.complete %}
+                    All questions answered
+                    {% elif theory.current_question %}
+                    Question {{ theory.current_question.order }} of {{ interview.question_count }}
                     {% else %}
                     All questions answered
                     {% endif %}
                 </dd>
+                {% endif %}
+                {% if coding is defined and coding is not none %}
+                <dt>Coding</dt>
+                <dd id="coding-progress">
+                    {% if coding.complete %}
+                    All coding tasks submitted
+                    {% elif coding.current_task %}
+                    Task {{ coding.completed_tasks + 1 }} of {{ coding.task_count }}
+                    {% else %}
+                    Task {{ coding.completed_tasks }} of {{ coding.task_count }}
+                    {% endif %}
+                </dd>
+                {% endif %}
                 <dt>Status</dt>
                 <dd><span id="interview-status">{{ interview.status | capitalize }}</span></dd>
                 <dt id="interview-timer-label"{% if not question_timer_enabled %} hidden{% endif %}>Timer</dt>
@@ -60,65 +77,6 @@
             </dl>
         </div>
 
-        {% if interview.status == "completed" and overall_feedback %}
-        <div class="interview-final-eval" id="final-evaluation">
-            <h2>Final Evaluation</h2>
-
-            <div class="feedback-section">
-                <h3>Overall Feedback</h3>
-                <p>{{ overall_feedback.overall_feedback }}</p>
-            </div>
-
-            {% if overall_feedback.strengths_summary %}
-            <div class="feedback-section">
-                <h3>Strengths</h3>
-                <ul>
-                    {% for strength in overall_feedback.strengths_summary %}
-                    <li>{{ strength }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if overall_feedback.topics_to_review %}
-            <div class="feedback-section">
-                <h3>Topics to Review</h3>
-                <ul>
-                    {% for topic in overall_feedback.topics_to_review %}
-                    <li>{{ topic }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if overall_feedback.score_breakdown %}
-            <div class="feedback-section">
-                <h3>Score Breakdown</h3>
-                <table class="score-table">
-                    <thead>
-                        <tr>
-                            <th>Question</th>
-                            <th>Score</th>
-                            <th>Max</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for qid, breakdown in overall_feedback.score_breakdown.items() %}
-                        {% if qid != "total" %}
-                        <tr>
-                            <td>{{ qid }}</td>
-                            <td>{{ breakdown.score }}</td>
-                            <td>{{ breakdown.max }}</td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
         <div class="interview-actions" id="sidebar-actions">
             <a href="/" class="btn btn-outline">Back to Dashboard</a>
             {% if interview.status == "active" %}
@@ -127,7 +85,7 @@
         </div>
     </aside>
 
-    <section class="interview-chat-panel">
+    <section class="interview-chat-panel" id="theory-panel"{% if not show_theory_panel %} hidden{% endif %}>
         <div class="interview-chat" id="chat-container">
             {% for answer in answers %}
             {% if answer.answer_text is not none or (current_question and answer.id == current_question.id) %}
@@ -154,7 +112,12 @@
             {% endfor %}
         </div>
 
-        {% if interview.status == "active" and current_question %}
+        {% if interview.status == "active" and theory is defined and theory is not none and theory.complete and session_mode == "theory_then_coding" and coding is defined and coding is not none and not coding.complete %}
+        <div class="interview-composer interview-phase-handoff" id="answer-section">
+            <p class="composer-done text-muted">Theory section complete. Continue to the coding practice.</p>
+            <button type="button" class="btn btn-primary" onclick="window.location.reload()">Continue to Coding</button>
+        </div>
+        {% elif interview.status == "active" and current_question %}
         <div class="interview-composer" id="answer-section"
              data-interview-id="{{ interview.id }}"
              {% if question_voice_enabled %}data-question-voice-enabled="true"{% endif %}
@@ -198,17 +161,39 @@
         </div>
         {% endif %}
     </section>
+
 </div>
 {% endblock %}
 
 {% block scripts %}
-{% if question_timer_enabled and interview.status == "active" and current_question %}
+{% if session_mode %}
+<script src="/static/js/session_phases.js?v={{ static_version('js/session_phases.js') }}"></script>
+<script>
+window.grillkitSessionPhases = {{ {
+    "sessionMode": session_mode,
+    "activePhase": active_phase,
+    "phaseOrder": phase_order,
+    "hasTheory": theory is defined and theory is not none,
+    "hasCoding": coding is defined and coding is not none,
+    "codingComplete": coding.complete if coding is defined and coding is not none else true,
+    "theoryComplete": theory.complete if theory is defined and theory is not none else true,
+} | tojson }};
+</script>
+{% endif %}
+{% if coding is defined and coding is not none and coding.current_task %}
+<script>
+window.grillkitCodingBootstrap = {
+    currentTask: {{ coding.current_task | tojson }}
+};
+</script>
+{% endif %}
+{% if (question_timer_enabled or (coding is defined and coding is not none and coding.task_timer_enabled)) and interview.status == "active" %}
 <script src="/static/js/interview_timer.js?v={{ static_version('js/interview_timer.js') }}"></script>
 {% endif %}
 <script>
     const initialInterviewStatus = '{{ interview.status }}';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/' + {{ interview.id | tojson }} + '/ws';
+    const wsUrl = wsProtocol + '//' + window.location.host + '/interview/' + {{ interview.id | tojson }} + '/theory/ws';
     let ws = null;
     let reconnectTimer = null;
     let currentQuestionId = {{ (current_question.question_id if current_question else "") | tojson }};
@@ -533,87 +518,27 @@
             stopQuestionTimer();
             isSubmitting = false;
             window.isSubmitting = false;
+            if (window.grillkitSessionPhaseNav && window.grillkitSessionPhaseNav.hasPendingCodingPhase()) {
+                const answerSection = document.getElementById('answer-section');
+                if (answerSection) {
+                    answerSection.innerHTML =
+                        '<p class="composer-done text-muted">Theory section complete. Loading coding practice…</p>';
+                }
+                window.grillkitSessionPhaseNav.continueToNextPhase();
+                return;
+            }
             const answerSection = document.getElementById('answer-section');
             if (answerSection) {
-                answerSection.innerHTML = '<p class="composer-done text-muted">All questions answered. Click "End Interview" to get your final evaluation.</p>';
+                answerSection.innerHTML =
+                    '<p class="composer-done text-muted">All questions answered. Click <strong>End Interview</strong> to get your final evaluation.</p>';
             }
         }
 
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    function handleSessionCompleted(data) {
-        document.getElementById('interview-status').textContent = 'Completed';
-
-        const answerSection = document.getElementById('answer-section');
-        if (answerSection) answerSection.style.display = 'none';
-
-        const endBtn = document.getElementById('end-btn');
-        if (endBtn) endBtn.style.display = 'none';
-
-        const alerts = document.getElementById('interview-alerts');
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-info';
-        alertDiv.innerHTML = '<strong>Interview completed!</strong> Final score: ' + data.score + ' / ' + (data.max_score || 0);
-        alerts.appendChild(alertDiv);
-
-        if (data.overall_feedback) {
-            const finalEval = document.getElementById('final-evaluation');
-            if (finalEval) {
-                finalEval.style.display = 'block';
-            } else {
-                buildFinalEvaluation(data.overall_feedback, data.score, data.max_score || 0);
-            }
-        }
-    }
-
-    function buildFinalEvaluation(feedback, score, maxScore) {
-        const sidebar = document.querySelector('.interview-sidebar');
-        const evalSection = document.createElement('div');
-        evalSection.className = 'interview-final-eval';
-        evalSection.id = 'final-evaluation';
-
-        let html = '<h2>Final Evaluation</h2>';
-
-        if (feedback.overall_feedback) {
-            html += '<div class="feedback-section"><h3>Overall Feedback</h3><p>' + escapeHtml(feedback.overall_feedback) + '</p></div>';
-        }
-        if (feedback.strengths_summary && feedback.strengths_summary.length > 0) {
-            html += '<div class="feedback-section"><h3>Strengths</h3><ul>';
-            feedback.strengths_summary.forEach(function(s) {
-                html += '<li>' + escapeHtml(s) + '</li>';
-            });
-            html += '</ul></div>';
-        }
-        if (feedback.topics_to_review && feedback.topics_to_review.length > 0) {
-            html += '<div class="feedback-section"><h3>Topics to Review</h3><ul>';
-            feedback.topics_to_review.forEach(function(t) {
-                html += '<li>' + escapeHtml(t) + '</li>';
-            });
-            html += '</ul></div>';
-        }
-
-        if (feedback.score_breakdown) {
-            html += '<div class="feedback-section"><h3>Score Breakdown</h3>';
-            html += '<table class="score-table"><thead><tr>';
-            html += '<th>Question</th><th>Score</th><th>Max</th>';
-            html += '</tr></thead><tbody>';
-
-            for (const [qid, breakdown] of Object.entries(feedback.score_breakdown)) {
-                if (qid !== 'total') {
-                    html += '<tr>';
-                    html += '<td>' + escapeHtml(qid) + '</td>';
-                    html += '<td>' + escapeHtml(String(breakdown.score)) + '</td>';
-                    html += '<td>' + escapeHtml(String(breakdown.max)) + '</td>';
-                    html += '</tr>';
-                }
-            }
-            html += '</tbody></table></div>';
-        }
-
-        evalSection.innerHTML = html;
-        const actions = document.getElementById('sidebar-actions');
-        sidebar.insertBefore(evalSection, actions);
+    function handleSessionCompleted() {
+        window.location.href = '/interview/' + {{ interview.id | tojson }} + '/results';
     }
 
     function enableForm(enabled) {
@@ -696,7 +621,10 @@
         }
         if (initialInterviewStatus === 'active') {
             connectWebSocket();
-            restartQuestionTimer({{ timer_remaining_seconds | tojson }});
+            const theoryPanel = document.getElementById('theory-panel');
+            if (theoryPanel && !theoryPanel.hidden) {
+                restartQuestionTimer({{ timer_remaining_seconds | tojson }});
+            }
         }
     });
 </script>
@@ -704,7 +632,7 @@
 {% if audio_answer_enabled %}
 <script src="/static/js/interview_audio_answer.js?v={{ static_version('js/interview_audio_answer.js') }}"></script>
 {% endif %}
-{% if question_voice_enabled and interview.status == "active" and current_question %}
+{% if question_voice_enabled and interview.status == "active" and current_question and show_theory_panel %}
 <script src="/static/js/interview_voice.js?v={{ static_version('js/interview_voice.js') }}"></script>
 {% endif %}
 {% endblock %}

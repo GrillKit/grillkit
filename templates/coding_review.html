@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Coding Review - GrillKit{% endblock %}
+{% block body_class %}page-coding-review{% endblock %}
+
+{% block content %}
+<div class="section-review">
+    <header class="section-review__header">
+        <div>
+            <p class="section-review__eyebrow">Coding section</p>
+            <h1 class="section-review__title">{{ interview_title }}</h1>
+            <p class="section-review__meta">
+                Score {{ section_score }} / {{ section_max_score }} · {{ locale_label }}
+            </p>
+        </div>
+        <div class="section-review__actions">
+            <a href="{{ results_url }}" class="btn btn-outline">Back to Results</a>
+            <a href="/" class="btn btn-outline">Dashboard</a>
+        </div>
+    </header>
+
+    <div class="section-review__layout section-review__layout--coding">
+        <aside class="section-review__sidebar">
+            <dl class="meta-list">
+                <dt>Sources</dt>
+                <dd>
+                    <ul class="selection-sources-list">
+                        {% for line in selection_lines %}
+                        <li>{{ line }}</li>
+                        {% endfor %}
+                    </ul>
+                </dd>
+            </dl>
+            {% include "_section_feedback.html" %}
+        </aside>
+
+        <section class="section-review__main">
+            <h2>Coding Tasks</h2>
+            <div class="coding-task-accordion">
+                {% for task in tasks %}
+                <details class="coding-task-panel"{% if loop.first %} open{% endif %}>
+                    <summary class="coding-task-panel__summary">
+                        <span class="coding-task-panel__title">Task {{ task.order }} · {{ task.task_id }}</span>
+                        <span class="coding-task-panel__score">{{ task.total_score }} / {{ task.max_score }}</span>
+                    </summary>
+
+                    <div class="coding-task-panel__body">
+                        <div class="coding-task-panel__prompt">
+                            <h3>Assignment</h3>
+                            <p>{{ task.initial_prompt }}</p>
+                        </div>
+
+                        {% for round in task.rounds %}
+                        <article class="coding-task-round">
+                            <header class="coding-task-round__header">
+                                <h4>
+                                    {% if round.round == 0 %}
+                                    Initial submission
+                                    {% else %}
+                                    Follow-up round {{ round.round }}
+                                    {% endif %}
+                                </h4>
+                                {% if round.score is not none %}
+                                <span class="coding-task-round__score">{{ round.score }} / 5</span>
+                                {% endif %}
+                            </header>
+
+                            {% if round.round > 0 %}
+                            <div class="coding-task-round__prompt">
+                                <strong>Prompt:</strong> {{ round.prompt_text }}
+                            </div>
+                            {% endif %}
+
+                            <div class="coding-task-round__code">
+                                <h5>Submission</h5>
+                                <pre class="code-block"><code>{{ round.submitted_code }}</code></pre>
+                            </div>
+
+                            {% if round.round == 0 and round.submit_test_summary %}
+                            <div class="coding-task-round__tests">
+                                <h5>Test results</h5>
+                                <pre class="code-block code-block--compact"><code>{{ round.submit_test_summary | tojson(indent=2) }}</code></pre>
+                            </div>
+                            {% endif %}
+
+                            {% if round.feedback %}
+                            <div class="coding-task-round__feedback">
+                                <h5>Feedback</h5>
+                                <p>{{ round.feedback }}</p>
+                            </div>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

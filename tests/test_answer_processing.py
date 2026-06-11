@@ -4,15 +4,10 @@
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-import json
 
 import pytest
 
-from app.interview.domain.entities import Answer as DomainAnswer
 from app.interview.domain.exceptions import InterviewNotActiveError
-from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.answer_processing import AnswerProcessingService
-from app.interview.services.evaluator.service import InterviewEvaluatorService
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
@@ -20,6 +15,10 @@ from app.interview.services.events import (
 )
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
+from app.theory.domain.entities import TheoryTask
+from app.theory.repositories.uow import TheoryUnitOfWork
+from app.theory.services.evaluator.service import TheoryEvaluatorService
+from app.theory.services.submission import TheorySubmissionService
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
 from tests.helpers.interview_seed import (
     persist_interview_with_answers,
@@ -38,7 +37,7 @@ async def test_process_answer_persists_score_and_next_question(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
 
-    events = await AnswerProcessingService.process_answer_submission(
+    events = await TheorySubmissionService.process_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Lists are mutable.",
@@ -84,7 +83,7 @@ async def test_process_answer_creates_follow_up_round(isolated_db, fake_ai_provi
         ]
     )
 
-    events = await AnswerProcessingService.process_answer_submission(
+    events = await TheorySubmissionService.process_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Partial answer.",
@@ -113,7 +112,6 @@ async def test_process_follow_up_answer_without_another_follow_up(
     """Answering a follow-up round persists score and advances to the next question."""
     interview_id = "ap-test-3"
     initial = Answer(
-        interview_id=interview_id,
         question_id="q1",
         order=1,
         round=0,
@@ -123,7 +121,6 @@ async def test_process_follow_up_answer_without_another_follow_up(
     initial.score = 3
     initial.feedback = "OK"
     first_follow_up = Answer(
-        interview_id=interview_id,
         question_id="q1",
         order=1,
         round=1,
@@ -134,28 +131,26 @@ async def test_process_follow_up_answer_without_another_follow_up(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
             status="active",
         ),
         [
             initial,
             first_follow_up,
             Answer(
-                interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
             ),
         ],
+        question_count=2,
     )
 
     provider = fake_ai_provider(
         [follow_up_evaluation_json(score=4, needs_further_follow_up=False)]
     )
 
-    events = await AnswerProcessingService.process_answer_submission(
+    events = await TheorySubmissionService.process_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Follow-up answer text.",
@@ -185,7 +180,6 @@ async def test_last_follow_up_advances_immediately_and_evaluates_in_background(
     """The last follow-up round advances without waiting for AI evaluation."""
     interview_id = "ap-test-last-follow-up"
     initial = Answer(
-        interview_id=interview_id,
         question_id="q1",
         order=1,
         round=0,
@@ -195,7 +189,6 @@ async def test_last_follow_up_advances_immediately_and_evaluates_in_background(
     initial.score = 3
     initial.feedback = "OK"
     first_follow_up = Answer(
-        interview_id=interview_id,
         question_id="q1",
         order=1,
         round=1,
@@ -209,35 +202,32 @@ async def test_last_follow_up_advances_immediately_and_evaluates_in_background(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
             status="active",
         ),
         [
             initial,
             first_follow_up,
             Answer(
-                interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=2,
                 question_text="Second follow-up?",
             ),
             Answer(
-                interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
             ),
         ],
+        question_count=2,
     )
 
     provider = fake_ai_provider(
         [follow_up_evaluation_json(score=4, needs_further_follow_up=False)]
     )
 
-    events = await AnswerProcessingService.process_answer_submission(
+    events = await TheorySubmissionService.process_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Second follow-up answer.",
@@ -282,25 +272,23 @@ async def test_process_answer_rejects_completed_interview(
         Interview(
             id=interview_id,
             selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=1,
-            question_ids=json.dumps(["q1"]),
             status="completed",
         ),
         [
             Answer(
-                interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=0,
                 question_text="Done?",
             )
         ],
+        question_count=1,
     )
 
     provider = fake_ai_provider([answer_evaluation_json()])
 
     with pytest.raises(InterviewNotActiveError):
-        await AnswerProcessingService.process_answer_submission(
+        await TheorySubmissionService.process_answer_submission(
             interview_id=interview_id,
             question_id="q1",
             answer_text="Too late.",
@@ -329,14 +317,10 @@ def _seed_timed_interview(
             id=interview_id,
             locale="en",
             selection_spec=minimal_selection_spec(categories=["basics"]),
-            question_count=2,
-            question_ids=json.dumps(["q1", "q2"]),
-            question_time_limit_seconds=limit_seconds,
             status="active",
         ),
         [
             Answer(
-                interview_id=interview_id,
                 question_id="q1",
                 order=1,
                 round=0,
@@ -344,13 +328,14 @@ def _seed_timed_interview(
                 started_at=started_at,
             ),
             Answer(
-                interview_id=interview_id,
                 question_id="q2",
                 order=2,
                 round=0,
                 question_text="Question two?",
             ),
         ],
+        question_count=2,
+        task_time_limit_seconds=limit_seconds,
     )
 
 
@@ -360,7 +345,7 @@ async def test_process_timeout_when_display_shows_zero(isolated_db):
     started = datetime.now(UTC) - timedelta(seconds=59, milliseconds=500)
     interview_id = _seed_timed_interview(started_at=started, limit_seconds=60)
 
-    events = await AnswerProcessingService.process_timeout_submission(
+    events = await TheorySubmissionService.process_timeout_submission(
         interview_id=interview_id,
         question_id="q1",
         round_num=0,
@@ -376,7 +361,7 @@ async def test_process_timeout_scores_zero_and_advances(isolated_db):
     started = datetime.now(UTC) - timedelta(seconds=120)
     interview_id = _seed_timed_interview(started_at=started)
 
-    events = await AnswerProcessingService.process_timeout_submission(
+    events = await TheorySubmissionService.process_timeout_submission(
         interview_id=interview_id,
         question_id="q1",
         round_num=0,
@@ -392,7 +377,7 @@ async def test_process_timeout_scores_zero_and_advances(isolated_db):
     reloaded = InterviewQuery.get_interview(interview_id)
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
-    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == TheoryTask.TIME_EXPIRED_ANSWER_TEXT
     assert q1.score == 0
     q2 = next(a for a in reloaded.answers if a.question_id == "q2")
     assert q2.started_at is not None
@@ -405,14 +390,14 @@ async def test_timeout_ignored_while_answer_pending_evaluation(
     """Timeout during AI evaluation must not overwrite a submitted answer."""
     started = datetime.now(UTC) - timedelta(seconds=30)
     interview_id = _seed_timed_interview(started_at=started)
-    with InterviewUnitOfWork(auto_commit=True) as uow:
-        aggregate = uow.interviews.get_aggregate(interview_id)
-        assert aggregate is not None
-        current = aggregate.find_answer("q1", 0)
-        updated = aggregate.with_answer_text(current.id, "Answer in progress.")
-        uow.interviews.save_aggregate(updated)
+    with TheoryUnitOfWork(auto_commit=True) as uow:
+        section = uow.theory_sections.get_aggregate(interview_id)
+        assert section is not None
+        current = section.find_task("q1", 0)
+        updated = section.with_task_text(current.id, "Answer in progress.")
+        uow.theory_sections.save_aggregate(updated)
 
-    events = await AnswerProcessingService.process_timeout_submission(
+    events = await TheorySubmissionService.process_timeout_submission(
         interview_id=interview_id,
         question_id="q1",
         round_num=0,
@@ -439,20 +424,20 @@ async def test_timeout_during_ai_evaluation_preserves_score(
         [answer_evaluation_json(score=5, follow_up_needed=False)]
     )
 
-    orig_eval = InterviewEvaluatorService.evaluate_submission
+    orig_eval = TheoryEvaluatorService.evaluate_submission
 
     async def slow_eval(**kwargs):
         await asyncio.sleep(0.05)
         return await orig_eval(**kwargs)
 
     monkeypatch.setattr(
-        InterviewEvaluatorService,
+        TheoryEvaluatorService,
         "evaluate_submission",
         staticmethod(slow_eval),
     )
 
     events: list = []
-    gen = AnswerProcessingService.stream_answer_submission(
+    gen = TheorySubmissionService.stream_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Valid on-time answer.",
@@ -461,7 +446,7 @@ async def test_timeout_during_ai_evaluation_preserves_score(
     async for event in gen:
         events.append(event)
         if type(event).__name__ == "EvaluatingEvent":
-            timeout_events = await AnswerProcessingService.process_timeout_submission(
+            timeout_events = await TheorySubmissionService.process_timeout_submission(
                 interview_id=interview_id,
                 question_id="q1",
                 round_num=0,
@@ -485,7 +470,7 @@ async def test_late_answer_submission_treated_as_timeout(isolated_db, fake_ai_pr
     interview_id = _seed_timed_interview(started_at=started)
     provider = fake_ai_provider([answer_evaluation_json(score=5)])
 
-    events = await AnswerProcessingService.process_answer_submission(
+    events = await TheorySubmissionService.process_answer_submission(
         interview_id=interview_id,
         question_id="q1",
         answer_text="Too late but trying anyway.",
@@ -500,4 +485,4 @@ async def test_late_answer_submission_treated_as_timeout(isolated_db, fake_ai_pr
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
     assert q1.score == 0
-    assert q1.answer_text == DomainAnswer.TIME_EXPIRED_ANSWER_TEXT
+    assert q1.answer_text == TheoryTask.TIME_EXPIRED_ANSWER_TEXT

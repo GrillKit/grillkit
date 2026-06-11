@@ -4,7 +4,7 @@
 
 from fastapi.templating import Jinja2Templates
 
-from app.paths import STATIC_DIR, TEMPLATES_DIR
+from app.shared.paths import STATIC_DIR, TEMPLATES_DIR
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
