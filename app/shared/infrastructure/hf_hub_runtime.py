@@ -4,7 +4,7 @@
 
 import os
 
-from app.paths import DATA_DIR
+from app.shared.paths import DATA_DIR
 
 _CONFIGURED = False
 
