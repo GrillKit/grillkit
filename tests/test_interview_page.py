@@ -80,8 +80,9 @@ def test_build_page_context_sets_audio_flag_from_catalog(monkeypatch):
     assert disabled.interview_model_accepts_audio is False
 
 
-def test_build_page_context_coding_only_session():
+def test_build_page_context_coding_only_session(isolated_db):
     """Coding-only sessions build page context without theory sources."""
+    del isolated_db
     spec = session_to_spec(
         SessionSelection(
             session_mode="coding_only",
