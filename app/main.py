@@ -13,16 +13,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.coding.api import routes as coding_router
 from app.interview.api import dashboard as dashboard_router
+from app.interview.api import results as results_router
 from app.interview.api import routes as interview_router
 from app.interview.api import setup as setup_router
-from app.paths import STATIC_DIR
 from app.platform.api import config as config_router
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 from app.question_voice.api import routes as question_voice_router
 from app.shared.infrastructure.database import run_migrations
+from app.shared.paths import STATIC_DIR
 from app.speech.api import dictation as dictation_router
 from app.speech.api import routes as speech_router
+from app.theory.api import routes as theory_router
 
 
 @asynccontextmanager
@@ -55,6 +58,9 @@ def create_app() -> FastAPI:
     app.include_router(setup_router.router)
     app.include_router(config_router.router)
     app.include_router(interview_router.router)
+    app.include_router(results_router.router)
+    app.include_router(theory_router.router)
+    app.include_router(coding_router.router)
     app.include_router(dictation_router.router)
     app.include_router(speech_router.router)
     app.include_router(question_voice_router.router)

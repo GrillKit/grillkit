@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for WebSocket protocol mapping."""
 
-from app.interview.api.ws_protocol import event_to_message, events_to_messages
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
@@ -10,6 +9,7 @@ from app.interview.services.events import (
     InterviewCompletedEvent,
     TranscriptEvent,
 )
+from app.theory.api.ws_protocol import event_to_message, events_to_messages
 
 
 def test_event_to_message_saved():

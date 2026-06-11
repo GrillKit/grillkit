@@ -1,0 +1,39 @@
+category: "Basics"
+track: "python"
+level: "junior"
+
+description: "Core Python fundamentals: types, variables, operators, and language essentials"
+
+tasks:
+  - id: "bas-004"
+    difficulty: 2
+    tags: ["type-conversion", "type-hints"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          A data-processing helper doubles each numeric item in a list. The implementation works,
+          but the function has no type information for reviewers or static checkers.
+
+          Your task:
+          Add Python 3.10+ type hints to `process` for all parameters and the return value.
+          Do not change runtime behavior.
+        ru: |
+          Контекст:
+          Функция `process` удваивает числа в списке. Код работает, но без аннотаций типов.
+
+          Задача:
+          Добавьте аннотации Python 3.10+ для всех параметров и возвращаемого значения.
+          Поведение функции не меняйте.
+      starter_code: |
+        def process(data, options=None):
+            results = []
+            for item in data:
+                results.append(item * 2)
+            return results
+    expected_points:
+      - "Uses list[int] or equivalent 3.10+ syntax for data and return type"
+      - "options typed as optional mapping or None"
+      - "Runtime behavior unchanged"

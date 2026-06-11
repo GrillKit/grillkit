@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Session Results - GrillKit{% endblock %}
+{% block body_class %}page-session-results{% endblock %}
+
+{% block content %}
+<div class="card session-results">
+    <div class="card-header session-results__header">
+        <div>
+            <p class="session-results__eyebrow">{{ session_mode_label }} session</p>
+            <h1 class="card-title">{{ interview_title }}</h1>
+            <p class="card-subtitle">
+                Completed · Score {{ interview.score }} / {{ max_score }} · {{ locale_label }}
+            </p>
+        </div>
+        <a href="/" class="btn btn-outline">Dashboard</a>
+    </div>
+
+    <div class="session-results__meta">
+        <dl class="meta-list">
+            <dt>Sources</dt>
+            <dd>
+                <ul class="selection-sources-list">
+                    {% for line in selection_lines %}
+                    <li>{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            </dd>
+        </dl>
+    </div>
+
+    <section class="session-results__overall">
+        <h2>Overall Evaluation</h2>
+        {% if overall_feedback.overall_feedback %}
+        <div class="feedback-section">
+            <h3>Summary</h3>
+            <p>{{ overall_feedback.overall_feedback }}</p>
+        </div>
+        {% endif %}
+
+        {% if overall_feedback.strengths_summary %}
+        <div class="feedback-section">
+            <h3>Strengths</h3>
+            <ul>
+                {% for strength in overall_feedback.strengths_summary %}
+                <li>{{ strength }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if overall_feedback.topics_to_review %}
+        <div class="feedback-section">
+            <h3>Topics to Review</h3>
+            <ul>
+                {% for topic in overall_feedback.topics_to_review %}
+                <li>{{ topic }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </section>
+
+    {% if section_cards %}
+    <section class="session-results__sections">
+        <h2>Sections</h2>
+        <div class="section-result-cards">
+            {% for card in section_cards %}
+            <article class="section-result-card section-result-card--{{ card.section }}">
+                <div class="section-result-card__head">
+                    <h3>{{ card.label }}</h3>
+                    <p class="section-result-card__score">
+                        {% if card.skipped %}
+                        Skipped
+                        {% else %}
+                        {{ card.score }} / {{ card.max_score }}
+                        {% endif %}
+                    </p>
+                </div>
+                <p class="section-result-card__summary">{{ card.summary }}</p>
+                <a href="{{ card.detail_url }}" class="btn btn-secondary btn-sm">View details</a>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

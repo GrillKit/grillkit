@@ -131,32 +131,6 @@ questions:
       - "Multiple values are returned as a tuple: return a, b"
       - "automatic packing"
 
-  - id: "func-006"
-    type: "coding"
-    difficulty: 2
-    tags: ["docstrings", "annotations"]
-    question:
-      text:
-        en: "What are function annotations (type hints) in Python? How do you document a function properly?"
-        ru: "Что такое аннотации функций (type hints) в Python? Как правильно документировать функцию?"
-      code: |
-        # Add type hints and a docstring to this function
-        def divide(a, b):
-            if b == 0:
-                return None
-            return a / b
-    follow_ups:
-      en:
-        - "What is the difference between type hints and docstrings?"
-        - "Are type hints enforced at runtime?"
-      ru:
-        - "В чём разница между аннотациями типов и докстрингами?"
-        - "Проверяются ли аннотации типов во время выполнения?"
-    expected_points:
-      - "Type hints indicate expected types but are not enforced at runtime"
-      - "Docstrings describe what the function does in natural language"
-      - "Use Google or NumPy style for docstrings"
-
   - id: "func-007"
     type: "knowledge"
     difficulty: 2

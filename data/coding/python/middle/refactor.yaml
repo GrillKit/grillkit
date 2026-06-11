@@ -1,0 +1,80 @@
+category: "Refactoring"
+track: "python"
+level: "middle"
+
+description: "Improve readability, structure, and Python idioms without changing behavior"
+
+tasks:
+  - id: "rf-user-mgr-001"
+    difficulty: 3
+    tags: ["oop", "pep8", "typing", "refactoring"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          UserManager stores users in a dict and supports add, remove, find, and list-all.
+          The code works but is hard to read: redundant None checks, inconsistent style, no types.
+
+          Your task:
+          Refactor the class in the editor:
+          - preserve behavior and public method names
+          - simplify control flow (early returns, dict.get)
+          - add type hints and short docstrings
+          - follow PEP 8 spacing and naming
+        ru: |
+          Контекст:
+          UserManager хранит пользователей в словаре. Код работает, но плохо читается.
+
+          Задача:
+          Отрефакторите класс:
+          - сохраните поведение и имена методов
+          - упростите логику (early return, dict.get)
+          - добавьте type hints и короткие docstrings
+          - соблюдайте PEP 8
+      starter_code: |
+        class UserManager:
+            def __init__(self):
+                self.users = {}
+
+            def add_user(self, uid, name, age):
+                if uid != None and name != None and age != None:
+                    if uid not in self.users:
+                        self.users[uid] = {"name": name, "age": age}
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+
+            def remove_user(self, uid):
+                if uid in self.users:
+                    del self.users[uid]
+                    return True
+                else:
+                    return False
+
+            def find_user(self, uid):
+                if uid in self.users:
+                    return self.users[uid]
+                else:
+                    return None
+
+            def get_all_users(self):
+                result = []
+                for uid in self.users:
+                    result.append(
+                        {
+                            "uid": uid,
+                            "name": self.users[uid]["name"],
+                            "age": self.users[uid]["age"],
+                        }
+                    )
+                return result
+    expected_points:
+      - "Uses dict.get or early return instead of nested if/else"
+      - "List comprehension or clear loop for get_all_users"
+      - "Type hints on public methods"
+      - "Docstrings describe return semantics"
+      - "PEP 8 spacing after commas and around operators"

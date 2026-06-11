@@ -13,9 +13,9 @@ from typing import Any
 from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.base import AIProvider
 from app.ai.factory import ProviderFactory
-from app.paths import CONFIG_PATH, DATA_DIR
 from app.platform.services.llm_catalog import LLMCatalogService
 from app.shared.locales import DEFAULT_LOCALE, normalize_locale
+from app.shared.paths import CONFIG_PATH, DATA_DIR
 from app.shared.speech_models import (
     DEFAULT_SPEECH_MODEL_SIZE,
     normalize_speech_model_size,

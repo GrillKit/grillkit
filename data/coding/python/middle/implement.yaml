@@ -1,0 +1,59 @@
+category: "Implement from scratch"
+track: "python"
+level: "middle"
+
+description: "Design and implement small modules with clear contracts and tests"
+
+tasks:
+  - id: "im-flatten-001"
+    difficulty: 3
+    tags: ["recursion", "iterators", "lists", "algorithms"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          Implement flatten(nested_list) that accepts a list of arbitrary nesting depth.
+          Elements may be numbers, strings, or nested lists. Output must be a flat list
+          preserving left-to-right order.
+
+          Examples:
+          flatten([1, [2, [3, 4], 5], 6]) -> [1, 2, 3, 4, 5, 6]
+          flatten([[1], 2, [[3]]]) -> [1, 2, 3]
+          flatten([1, "hello", [2, "world"]]) -> [1, "hello", 2, "world"]
+
+          Your task:
+          - implement flatten in the editor (iterative stack preferred over deep recursion)
+          - add a small test_flatten() with the examples above plus at least one edge case
+          - you may run the file locally; Submit sends your final code for review
+        ru: |
+          Контекст:
+          Реализуйте flatten(nested_list) для списка произвольной вложенности.
+          Числа, строки и вложенные списки сохраняют порядок обхода слева направо.
+
+          Задача:
+          - реализуйте flatten (лучше итеративно через стек)
+          - добавьте test_flatten() с примерами и одним краевым случаем
+      starter_code: |
+        def flatten(nested_list):
+            """Return a flat list preserving order."""
+            raise NotImplementedError
+
+
+        def test_flatten():
+            assert flatten([1, [2, [3, 4], 5], 6]) == [1, 2, 3, 4, 5, 6]
+            assert flatten([[1], 2, [[3]]]) == [1, 2, 3]
+            assert flatten([1, "hello", [2, "world"]]) == [1, "hello", 2, "world"]
+            assert flatten([]) == []
+            assert flatten([[[[[42]]]]]) == [42]
+
+
+        if __name__ == "__main__":
+            test_flatten()
+            print("All tests passed!")
+    expected_points:
+      - "Iterative stack-of-iterators or equivalent avoids recursion depth limits"
+      - "Only lists are flattened; scalars appended in order"
+      - "Handles empty input and deeply nested single value"
+      - "Includes runnable tests covering examples and edge cases"

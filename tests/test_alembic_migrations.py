@@ -11,9 +11,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from alembic import command
-from app.paths import ALEMBIC_INI
 from app.shared.infrastructure.database import Base
-from app.shared.infrastructure.models import Interview
+from app.shared.paths import ALEMBIC_INI
+from tests.helpers.legacy_interview import insert_pre_session_mode_interview
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ class TestSelectionSpecAlembicMigration:
     """Tests for selection_spec data migrations."""
 
     def test_migrates_legacy_selection_spec_rows(self, alembic_engine):
-        """Legacy language keys become track; version field is removed at head."""
+        """Legacy language keys become track and selection_spec ends at v2 at head."""
         legacy_spec = json.dumps(
             {
                 "version": 1,
@@ -62,42 +62,44 @@ class TestSelectionSpecAlembicMigration:
         )
         session_factory = sessionmaker(bind=alembic_engine)
         session = session_factory()
-        session.add(
-            Interview(
-                id="legacy-interview",
-                selection_spec=legacy_spec,
-            )
+        insert_pre_session_mode_interview(
+            session,
+            interview_id="legacy-interview",
+            selection_spec=legacy_spec,
         )
-        session.commit()
         session.close()
 
         alembic_cfg = Config(str(ALEMBIC_INI))
         command.upgrade(alembic_cfg, "head")
 
         session = session_factory()
-        row = session.get(Interview, "legacy-interview")
-        assert row is not None
+        row = session.execute(
+            text("SELECT selection_spec, session_mode FROM interviews WHERE id = :id"),
+            {"id": "legacy-interview"},
+        ).one()
         data = json.loads(row.selection_spec)
-        assert "version" not in data
-        assert data["sources"][0]["track"] == "python"
-        assert "language" not in data["sources"][0]
+        assert data["version"] == 2
+        assert data["session_mode"] == "theory_only"
+        assert data["theory"]["sources"][0]["track"] == "python"
+        assert "language" not in data["theory"]["sources"][0]
+        assert row.session_mode == "theory_only"
         session.close()
 
     def test_track_migration_is_idempotent(self, alembic_engine):
-        """Running migrations twice leaves modern rows unchanged."""
+        """Running migrations twice leaves v2 rows unchanged."""
         track_spec = (
             '{"sources":[{"track":"database","level":"junior",'
             '"categories":["sql-basics"]}]}'
         )
         session_factory = sessionmaker(bind=alembic_engine)
         session = session_factory()
-        session.add(
-            Interview(
-                id="track-interview",
-                selection_spec=track_spec,
-            )
+        insert_pre_session_mode_interview(
+            session,
+            interview_id="track-interview",
+            selection_spec=track_spec,
+            question_count=3,
+            question_time_limit_seconds=90,
         )
-        session.commit()
         session.close()
 
         alembic_cfg = Config(str(ALEMBIC_INI))
@@ -106,7 +108,14 @@ class TestSelectionSpecAlembicMigration:
 
         with alembic_engine.connect() as conn:
             stored = conn.execute(
-                text("SELECT selection_spec FROM interviews WHERE id = :id"),
+                text(
+                    "SELECT selection_spec, session_mode FROM interviews WHERE id = :id"
+                ),
                 {"id": "track-interview"},
-            ).scalar_one()
-        assert stored == track_spec
+            ).one()
+        data = json.loads(stored.selection_spec)
+        assert data["version"] == 2
+        assert data["session_mode"] == "theory_only"
+        assert data["theory"]["question_count"] == 3
+        assert data["theory"]["task_time_limit_seconds"] == 90
+        assert stored.session_mode == "theory_only"

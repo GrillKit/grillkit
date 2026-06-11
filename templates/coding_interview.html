@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Coding Session - GrillKit{% endblock %}
+{% block body_class %}page-coding-session{% endblock %}
+{% block app_class %} app-container--coding{% endblock %}
+{% block main_class %} main-content--coding{% endblock %}
+
+{% block content %}
+<div class="coding-session" id="coding-panel"
+     data-interview-id="{{ interview.id }}"
+     {% if coding.current_task %}data-task-id="{{ coding.current_task.task_id }}"{% endif %}
+     {% if coding.current_task_row_id %}data-task-row-id="{{ coding.current_task_row_id }}"{% endif %}
+     data-round="{{ coding.current_round }}"
+     data-task-timer-enabled="{{ coding.task_timer_enabled | tojson }}"
+     data-task-time-limit="{{ coding.task_time_limit_seconds | tojson }}"
+     data-timer-remaining="{{ coding.timer_remaining_seconds | tojson }}"
+     data-llm-timeout="{{ llm_request_timeout_seconds }}"
+     data-complete="{{ coding.complete | tojson }}"
+     data-task-count="{{ coding.task_count }}"
+     data-completed-tasks="{{ coding.completed_tasks }}">
+
+    <header class="coding-session__header">
+        <div class="coding-session__heading">
+            <p class="coding-session__eyebrow">{{ session_mode_label }} session</p>
+            <h1 class="coding-session__title">{{ interview_title }}</h1>
+            <p class="coding-session__meta">
+                <span id="coding-progress">
+                    {% if coding.complete %}
+                    All tasks submitted
+                    {% else %}
+                    Task {{ coding.completed_tasks + 1 }} of {{ coding.task_count }}
+                    {% endif %}
+                </span>
+                {% if selection_lines %}
+                <span class="coding-session__dot" aria-hidden="true">·</span>
+                <span>{{ selection_lines | join(' · ') }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="coding-session__toolbar">
+            <div class="coding-session__timer" id="interview-timer-row"{% if not coding.task_timer_enabled %} hidden{% endif %}>
+                <span class="coding-session__timer-label">Time left</span>
+                <span id="interview-timer" class="coding-session__timer-value">—</span>
+            </div>
+            <a href="/" class="btn btn-outline btn-sm">Dashboard</a>
+            {% if interview.status == "active" %}
+            <button type="button" id="coding-end-btn" class="btn btn-danger btn-sm">End Interview</button>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if interview.status == "active" and coding.current_task and not coding.complete %}
+    <div class="coding-session__body">
+        <aside class="coding-session__brief">
+            <div class="coding-session__brief-card">
+                <h2 class="coding-session__task-label" id="coding-task-title">
+                    Task {{ coding.current_task.order }}{% if coding.current_round > 0 %} · follow-up{% endif %}
+                </h2>
+                <div class="coding-session__assignment" id="coding-task-prompt">{{ coding.current_task.prompt_text }}</div>
+            </div>
+            <aside class="coding-session__runs" id="coding-runs-panel" hidden>
+                <div class="coding-session__runs-header">Run results</div>
+                <div class="coding-session__output" id="coding-output" aria-live="polite"></div>
+            </aside>
+        </aside>
+
+        <div class="coding-session__workspace" id="coding-workspace">
+            <div class="coding-session__editor-shell" id="coding-editor-wrap">
+                <div class="coding-session__editor-bar">
+                    <span class="coding-session__editor-label">Solution</span>
+                    <span class="coding-session__language">{{ coding.current_task.task_spec.language | default('python') }}</span>
+                </div>
+                <div id="coding-editor" class="coding-editor" aria-label="Code editor"></div>
+                <textarea id="coding-explanation-input" class="form-control coding-explanation-input" rows="3"
+                          hidden placeholder="Explain your approach or changes..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <footer class="coding-session__footer">
+        <div id="coding-evaluating-indicator" class="evaluating-indicator coding-session__evaluating" hidden>
+            <div class="spinner"></div>
+            <span>AI is reviewing your solution…</span>
+        </div>
+        <div class="coding-session__footer-actions">
+            <button type="button" id="coding-run-btn" class="btn btn-secondary">Run tests</button>
+            <button type="button" id="coding-submit-btn" class="btn btn-primary">Submit solution</button>
+        </div>
+    </footer>
+
+    {% elif coding.complete %}
+    <section class="coding-session__done">
+        <h2>All coding tasks submitted</h2>
+        <p class="text-muted">Use <strong>End Interview</strong> when you are ready for the final evaluation.</p>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if session_mode %}
+<script src="/static/js/session_phases.js?v={{ static_version('js/session_phases.js') }}"></script>
+<script>
+window.grillkitSessionPhases = {{ {
+    "sessionMode": session_mode,
+    "activePhase": active_phase,
+    "phaseOrder": phase_order,
+    "hasTheory": theory is defined and theory is not none,
+    "hasCoding": coding is defined and coding is not none,
+    "codingComplete": coding.complete if coding is defined and coding is not none else true,
+    "theoryComplete": theory.complete if theory is defined and theory is not none else true,
+} | tojson }};
+</script>
+{% endif %}
+{% if coding.current_task %}
+<script>
+window.grillkitCodingBootstrap = {
+    currentTask: {{ coding.current_task | tojson }}
+};
+</script>
+{% endif %}
+{% if coding.task_timer_enabled and interview.status == "active" %}
+<script src="/static/js/interview_timer.js?v={{ static_version('js/interview_timer.js') }}"></script>
+{% endif %}
+{% if interview.status == "active" %}
+<script>
+    const initialInterviewStatus = '{{ interview.status }}';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const completeWsUrl = wsProtocol + '//' + window.location.host + '/interview/' + {{ interview.id | tojson }} + '/theory/ws';
+    const llmRequestTimeoutSeconds = {{ llm_request_timeout_seconds | tojson }};
+    let completeWs = null;
+    let completeReconnectTimer = null;
+    let isEndingInterview = false;
+    let evaluationWatchdogTimer = null;
+
+    function showCompleteEvaluating(visible) {
+        const indicator = document.getElementById('coding-evaluating-indicator');
+        if (indicator) {
+            indicator.hidden = !visible;
+        }
+    }
+
+    function clearEvaluationWatchdog() {
+        if (evaluationWatchdogTimer) {
+            clearTimeout(evaluationWatchdogTimer);
+            evaluationWatchdogTimer = null;
+        }
+    }
+
+    function startEvaluationWatchdog() {
+        clearEvaluationWatchdog();
+        const graceMs = 15000;
+        const timeoutMs = (llmRequestTimeoutSeconds * 1000) + graceMs;
+        evaluationWatchdogTimer = setTimeout(function () {
+            evaluationWatchdogTimer = null;
+            if (!isEndingInterview) return;
+            showCompleteEvaluating(false);
+            isEndingInterview = false;
+            const endBtn = document.getElementById('coding-end-btn');
+            if (endBtn) endBtn.disabled = false;
+            alert('Final evaluation is taking too long. Check /config and try again.');
+        }, timeoutMs);
+    }
+
+    function connectCompleteWebSocket() {
+        completeWs = new WebSocket(completeWsUrl);
+        completeWs.onopen = function () {
+            if (completeReconnectTimer) {
+                clearTimeout(completeReconnectTimer);
+                completeReconnectTimer = null;
+            }
+        };
+        completeWs.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'evaluating') {
+                showCompleteEvaluating(true);
+                startEvaluationWatchdog();
+            } else if (data.type === 'interview_completed') {
+                clearEvaluationWatchdog();
+                showCompleteEvaluating(false);
+                window.location.href = '/interview/' + {{ interview.id | tojson }} + '/results';
+            } else if (data.type === 'error') {
+                clearEvaluationWatchdog();
+                showCompleteEvaluating(false);
+                isEndingInterview = false;
+                const endBtn = document.getElementById('coding-end-btn');
+                if (endBtn) endBtn.disabled = false;
+                alert(data.message || 'Failed to complete interview.');
+            }
+        };
+        completeWs.onclose = function () {
+            if (isEndingInterview) {
+                clearEvaluationWatchdog();
+                showCompleteEvaluating(false);
+                isEndingInterview = false;
+                const endBtn = document.getElementById('coding-end-btn');
+                if (endBtn) endBtn.disabled = false;
+            }
+            completeReconnectTimer = setTimeout(connectCompleteWebSocket, 3000);
+        };
+    }
+
+    function endCodingInterview() {
+        if (!confirm('Are you sure you want to end this interview?')) return;
+        if (isEndingInterview) return;
+        isEndingInterview = true;
+        const endBtn = document.getElementById('coding-end-btn');
+        if (endBtn) endBtn.disabled = true;
+        showCompleteEvaluating(true);
+        startEvaluationWatchdog();
+        if (!completeWs || completeWs.readyState !== WebSocket.OPEN) {
+            connectCompleteWebSocket();
+            setTimeout(function () {
+                if (completeWs && completeWs.readyState === WebSocket.OPEN) {
+                    completeWs.send(JSON.stringify({ type: 'complete' }));
+                }
+            }, 500);
+            return;
+        }
+        completeWs.send(JSON.stringify({ type: 'complete' }));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        connectCompleteWebSocket();
+        const endBtn = document.getElementById('coding-end-btn');
+        if (endBtn) {
+            endBtn.addEventListener('click', endCodingInterview);
+        }
+    });
+</script>
+{% endif %}
+<script src="/static/js/coding_editor.js?v={{ static_version('js/coding_editor.js') }}"></script>
+{% if interview.status == "active" and coding.current_task and not coding.complete %}
+<script src="/static/js/coding_session.js?v={{ static_version('js/coding_session.js') }}"></script>
+{% endif %}
+{% endblock %}

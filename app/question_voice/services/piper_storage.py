@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-from app.paths import PIPER_VOICES_ROOT
+from app.shared.paths import PIPER_VOICES_ROOT
 from app.shared.tts_voices import normalize_tts_voice_id
 
 

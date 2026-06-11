@@ -6,9 +6,9 @@ Read-only helpers for loading sessions from the database.
 """
 
 from app.interview.domain.exceptions import InterviewNotFoundError
-from app.interview.repositories.mappers import interview_to_read
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import AnswerRead, InterviewRead
+from app.theory.repositories.uow import TheoryUnitOfWork
 
 
 class InterviewQuery:
@@ -16,7 +16,7 @@ class InterviewQuery:
 
     @staticmethod
     def get_interview(interview_id: str) -> InterviewRead | None:
-        """Retrieve an interview session by ID with answers loaded.
+        """Retrieve an interview session by ID with theory tasks loaded.
 
         Args:
             interview_id: The session UUID.
@@ -25,10 +25,7 @@ class InterviewQuery:
             Interview read model with answers loaded, or None if not found.
         """
         with InterviewUnitOfWork() as uow:
-            aggregate = uow.interviews.get_aggregate(interview_id)
-            if aggregate is None:
-                return None
-            return interview_to_read(aggregate)
+            return uow.interviews.get_read_model(interview_id)
 
     @staticmethod
     def get_interview_or_raise(
@@ -52,13 +49,13 @@ class InterviewQuery:
             InterviewNotFoundError: If the interview does not exist.
         """
         if uow is not None:
-            aggregate = uow.interviews.get_aggregate(interview_id)
+            interview = uow.interviews.get_read_model(interview_id)
         else:
             with InterviewUnitOfWork() as read_uow:
-                aggregate = read_uow.interviews.get_aggregate(interview_id)
-        if aggregate is None:
+                interview = read_uow.interviews.get_read_model(interview_id)
+        if interview is None:
             raise InterviewNotFoundError(interview_id)
-        return interview_to_read(aggregate)
+        return interview
 
     @staticmethod
     def get_active_interview_or_raise(interview_id: str) -> InterviewRead:
@@ -75,11 +72,14 @@ class InterviewQuery:
             InterviewNotActiveError: If the interview is not active.
         """
         with InterviewUnitOfWork() as uow:
-            aggregate = uow.interviews.get_aggregate(interview_id)
-            if aggregate is None:
+            shell = uow.interviews.get_aggregate(interview_id)
+            if shell is None:
                 raise InterviewNotFoundError(interview_id)
-            aggregate.ensure_active()
-            return interview_to_read(aggregate)
+            shell.ensure_active()
+            interview = uow.interviews.get_read_model(interview_id)
+            if interview is None:
+                raise InterviewNotFoundError(interview_id)
+            return interview
 
     @staticmethod
     def timer_remaining_seconds(interview_id: str) -> int | None:
@@ -91,14 +91,14 @@ class InterviewQuery:
         Returns:
             Remaining seconds, or None when the timer is disabled or unavailable.
         """
-        with InterviewUnitOfWork() as uow:
-            aggregate = uow.interviews.get_aggregate(interview_id)
-            if aggregate is None:
+        with TheoryUnitOfWork() as uow:
+            section = uow.theory_sections.get_aggregate(interview_id)
+            if section is None:
                 return None
-            current = aggregate.find_first_unanswered()
+            current = section.find_first_unanswered()
             if current is None:
                 return None
-            return current.remaining_seconds(aggregate.question_time_limit_seconds)
+            return current.remaining_seconds(section.task_time_limit_seconds)
 
     @staticmethod
     def get_current_unanswered(interview: InterviewRead) -> AnswerRead | None:

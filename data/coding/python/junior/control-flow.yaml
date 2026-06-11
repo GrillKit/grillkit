@@ -1,0 +1,64 @@
+category: "Control Flow"
+track: "python"
+level: "junior"
+
+description: "Python control flow constructs: conditionals, loops, iterators, and context managers"
+
+tasks:
+  - id: "cf-003"
+    difficulty: 2
+    tags: ["range", "enumerate", "iteration"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          The script prints index and value for each item using `range(len(...))`.
+          That pattern is error-prone and unidiomatic in Python.
+
+          Your task:
+          Refactor the loop to use `enumerate()` while keeping the same printed output.
+        ru: |
+          Контекст:
+          Индекс и значение выводятся через `range(len(...))`.
+
+          Задача:
+          Перепишите цикл на `enumerate()` с тем же выводом.
+      starter_code: |
+        items = ["a", "b", "c"]
+
+        for i in range(len(items)):
+            print(i, items[i])
+    expected_points:
+      - "Uses enumerate(items) instead of manual indexing"
+      - "Same print output as original"
+
+  - id: "cf-007"
+    difficulty: 2
+    tags: ["zip", "iteration"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          Two parallel lists hold student names and scores. They must be printed in pairs.
+
+          Your task:
+          Complete the script so each line shows name and score using `zip()`.
+          Example line format: `Alice 85`
+        ru: |
+          Контекст:
+          Два списка — имена и баллы. Нужно вывести пары.
+
+          Задача:
+          Допишите код с `zip()`. Формат строки: `Alice 85`
+      starter_code: |
+        names = ["Alice", "Bob", "Charlie"]
+        scores = [85, 92, 78]
+
+        # print each name with its score
+    expected_points:
+      - "Iterates with zip(names, scores)"
+      - "Prints all three pairs correctly"

@@ -9,7 +9,6 @@ from typing import ClassVar
 
 from huggingface_hub import hf_hub_download
 
-from app.paths import PIPER_VOICES_ROOT
 from app.question_voice.schemas import PiperVoiceStatusRead
 from app.question_voice.services.piper_runtime import PiperRuntime
 from app.question_voice.services.piper_storage import (
@@ -29,6 +28,7 @@ from app.shared.infrastructure.model_download import (
     promote_staging_dir,
 )
 from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
+from app.shared.paths import PIPER_VOICES_ROOT
 from app.shared.tts_voices import (
     PiperVoiceSpec,
     normalize_tts_voice_id,

@@ -1,0 +1,38 @@
+category: "Strings"
+track: "python"
+level: "junior"
+
+description: "Python string operations, formatting, and manipulation"
+
+tasks:
+  - id: "str-004"
+    difficulty: 2
+    tags: ["join", "split", "concatenation"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          The snippet builds a string by concatenating items in a loop. That pattern is slow
+          for large lists because it creates many intermediate string objects.
+
+          Your task:
+          Refactor the loop to build the same result with `''.join(...)`.
+          Leave the final value in `result`.
+        ru: |
+          Контекст:
+          Строка собирается конкатенацией в цикле — неэффективно для длинных списков.
+
+          Задача:
+          Перепишите сборку через `''.join(...)`. Итог сохраните в `result`.
+      starter_code: |
+        items = ["a", "b", "c"]
+
+        result = ""
+        for item in items:
+            result += item
+    expected_points:
+      - "Uses str.join on iterable of strings"
+      - "Same output as concatenation loop"
+      - "No += in loop after refactor"

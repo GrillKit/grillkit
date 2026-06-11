@@ -1,6 +1,6 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for POST /interview/{id}/audio-answer and related interview UI gating."""
+"""Tests for POST /interview/{id}/theory/audio-answer and related interview UI gating."""
 
 import json
 from unittest.mock import AsyncMock, patch
@@ -10,7 +10,7 @@ import pytest
 from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.llm_models import LLMModelEntry
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.page import InterviewPageRender, InterviewPageService
+from app.interview.services.page import SessionPageRender, SessionPageService
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import QuestionVoicePageContext
 from app.speech.schemas.page import SpeechModelPageContext
@@ -103,14 +103,14 @@ def audio_api_client(client, override_ws_ai_provider):
 
 
 class TestAudioAnswerApi:
-    """Tests for POST /interview/{id}/audio-answer."""
+    """Tests for POST /interview/{id}/theory/audio-answer."""
 
     def test_audio_answer_streams_ndjson_events(
         self, audio_api_client, isolated_db, override_ws_ai_provider, monkeypatch
     ):
         """Successful upload returns saved, evaluating, transcript, and feedback lines."""
         monkeypatch.setattr(
-            "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
+            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         interview_id = seed_two_question_interview("audio-api-1")
@@ -121,7 +121,7 @@ class TestAudioAnswerApi:
         wav_bytes = minimal_wav_bytes(duration_sec=0.2)
 
         response = audio_api_client.post(
-            f"/interview/{interview_id}/audio-answer",
+            f"/interview/{interview_id}/theory/audio-answer",
             data={"question_id": "q1"},
             files={"file": ("answer.wav", wav_bytes, "audio/wav")},
         )
@@ -143,13 +143,13 @@ class TestAudioAnswerApi:
     ):
         """Invalid WAV payloads return HTTP 400 before streaming."""
         monkeypatch.setattr(
-            "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
+            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         interview_id = seed_two_question_interview("audio-api-invalid")
 
         response = audio_api_client.post(
-            f"/interview/{interview_id}/audio-answer",
+            f"/interview/{interview_id}/theory/audio-answer",
             data={"question_id": "q1"},
             files={"file": ("answer.wav", b"not-wav", "audio/wav")},
         )
@@ -186,7 +186,7 @@ class TestAudioAnswerApi:
         wav_bytes = minimal_wav_bytes()
 
         response = audio_api_client.post(
-            f"/interview/{interview_id}/audio-answer",
+            f"/interview/{interview_id}/theory/audio-answer",
             data={"question_id": "q1"},
             files={"file": ("answer.wav", wav_bytes, "audio/wav")},
         )
@@ -199,7 +199,7 @@ class TestAudioAnswerApi:
     ):
         """HTTP 503 when Whisper is not loaded on the application."""
         monkeypatch.setattr(
-            "app.interview.services.answer_processing.AnswerProcessingService.require_audio_answer_enabled",
+            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         override_ws_ai_provider(client, [])
@@ -212,7 +212,7 @@ class TestAudioAnswerApi:
             return_value=False,
         ):
             response = client.post(
-                f"/interview/{interview_id}/audio-answer",
+                f"/interview/{interview_id}/theory/audio-answer",
                 data={"question_id": "q1"},
                 files={"file": ("answer.wav", wav_bytes, "audio/wav")},
             )
@@ -241,7 +241,7 @@ class TestInterviewAudioAnswerPage:
                 accepts_audio_input=True,
             ),
         )
-        page_context = InterviewPageService.build_page_context(
+        page_context = SessionPageService.build_page_context(
             interview,
             config=AppConfig(
                 provider_type="openai-compatible",
@@ -254,9 +254,9 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.prepare_page",
+                "app.interview.api.routes.SessionPageService.prepare_page",
                 new=AsyncMock(
-                    return_value=InterviewPageRender(
+                    return_value=SessionPageRender(
                         redirect_url=None,
                         template_context=_full_template_context(page_context),
                     )
@@ -273,7 +273,7 @@ class TestInterviewAudioAnswerPage:
     def test_interview_page_hides_audio_controls_without_catalog_flag(self, client):
         """Audio controls stay hidden when the configured model is text-only."""
         interview = _active_interview_read("audio-ui-2")
-        page_context = InterviewPageService.build_page_context(
+        page_context = SessionPageService.build_page_context(
             interview,
             config=AppConfig(
                 provider_type="openai-compatible",
@@ -286,9 +286,9 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.InterviewPageService.prepare_page",
+                "app.interview.api.routes.SessionPageService.prepare_page",
                 new=AsyncMock(
-                    return_value=InterviewPageRender(
+                    return_value=SessionPageRender(
                         redirect_url=None,
                         template_context=_full_template_context(page_context),
                     )

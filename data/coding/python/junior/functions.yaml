@@ -1,0 +1,38 @@
+category: "Functions"
+track: "python"
+level: "junior"
+
+description: "Python functions: parameters, return values, scoping, and advanced function concepts"
+
+tasks:
+  - id: "func-006"
+    difficulty: 2
+    tags: ["docstrings", "annotations"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `divide` performs safe division and returns None when the divisor is zero.
+          The logic is correct but undocumented and untyped.
+
+          Your task:
+          Add type hints and a short docstring that explains parameters, return value,
+          and the zero-divisor case. Keep the existing behavior.
+        ru: |
+          Контекст:
+          `divide` делит числа и возвращает None при делении на ноль.
+
+          Задача:
+          Добавьте type hints и короткий docstring (параметры, возврат, случай b == 0).
+          Поведение не меняйте.
+      starter_code: |
+        def divide(a, b):
+            if b == 0:
+                return None
+            return a / b
+    expected_points:
+      - "Numeric types on parameters and float | None return"
+      - "Docstring describes zero-divisor behavior"
+      - "Behavior preserved"

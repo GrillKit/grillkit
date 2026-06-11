@@ -12,6 +12,7 @@ class DashboardRowRead(BaseModel):
         id: Interview UUID.
         title: Display title (e.g. "Python Interview").
         question_count: Number of questions in the session.
+        session_mode_label: Short badge for session mode (Theory, Coding, Theory+Coding).
         score_display: Formatted score or em dash when not finished.
         status: Raw status ("active" or "completed").
         status_label: Human-readable status for the UI.
@@ -24,6 +25,7 @@ class DashboardRowRead(BaseModel):
     id: str
     title: str
     question_count: int
+    session_mode_label: str
     score_display: str
     status: str
     status_label: str

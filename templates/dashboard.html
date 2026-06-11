@@ -43,6 +43,7 @@
                 <tr class="history-row history-row--{{ row.status }}" onclick="window.location.href='{{ row.url }}'" role="link" tabindex="0">
                     <td>
                         <a href="{{ row.url }}" class="history-link">{{ row.title }}</a>
+                        <span class="history-mode-badge">{{ row.session_mode_label }}</span>
                     </td>
                     <td>{{ row.question_count }}</td>
                     <td>{{ row.score_display }}</td>

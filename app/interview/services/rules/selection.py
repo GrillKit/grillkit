@@ -7,14 +7,19 @@ from __future__ import annotations
 import json
 import random
 
+from app.coding.services.availability import is_coding_available
+from app.coding.services.planning import validate_selection as validate_coding_selection
+from app.coding.services.planning import validate_task_count
 from app.interview.domain.serialization import (
-    parse_selection_spec,
-    selection_from_payload,
+    parse_session_spec,
+    session_from_payload,
 )
 from app.interview.domain.value_objects import (
+    SESSION_MODE_LABELS,
     InterviewSelection,
     InterviewSelectionHolder,
     PlannedQuestion,
+    SessionSelection,
     TrackQuestionPools,
     TrackSelection,
 )
@@ -71,7 +76,7 @@ def get_interview_selection(interview: InterviewSelectionHolder) -> InterviewSel
     """
     if not interview.selection_spec:
         raise ValueError(f"Interview {interview.id} has no selection_spec")
-    return parse_selection_spec(interview.selection_spec)
+    return parse_session_spec(interview.selection_spec).theory_selection
 
 
 def selection_sources_summary(selection: InterviewSelection) -> str:
@@ -91,6 +96,25 @@ def selection_sources_summary(selection: InterviewSelection) -> str:
     return "\n".join(lines)
 
 
+def selection_summary_lines(selection: InterviewSelection) -> list[str]:
+    """Build display lines for each track source in a selection.
+
+    Args:
+        selection: Interview selection.
+
+    Returns:
+        Lines such as ``Python / middle: basics, oop``.
+    """
+    lines: list[str] = []
+    for source in selection.sources:
+        label = track_label(source.track)
+        topics = ", ".join(
+            cat.replace("-", " ").replace("_", " ").title() for cat in source.categories
+        )
+        lines.append(f"{label} / {source.level}: {topics}")
+    return lines
+
+
 def interview_display_title(selection: InterviewSelection) -> str:
     """Build page title from selection.
 
@@ -100,23 +124,91 @@ def interview_display_title(selection: InterviewSelection) -> str:
     Returns:
         Title such as ``Python Interview`` or ``Multi-topic Interview``.
     """
+    if not selection.sources:
+        return "Interview"
     if selection.is_multi():
         return "Multi-topic Interview"
     source = selection.sources[0]
     return f"{track_label(source.track)} Interview"
 
 
-def parse_selection_json(raw_json: str) -> InterviewSelection:
-    """Parse setup form ``selection_json`` field.
+def session_display_title(session: SessionSelection) -> str:
+    """Build page title from a full session selection.
+
+    Args:
+        session: Session selection including mode and branches.
+
+    Returns:
+        Title based on the active branch sources, or a mode fallback.
+    """
+    if session.session_mode == "coding_only":
+        selection = session.coding_selection
+    else:
+        selection = session.theory_selection
+
+    if selection.sources:
+        return interview_display_title(selection)
+
+    mode_label = SESSION_MODE_LABELS.get(session.session_mode, "Interview")
+    return f"{mode_label} Interview"
+
+
+def session_selection_summary_lines(session: SessionSelection) -> list[str]:
+    """Build display lines for the active session branches.
+
+    Args:
+        session: Session selection including mode and branches.
+
+    Returns:
+        Summary lines for theory and/or coding sources.
+    """
+    if session.session_mode == "coding_only":
+        return selection_summary_lines(session.coding_selection)
+
+    lines = selection_summary_lines(session.theory_selection)
+    if session.session_mode in ("theory_then_coding", "coding_then_theory"):
+        lines.extend(selection_summary_lines(session.coding_selection))
+    return lines
+
+
+def validate_session_selection(session: SessionSelection) -> None:
+    """Validate a parsed session selection from setup.
+
+    Args:
+        session: Session selection including mode and branch specs.
+
+    Raises:
+        ValueError: If branches are inconsistent or banks reject the selection.
+    """
+    if not session.theory.enabled and not session.coding.enabled:
+        raise ValueError("At least one section must be enabled")
+    if session.theory.enabled:
+        if not session.theory.sources:
+            raise ValueError("Select at least one theory track and topic")
+        validate_question_count(session.theory_selection, session.theory.question_count)
+    if session.coding.enabled:
+        if not is_coding_available():
+            raise ValueError(
+                "Coding is not available. Enable CODING_ENABLED and ensure "
+                "Judge0 is running, or choose a theory-only session."
+            )
+        if not session.coding.sources:
+            raise ValueError("Select at least one coding track and topic")
+        validate_coding_selection(session.coding_selection)
+        validate_task_count(session.coding_selection, session.coding.question_count)
+
+
+def parse_session_json(raw_json: str) -> SessionSelection:
+    """Parse setup form ``selection_json`` field (v2 session selection).
 
     Args:
         raw_json: JSON string from POST body.
 
     Returns:
-        Validated InterviewSelection.
+        Validated session selection.
 
     Raises:
-        ValueError: If JSON is invalid or selection fails validation.
+        ValueError: If JSON is invalid or validation fails.
     """
     try:
         data = json.loads(raw_json)
@@ -124,7 +216,24 @@ def parse_selection_json(raw_json: str) -> InterviewSelection:
         raise ValueError("Invalid selection JSON") from exc
     if not isinstance(data, dict):
         raise ValueError("Invalid selection JSON: expected object")
-    return selection_from_payload(data)
+    session = session_from_payload(data)
+    validate_session_selection(session)
+    return session
+
+
+def parse_selection_json(raw_json: str) -> InterviewSelection:
+    """Parse setup form JSON and return theory sources only.
+
+    Args:
+        raw_json: JSON string from POST body.
+
+    Returns:
+        Validated theory interview selection.
+
+    Raises:
+        ValueError: If JSON is invalid or selection fails validation.
+    """
+    return parse_session_json(raw_json).theory_selection
 
 
 def _allocate_proportional(sizes: list[int], total: int) -> list[int]:

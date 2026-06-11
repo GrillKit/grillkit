@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-from app.paths import WHISPER_MODELS_ROOT
+from app.shared.paths import WHISPER_MODELS_ROOT
 from app.shared.speech_models import normalize_speech_model_size
 
 

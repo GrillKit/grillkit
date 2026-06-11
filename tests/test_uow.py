@@ -115,28 +115,30 @@ class TestUnitOfWork:
 
             assert isinstance(uow.interviews, InterviewRepository)
 
-    def test_nested_answers_persist_with_interview(self, patch_session_local):
-        """Answer rows added via ``Interview.answers`` are loaded with the session."""
+    def test_nested_tasks_persist_with_theory_section(self, patch_session_local):
+        """Theory task rows linked via theory section are loaded with the session."""
         with InterviewUnitOfWork(auto_commit=True) as uow:
             interview = Interview(
                 id="uow-test-6", selection_spec=minimal_selection_spec()
             )
-            interview.answers = [
-                Answer(
-                    interview_id="uow-test-6",
-                    question_id="q1",
-                    order=1,
-                    round=0,
-                    question_text="What?",
-                )
-            ]
             uow.interviews.add(interview)
+            uow.flush()
+            from tests.helpers.theory_seed import attach_theory_section_to_answers
+
+            answer = Answer(
+                question_id="q1",
+                order=1,
+                round=0,
+                question_text="What?",
+            )
+            attach_theory_section_to_answers(uow.session, interview, [answer])
 
         with InterviewUnitOfWork() as uow:
             loaded_session = uow.interviews.get("uow-test-6")
             assert loaded_session is not None
-            assert len(loaded_session.answers) == 1
-            assert loaded_session.answers[0].question_id == "q1"
+            assert loaded_session.theory_section is not None
+            assert len(loaded_session.theory_section.tasks) == 1
+            assert loaded_session.theory_section.tasks[0].question_id == "q1"
 
     def test_flush(self, patch_session_local):
         """Test flush() sends changes to DB without committing."""

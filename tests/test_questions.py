@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.questions import (
+from app.shared.questions import (
     Question,
     list_categories,
     list_levels,
@@ -82,13 +82,13 @@ def temp_questions_dir(tmp_path, monkeypatch):
         "description": "Basic algorithms and their implementation",
         "questions": [
             {
-                "id": "algo-001",
-                "type": "coding",
+                "id": "algo-002",
+                "type": "knowledge",
                 "difficulty": 2,
-                "tags": ["sorting", "array"],
+                "tags": ["complexity"],
                 "question": {
-                    "text": "Implement bubble sort.",
-                    "code": "def bubble_sort(arr):\n    pass",
+                    "text": "What is Big-O notation?",
+                    "code": None,
                 },
             },
         ],
@@ -134,7 +134,7 @@ def temp_questions_dir(tmp_path, monkeypatch):
     with open(javascript_junior_dir / "basics.yaml", "w") as f:
         yaml.dump(js_basics_content, f)
 
-    monkeypatch.setattr("app.questions.QUESTIONS_DIR", questions_root)
+    monkeypatch.setattr("app.shared.questions.QUESTIONS_DIR", questions_root)
 
     yield questions_root
 
@@ -198,11 +198,23 @@ class TestQuestions:
 
     def test_load_category_with_code(self, temp_questions_dir):
         """Test loading a question with a code snippet."""
-        questions = load_category("python", "junior", "algorithms")
-        assert len(questions) == 1
-        q = questions[0]
-        assert q.id == "algo-001"
-        assert q.code == "def bubble_sort(arr):\n    pass"
+        path = temp_questions_dir / "python" / "junior" / "with-code.yaml"
+        _write_category_yaml(
+            path,
+            [
+                {
+                    "id": "wc-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "question": {
+                        "text": "Explain this snippet.",
+                        "code": "x = [1, 2, 3]",
+                    },
+                }
+            ],
+        )
+        questions = load_category("python", "junior", "with-code")
+        assert questions[0].code == "x = [1, 2, 3]"
 
     def test_load_category_multiple_questions(self, temp_questions_dir):
         """Test loading a category file with multiple questions."""
@@ -241,7 +253,7 @@ class TestQuestions:
         )
         ids = {q.id for q in questions}
         assert "ds-001" in ids
-        assert "algo-001" in ids
+        assert "algo-002" in ids
         assert len(questions) == len(ids)
 
 
@@ -290,7 +302,7 @@ class TestQuestionLocalization:
                 },
             ],
         )
-        monkeypatch.setattr("app.questions.QUESTIONS_DIR", questions_root)
+        monkeypatch.setattr("app.shared.questions.QUESTIONS_DIR", questions_root)
         return questions_root
 
     def test_load_resolves_requested_locale(self, i18n_questions_dir):

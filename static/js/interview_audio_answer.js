@@ -181,7 +181,7 @@
             const url =
                 "/interview/" +
                 encodeURIComponent(interviewId) +
-                "/audio-answer";
+                "/theory/audio-answer";
 
             const response = await fetch(url, {
                 method: "POST",

@@ -5,12 +5,18 @@
 from dataclasses import dataclass
 from typing import Any
 
-from app.interview.repositories.mappers import interview_to_read
-from app.interview.repositories.uow import InterviewUnitOfWork
+from app.coding.services.page import CodingPageService
+from app.interview.domain.serialization import parse_session_spec
+from app.interview.domain.value_objects import SESSION_MODE_LABELS
 from app.interview.schemas.interview import InterviewPageContext, InterviewRead
 from app.interview.services.dashboard import DashboardBuilder
+from app.interview.services.phases import SessionPhaseOrchestrator
 from app.interview.services.query import InterviewQuery
-from app.interview.services.rules.selection import get_interview_selection
+from app.interview.services.rules.selection import (
+    session_display_title,
+    session_selection_summary_lines,
+)
+from app.interview.services.sections import phase_order_for_mode
 from app.platform.services.config import AppConfig
 from app.platform.services.llm_catalog import LLMCatalogService
 from app.question_voice.services.page import QuestionVoicePageService
@@ -21,10 +27,11 @@ from app.shared.locales import (
 )
 from app.speech.services.page import SpeechModelPageService
 from app.speech.services.whisper_model import WhisperModelService
+from app.theory.services.page import TheoryPageService
 
 
 @dataclass(frozen=True)
-class InterviewPageRender:
+class SessionPageRender:
     """Result of preparing the interview HTML page.
 
     Attributes:
@@ -38,12 +45,12 @@ class InterviewPageRender:
     interview_active: bool = False
 
 
-class InterviewPageService:
-    """Build read models and template context for the interview page."""
+class SessionPageService:
+    """Compose session shell and section contexts for the interview page."""
 
     @staticmethod
     def load_interview(interview_id: str) -> InterviewRead | None:
-        """Load a session and start the timer on the current round when active.
+        """Load a session and start the theory timer on the current task when active.
 
         Args:
             interview_id: The session UUID.
@@ -51,16 +58,9 @@ class InterviewPageService:
         Returns:
             Interview read model, or None when not found.
         """
-        with InterviewUnitOfWork(auto_commit=True) as uow:
-            aggregate = uow.interviews.get_aggregate(interview_id)
-            if aggregate is None:
-                return None
-            if aggregate.status == "active" and aggregate.question_time_limit_seconds:
-                current = aggregate.find_first_unanswered()
-                if current is not None and current.started_at is None:
-                    aggregate = aggregate.start_timer_for_answer(current.id)
-                    uow.interviews.save_aggregate(aggregate)
-            return interview_to_read(aggregate)
+        TheoryPageService.activate_timer(interview_id)
+        CodingPageService.activate_timer(interview_id)
+        return InterviewQuery.get_interview(interview_id)
 
     @staticmethod
     async def prepare_page(
@@ -68,7 +68,7 @@ class InterviewPageService:
         *,
         config: AppConfig | None,
         whisper_model_service: type[WhisperModelService] = WhisperModelService,
-    ) -> InterviewPageRender:
+    ) -> SessionPageRender:
         """Load a session and build template context for the interview page.
 
         Args:
@@ -79,16 +79,16 @@ class InterviewPageService:
         Returns:
             Redirect URL or template context for ``interview.html``.
         """
-        interview = InterviewPageService.load_interview(interview_id)
+        interview = SessionPageService.load_interview(interview_id)
         if interview is None:
-            return InterviewPageRender(redirect_url="/", template_context=None)
+            return SessionPageRender(redirect_url="/", template_context=None)
 
-        template_context = await InterviewPageService.build_full_template_context(
+        template_context = await SessionPageService.build_full_template_context(
             interview,
             config=config,
             whisper_model_service=whisper_model_service,
         )
-        return InterviewPageRender(
+        return SessionPageRender(
             redirect_url=None,
             template_context=template_context,
             interview_active=interview.status == "active",
@@ -101,29 +101,47 @@ class InterviewPageService:
         config: AppConfig | None,
         question_voice_enabled: bool,
     ) -> InterviewPageContext:
-        """Assemble template context for ``interview.html``.
+        """Assemble shell template context for ``interview.html``.
+
+        Theory-specific fields are merged from ``TheoryPageService`` for template
+        compatibility while ``theory`` exposes the structured section context.
 
         Args:
             interview: Loaded interview read model.
             config: Application config, if configured.
-            question_voice_enabled: Whether Piper TTS is enabled.
+            question_voice_enabled: Whether Piper TTS is enabled in config.
 
         Returns:
             Frozen page context for the interview template.
         """
-        current_question = InterviewQuery.get_current_unanswered(interview)
-        question_timer_enabled = interview.question_time_limit_seconds is not None
+        theory = TheoryPageService.build_context(interview)
+        current_question = theory.current_question if theory is not None else None
+        question_timer_enabled = (
+            theory.question_timer_enabled if theory is not None else False
+        )
         timer_remaining_seconds = (
-            InterviewQuery.timer_remaining_seconds(interview.id)
-            if question_timer_enabled
+            theory.timer_remaining_seconds if theory is not None else None
+        )
+        current_round = theory.current_round if theory is not None else 0
+        answers = theory.answers if theory is not None else interview.answers
+
+        overall_feedback_data = interview.overall_feedback
+        score_breakdown = (
+            overall_feedback_data.get("score_breakdown")
+            if overall_feedback_data
             else None
         )
-        current_round = current_question.round if current_question else 0
-        overall_feedback_data = interview.overall_feedback
-        max_score = DashboardBuilder.compute_max_score(interview)
-        selection = get_interview_selection(interview)
-        selection_lines = DashboardBuilder.selection_summary_lines(selection)
-        interview_title = DashboardBuilder.interview_display_title(interview)
+        max_score = DashboardBuilder.compute_max_score(
+            interview,
+            score_breakdown if isinstance(score_breakdown, dict) else None,
+        )
+        session = parse_session_spec(
+            interview.selection_spec,
+            question_count=interview.question_count,
+            task_time_limit_seconds=interview.question_time_limit_seconds,
+        )
+        selection_lines = session_selection_summary_lines(session)
+        interview_title = session_display_title(session)
         interview_model_accepts_audio = False
         if config is not None and config.llm_preset_id:
             entry = LLMCatalogService.get_model(config.llm_preset_id)
@@ -135,7 +153,7 @@ class InterviewPageService:
             interview=interview,
             interview_title=interview_title,
             selection_lines=selection_lines,
-            answers=interview.answers,
+            answers=answers,
             current_question=current_question,
             current_answer_id=current_question.id if current_question else None,
             question_voice_enabled=question_voice_enabled,
@@ -158,7 +176,7 @@ class InterviewPageService:
         config: AppConfig | None,
         whisper_model_service: type[WhisperModelService] = WhisperModelService,
     ) -> dict[str, Any]:
-        """Merge interview, speech, and question-voice keys for ``interview.html``.
+        """Merge session shell, theory section, and audio keys for ``interview.html``.
 
         Args:
             interview: Loaded interview read model.
@@ -168,7 +186,14 @@ class InterviewPageService:
         Returns:
             Flat dict for Jinja template rendering.
         """
-        base = InterviewPageService.build_page_context(
+        session = parse_session_spec(
+            interview.selection_spec,
+            question_count=interview.question_count,
+            task_time_limit_seconds=interview.question_time_limit_seconds,
+        )
+        theory = TheoryPageService.build_context(interview)
+        coding = CodingPageService.build_context(interview.id)
+        base = SessionPageService.build_page_context(
             interview,
             config=config,
             question_voice_enabled=bool(config and config.question_voice_enabled),
@@ -178,4 +203,16 @@ class InterviewPageService:
             whisper_model_service=whisper_model_service,
         ).model_dump()
         voice = (await QuestionVoicePageService.build_page_context(config)).model_dump()
-        return {**base, **speech, **voice}
+        return {
+            **base,
+            **speech,
+            **voice,
+            "theory": theory.model_dump() if theory is not None else None,
+            "coding": coding.model_dump() if coding is not None else None,
+            "session_mode": session.session_mode,
+            "session_mode_label": SESSION_MODE_LABELS.get(
+                session.session_mode, session.session_mode
+            ),
+            "phase_order": list(phase_order_for_mode(session.session_mode)),
+            "active_phase": SessionPhaseOrchestrator.active_phase(interview.id),
+        }

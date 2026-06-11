@@ -1,0 +1,49 @@
+category: "Bug hunting"
+track: "python"
+level: "middle"
+
+description: "Find defects, edge cases, and fragile assumptions in existing code"
+
+tasks:
+  - id: "bh-sum-pos-001"
+    difficulty: 2
+    tags: ["files", "exceptions", "edge-cases"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          The function below should read numbers from a file (one integer per line) and return
+          the sum of all positive numbers.
+
+          Your task:
+          1. Find what is wrong with this code (edge cases, crashes, wrong results).
+          2. Fix the implementation in the editor so it handles empty lines and invalid input safely.
+          3. Keep the function signature and overall behavior: sum only strictly positive integers.
+        ru: |
+          Контекст:
+          Функция должна читать числа из файла (по одному в строке) и возвращать сумму положительных.
+
+          Задача:
+          1. Найдите ошибки (краевые случаи, падения, неверный результат).
+          2. Исправьте код: пустые строки и невалидный ввод не должны ломать программу.
+          3. Сохраните контракт: суммируем только строго положительные целые.
+      starter_code: |
+        def sum_positive_numbers(filename):
+            total = 0
+            with open(filename, "r") as f:
+                for line in f:
+                    number = int(line.strip())
+                    if number > 0:
+                        total += number
+            return total
+
+
+        result = sum_positive_numbers("numbers.txt")
+        print(f"Sum of positive numbers: {result}")
+    expected_points:
+      - "Empty lines cause ValueError on int(line.strip())"
+      - "Non-numeric lines cause ValueError without handling"
+      - "Fix skips blank lines and catches ValueError per line"
+      - "Negative numbers are ignored as required"

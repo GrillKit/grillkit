@@ -13,4 +13,65 @@ services:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       HF_TOKEN: ${HF_TOKEN:-}
+      CODING_ENABLED: ${CODING_ENABLED:-true}
+      JUDGE0_URL: ${JUDGE0_URL:-http://judge0-server:2358}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-}
     restart: unless-stopped
+
+  judge0-db:
+    image: postgres:16-alpine
+    profiles: [coding]
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0_postgres_dev
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  judge0-redis:
+    image: redis:7-alpine
+    profiles: [coding]
+    command: redis-server --requirepass judge0_redis_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "judge0_redis_dev", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    profiles: [coding]
+    command: ["./scripts/server"]
+    volumes:
+      - ./deploy/judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  judge0-worker:
+    image: judge0/judge0:1.13.1
+    profiles: [coding]
+    command: ["./scripts/workers"]
+    volumes:
+      - ./deploy/judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  judge0-postgres-data:

@@ -6,17 +6,23 @@ This module provides the setup page for configuring interview parameters
 and creating new interview sessions.
 """
 
+from dataclasses import replace
+
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.interview.api.deps import InterviewCreationServiceDep
+from app.coding.services.availability import (
+    is_coding_available_async,
+)
+from app.interview.api.deps import SessionCreationServiceDep
 from app.interview.api.setup_form import setup_form_context
 from app.interview.services.rules.selection import (
-    parse_selection_json,
-    validate_question_count,
+    parse_session_json,
+    validate_session_selection,
 )
 from app.platform.api.deps import ConfigServiceDep
-from app.questions import list_categories, list_levels, list_tracks
+from app.shared import coding as coding_bank
+from app.shared.questions import list_categories, list_levels, list_tracks
 from app.speech.api.deps import WhisperModelServiceDep
 from app.speech.services.page import SpeechModelPageService
 from app.templating import templates
@@ -112,28 +118,77 @@ async def setup_options(
     return JSONResponse({"categories": sorted(list_categories(track, level))})
 
 
+@router.get("/coding-options")
+async def setup_coding_options(
+    track: str | None = None,
+    level: str | None = None,
+) -> JSONResponse:
+    """Return cascaded setup options for the coding task bank.
+
+    Args:
+        track: When set, returns levels for that coding track.
+        level: When set with track, returns categories for that pair.
+
+    Returns:
+        JSON with ``tracks``, ``levels``, or ``categories`` keys.
+    """
+    if track is None:
+        return JSONResponse({"tracks": coding_bank.list_tracks()})
+
+    tracks = coding_bank.list_tracks()
+    if track not in tracks:
+        raise HTTPException(status_code=404, detail=f"Unknown coding track: {track}")
+
+    if level is None:
+        return JSONResponse({"levels": coding_bank.list_levels(track)})
+
+    levels = coding_bank.list_levels(track)
+    if level not in levels:
+        raise HTTPException(status_code=404, detail=f"Unknown coding level: {level}")
+
+    return JSONResponse(
+        {"categories": sorted(coding_bank.list_categories(track, level))}
+    )
+
+
+@router.get("/coding-available")
+async def setup_coding_available() -> JSONResponse:
+    """Return whether coding sessions can be started from setup.
+
+    Returns:
+        JSON with ``available`` boolean.
+    """
+    return JSONResponse({"available": await is_coding_available_async()})
+
+
 @router.post("", response_class=HTMLResponse)
 async def create_interview(
     request: Request,
     config_service: ConfigServiceDep,
-    interview_creation: InterviewCreationServiceDep,
+    session_creation: SessionCreationServiceDep,
     whisper_model_service: WhisperModelServiceDep,
     selection_json: str = Form(...),
     question_count: int = Form(5),
+    coding_question_count: int = Form(2),
     enable_question_timer: str | None = Form(None),
     question_time_minutes: int = Form(3),
+    enable_coding_timer: str | None = Form(None),
+    coding_time_minutes: int = Form(10),
 ) -> Response:
     """Create interview session from multi-track setup selection.
 
     Args:
         request: FastAPI request object.
         config_service: Provider configuration service.
-        interview_creation: Interview creation service.
+        session_creation: Session creation service.
         whisper_model_service: Whisper model download service.
         selection_json: JSON payload built by the setup form script.
-        question_count: Number of questions.
-        enable_question_timer: Present when the timer checkbox is checked.
-        question_time_minutes: Per-round limit in minutes when the timer is enabled.
+        question_count: Number of theory questions.
+        coding_question_count: Number of coding tasks.
+        enable_question_timer: Present when the theory timer checkbox is checked.
+        question_time_minutes: Per-round theory limit in minutes when enabled.
+        enable_coding_timer: Present when the coding timer checkbox is checked.
+        coding_time_minutes: Per-task coding limit in minutes when enabled.
 
     Returns:
         Redirect to interview session page, config, or back to setup on error.
@@ -144,31 +199,52 @@ async def create_interview(
     if config is None:
         return _CONFIG_REDIRECT
 
-    timer_seconds: int | None = None
+    theory_timer_seconds: int | None = None
     if enable_question_timer:
         minutes = max(1, question_time_minutes)
-        timer_seconds = minutes * 60
+        theory_timer_seconds = minutes * 60
 
-    clamped_count = _clamp_question_count(question_count)
+    coding_timer_seconds: int | None = None
+    if enable_coding_timer:
+        minutes = max(1, coding_time_minutes)
+        coding_timer_seconds = minutes * 60
+
+    clamped_theory_count = _clamp_question_count(question_count)
+    clamped_coding_count = _clamp_question_count(coding_question_count)
 
     try:
-        selection = parse_selection_json(selection_json)
-        validate_question_count(selection, clamped_count)
-        interview = interview_creation.create_interview(
-            selection=selection,
+        session = parse_session_json(selection_json)
+        session = replace(
+            session,
+            theory=replace(
+                session.theory,
+                question_count=clamped_theory_count,
+                task_time_limit_seconds=theory_timer_seconds,
+            ),
+            coding=replace(
+                session.coding,
+                question_count=clamped_coding_count,
+                task_time_limit_seconds=coding_timer_seconds,
+            ),
+        )
+        validate_session_selection(session)
+        interview = session_creation.create_session(
+            session,
             locale=config.locale,
-            question_count=clamped_count,
-            question_time_limit_seconds=timer_seconds,
         )
         return RedirectResponse(
             url=f"/interview/{interview.id}",
             status_code=303,
         )
     except ValueError as e:
-        min_count = _MIN_QUESTIONS
+        min_theory = _MIN_QUESTIONS
+        min_coding = _MIN_QUESTIONS
         try:
-            selection = parse_selection_json(selection_json)
-            min_count = max(_MIN_QUESTIONS, selection.topic_count)
+            parsed = parse_session_json(selection_json)
+            if parsed.theory.enabled:
+                min_theory = max(_MIN_QUESTIONS, parsed.theory_selection.topic_count)
+            if parsed.coding.enabled:
+                min_coding = max(_MIN_QUESTIONS, parsed.coding_selection.topic_count)
         except ValueError:
             pass
         return templates.TemplateResponse(
@@ -178,7 +254,8 @@ async def create_interview(
                 **setup_form_context(
                     locale=config.locale,
                     error=str(e),
-                    min_question_count=min_count,
+                    min_question_count=min_theory,
+                    min_coding_task_count=min_coding,
                 ),
                 **SpeechModelPageService.build_page_context(
                     config,

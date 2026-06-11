@@ -51,24 +51,6 @@ class TestInterview:
         assert result.selection_spec == spec
         assert result.status == "active"
 
-    def test_session_with_score(self, test_session):
-        """Test creating an Interview with a score."""
-        session = Interview(
-            id="test-session-002",
-            selection_spec=minimal_selection_spec(
-                level="senior", categories=["system-design"]
-            ),
-            status="completed",
-            score=85,
-            question_ids='["ds-001","ds-002"]',
-        )
-        test_session.add(session)
-        test_session.commit()
-
-        result = test_session.query(Interview).filter_by(id="test-session-002").first()
-        assert result.score == 85
-        assert result.question_ids == '["ds-001","ds-002"]'
-
     def test_session_default_status(self, test_session):
         """Test that status defaults to 'active'."""
         session = Interview(
@@ -80,18 +62,6 @@ class TestInterview:
 
         result = test_session.query(Interview).filter_by(id="test-session-003").first()
         assert result.status == "active"
-
-    def test_session_default_question_ids(self, test_session):
-        """Test that question_ids defaults to '[]'."""
-        session = Interview(
-            id="test-session-004",
-            selection_spec=minimal_selection_spec(categories=["sql"]),
-        )
-        test_session.add(session)
-        test_session.commit()
-
-        result = test_session.query(Interview).filter_by(id="test-session-004").first()
-        assert result.question_ids == "[]"
 
     def test_interview_completed_at_nullable(self, test_session):
         """Test that completed_at can be null."""
@@ -105,19 +75,6 @@ class TestInterview:
 
         result = test_session.query(Interview).filter_by(id="test-session-005").first()
         assert result.completed_at is None
-
-    def test_session_score_nullable(self, test_session):
-        """Test that score can be null."""
-        session = Interview(
-            id="test-session-006",
-            selection_spec=minimal_selection_spec(),
-            score=None,
-        )
-        test_session.add(session)
-        test_session.commit()
-
-        result = test_session.query(Interview).filter_by(id="test-session-006").first()
-        assert result.score is None
 
     def test_session_started_at_auto(self, test_session):
         """Test that started_at is set automatically."""

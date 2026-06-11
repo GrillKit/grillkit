@@ -5,17 +5,17 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from app.interview.domain.entities import Interview
-from app.interview.domain.value_objects import InterviewSelection
-from app.interview.repositories.mappers import interview_to_read
+from app.coding.repositories.uow import CodingUnitOfWork
+from app.interview.domain.serialization import parse_session_spec
+from app.interview.domain.value_objects import InterviewSelection, session_mode_label
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
 from app.interview.services.rules.selection import (
-    get_interview_selection,
-    interview_display_title,
-    track_label,
+    selection_summary_lines,
+    session_display_title,
 )
+from app.theory.domain.entities import TheorySection
 
 
 class DashboardBuilder:
@@ -47,8 +47,32 @@ class DashboardBuilder:
         Returns:
             Title such as ``Python Interview`` or ``Multi-topic Interview``.
         """
-        selection = get_interview_selection(interview)
-        return interview_display_title(selection)
+        session = parse_session_spec(interview.selection_spec)
+        return session_display_title(session)
+
+    @staticmethod
+    def _max_score_from_breakdown(score_breakdown: dict[str, Any]) -> int:
+        """Sum maximum points from nested or flat score breakdown payloads.
+
+        Args:
+            score_breakdown: Session evaluation breakdown dict.
+
+        Returns:
+            Maximum achievable score encoded in the breakdown.
+        """
+        total = 0
+        for key, entry in score_breakdown.items():
+            if key == "total" or not isinstance(entry, dict):
+                continue
+            if key in ("theory", "coding"):
+                max_score = entry.get("max")
+                if isinstance(max_score, int):
+                    total += max_score
+                continue
+            max_score = entry.get("max")
+            if isinstance(max_score, int):
+                total += max_score
+        return total
 
     @staticmethod
     def compute_max_score(
@@ -58,7 +82,7 @@ class DashboardBuilder:
         """Compute maximum achievable score for a session.
 
         Uses AI ``score_breakdown`` when provided; otherwise estimates
-        five points per answered round (including follow-ups).
+        five points per answered theory round or submitted coding round.
 
         Args:
             interview: Interview read model with answers loaded.
@@ -68,17 +92,39 @@ class DashboardBuilder:
             Maximum possible score for the session.
         """
         if score_breakdown:
-            total = 0
-            for qid, breakdown in score_breakdown.items():
-                if qid != "total" and isinstance(breakdown, dict):
-                    total += breakdown.get("max", Interview.MAX_SCORE_PER_ROUND)
-            return total
+            breakdown_total = DashboardBuilder._max_score_from_breakdown(
+                score_breakdown
+            )
+            if breakdown_total > 0:
+                return breakdown_total
 
-        return sum(
-            Interview.MAX_SCORE_PER_ROUND
-            for answer in interview.answers
-            if answer.answer_text is not None
+        session = parse_session_spec(
+            interview.selection_spec,
+            question_count=interview.question_count,
+            task_time_limit_seconds=interview.question_time_limit_seconds,
         )
+
+        if session.theory.enabled:
+            if interview.answers:
+                theory_max = sum(
+                    TheorySection.MAX_SCORE_PER_ROUND for _answer in interview.answers
+                )
+            else:
+                theory_max = (
+                    interview.question_count * TheorySection.MAX_SCORE_PER_ROUND
+                )
+            if theory_max > 0:
+                return theory_max
+
+        if session.coding.enabled:
+            with CodingUnitOfWork() as uow:
+                section = uow.coding_sections.get_aggregate(interview.id)
+                if section is not None:
+                    return section.max_score()
+            if interview.question_count > 0:
+                return interview.question_count * TheorySection.MAX_SCORE_PER_ROUND
+
+        return 0
 
     @staticmethod
     def selection_summary_lines(selection: InterviewSelection) -> list[str]:
@@ -90,15 +136,7 @@ class DashboardBuilder:
         Returns:
             Lines such as ``Python / middle: basics, oop``.
         """
-        lines: list[str] = []
-        for source in selection.sources:
-            label = track_label(source.track)
-            topics = ", ".join(
-                cat.replace("-", " ").replace("_", " ").title()
-                for cat in source.categories
-            )
-            lines.append(f"{label} / {source.level}: {topics}")
-        return lines
+        return selection_summary_lines(selection)
 
     @staticmethod
     def list_rows(limit: int = 20) -> list[DashboardRowRead]:
@@ -111,11 +149,10 @@ class DashboardBuilder:
             Rows sorted newest-first (completed or started time).
         """
         with InterviewUnitOfWork() as uow:
-            interviews = uow.interviews.list_recent(limit=limit)
+            interviews = uow.interviews.list_recent_read_models(limit=limit)
 
         rows: list[DashboardRowRead] = []
-        for aggregate in interviews:
-            interview = interview_to_read(aggregate)
+        for interview in interviews:
             if interview.status == "completed":
                 feedback = interview.overall_feedback
                 breakdown = feedback.get("score_breakdown") if feedback else None
@@ -129,16 +166,22 @@ class DashboardBuilder:
                 status_label = "Active"
                 when = interview.started_at
 
+            session = parse_session_spec(interview.selection_spec)
             rows.append(
                 DashboardRowRead(
                     id=interview.id,
                     title=DashboardBuilder.interview_display_title(interview),
                     question_count=interview.question_count,
+                    session_mode_label=session_mode_label(session.session_mode),
                     score_display=score_display,
                     status=interview.status,
                     status_label=status_label,
                     datetime_display=DashboardBuilder.format_local_datetime(when),
-                    url=f"/interview/{interview.id}",
+                    url=(
+                        f"/interview/{interview.id}/results"
+                        if interview.status == "completed"
+                        else f"/interview/{interview.id}"
+                    ),
                 )
             )
         return rows

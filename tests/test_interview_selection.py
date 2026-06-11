@@ -6,11 +6,13 @@ import pytest
 
 from app.interview.domain.serialization import (
     parse_selection_spec,
-    selection_to_spec,
+    parse_session_spec,
+    session_to_spec,
 )
 from app.interview.domain.value_objects import (
     InterviewSelection,
     PlannedQuestion,
+    SessionSelection,
     TrackQuestionPools,
     TrackSelection,
 )
@@ -121,8 +123,30 @@ class TestPlanQuestions:
 class TestSelectionSpec:
     """Tests for selection_spec JSON round-trip."""
 
-    def test_round_trip(self):
-        """selection_to_spec and parse_selection_spec preserve data."""
+    def test_v2_session_round_trip(self):
+        """session_to_spec and parse_session_spec preserve v2 session data."""
+        session = SessionSelection.theory_only(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            ),
+            question_count=5,
+            task_time_limit_seconds=120,
+        )
+        raw = session_to_spec(session)
+        parsed = parse_session_spec(raw)
+        assert parsed.session_mode == "theory_only"
+        assert parsed.theory.question_count == 5
+        assert parsed.theory.task_time_limit_seconds == 120
+        assert parsed.theory_selection.sources[0].track == "python"
+        assert '"version":2' in raw
+        assert '"session_mode":"theory_only"' in raw
+
+    def test_v1_theory_sources_compat(self):
+        """parse_selection_spec extracts theory sources from legacy v1 JSON."""
         selection = InterviewSelection(
             sources=(
                 TrackSelection(
@@ -132,9 +156,9 @@ class TestSelectionSpec:
                 ),
             )
         )
-        raw = selection_to_spec(selection)
+        raw = (
+            '{"sources":[{"track":"python","level":"junior","categories":["basics"]}]}'
+        )
         parsed = parse_selection_spec(raw)
-        assert parsed.sources[0].track == "python"
-        assert parsed.sources[0].categories == ("basics",)
-        assert '"track":"python"' in raw
-        assert '"language"' not in raw
+        assert parsed.sources[0].track == selection.sources[0].track
+        assert parsed.sources[0].categories == selection.sources[0].categories

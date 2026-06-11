@@ -1,0 +1,32 @@
+{% if section_feedback %}
+<section class="section-feedback">
+    {% if section_feedback.section_feedback %}
+    <div class="feedback-section">
+        <h3>Section Feedback</h3>
+        <p>{{ section_feedback.section_feedback }}</p>
+    </div>
+    {% endif %}
+
+    {% if section_feedback.strengths_summary %}
+    <div class="feedback-section">
+        <h3>Strengths</h3>
+        <ul>
+            {% for strength in section_feedback.strengths_summary %}
+            <li>{{ strength }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if section_feedback.topics_to_review %}
+    <div class="feedback-section">
+        <h3>Topics to Review</h3>
+        <ul>
+            {% for topic in section_feedback.topics_to_review %}
+            <li>{{ topic }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</section>
+{% endif %}

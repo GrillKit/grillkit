@@ -49,33 +49,6 @@ questions:
       - "Both support 'break' (exit loop) and 'continue' (skip to next iteration)"
       - "Loop 'else' runs when loop completes normally without break"
 
-  - id: "cf-003"
-    type: "coding"
-    difficulty: 2
-    tags: ["range", "enumerate", "iteration"]
-    question:
-      text:
-        en: "How does 'range()' work in Python? What is 'enumerate()' and why is it useful?"
-        ru: "Как работает 'range()' в Python? Что такое 'enumerate()' и почему он полезен?"
-      code: |
-        items = ['a', 'b', 'c']
-        for i in range(len(items)):
-            print(i, items[i])
-        # Refactor using enumerate()
-    follow_ups:
-      en:
-        - "What does range(5) vs range(2, 8) vs range(1, 10, 2) produce?"
-        - "How memory-efficient is range() in Python 3?"
-        - "What does enumerate(items, start=1) do?"
-      ru:
-        - "Что возвращают range(5), range(2, 8) и range(1, 10, 2)?"
-        - "Насколько эффективен range() по памяти в Python 3?"
-        - "Что делает enumerate(items, start=1)?"
-    expected_points:
-      - "range(start, stop, step) is a lazy sequence, not a list"
-      - "enumerate(iterable, start=0) yields (index, value) tuples"
-      - "Using enumerate avoids manual indexing and is idiomatic Python"
-
   - id: "cf-004"
     type: "knowledge"
     difficulty: 2
@@ -151,33 +124,6 @@ questions:
       - "Supports matching literals, sequences, mappings, and class instances"
       - "Guards: case pattern if condition:"
       - "Wildcard '_' matches anything"
-
-  - id: "cf-007"
-    type: "coding"
-    difficulty: 2
-    tags: ["zip", "iteration"]
-    question:
-      text:
-        en: "How does 'zip()' work in Python? What happens when iterables have different lengths?"
-        ru: "Как работает 'zip()' в Python? Что происходит, когда итерабельные объекты имеют разную длину?"
-      code: |
-        names = ['Alice', 'Bob', 'Charlie']
-        scores = [85, 92, 78]
-        # Use zip to iterate over both lists simultaneously
-    follow_ups:
-      en:
-        - "What does zip(*pairs) do?"
-        - "What is itertools.zip_longest?"
-        - "What is the 'strict' parameter in zip in Python 3.10+?"
-      ru:
-        - "Что делает zip(*pairs)?"
-        - "Что такое itertools.zip_longest?"
-        - "Что такое параметр 'strict' в zip в Python 3.10+?"
-    expected_points:
-      - "zip(*iterables) returns iterator of tuples pairing elements by position"
-      - "Stops at the shortest iterable by default"
-      - "zip_longest from itertools fills missing values"
-      - "Python 3.10+: strict=True raises ValueError on length mismatch"
 
   - id: "cf-008"
     type: "knowledge"

@@ -6,8 +6,8 @@ import json
 from typing import Any
 
 from app.ai.llm_models import LLMCatalog, LLMModelEntry
-from app.paths import LLM_MODELS_PATH
 from app.platform.schemas import NewLLMModel
+from app.shared.paths import LLM_MODELS_PATH
 
 
 class LLMCatalogService:
