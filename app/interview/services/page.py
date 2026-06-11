@@ -50,7 +50,7 @@ class SessionPageService:
 
     @staticmethod
     def load_interview(interview_id: str) -> InterviewRead | None:
-        """Load a session and start the active phase timer when enabled.
+        """Load a session and start the theory timer on the current task when active.
 
         Args:
             interview_id: The session UUID.
@@ -58,11 +58,8 @@ class SessionPageService:
         Returns:
             Interview read model, or None when not found.
         """
-        active_phase = SessionPhaseOrchestrator.active_phase(interview_id)
-        if active_phase == "theory":
-            TheoryPageService.activate_timer(interview_id)
-        elif active_phase == "coding":
-            CodingPageService.activate_timer(interview_id)
+        TheoryPageService.activate_timer(interview_id)
+        CodingPageService.activate_timer(interview_id)
         return InterviewQuery.get_interview(interview_id)
 
     @staticmethod
