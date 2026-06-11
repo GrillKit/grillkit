@@ -16,54 +16,42 @@
 <div class="card">
     <div class="card-header">
         <h1 class="card-title">Interview Setup</h1>
-        <p class="card-subtitle">Choose session mode, question banks, levels, and topics</p>
+        <p class="card-subtitle">Configure your session step by step</p>
     </div>
 
-    <form method="post" action="/setup" class="form" id="setup-form">
-        <input type="hidden" name="selection_json" id="selection_json" value="">
+    <div class="setup-wizard"
+         id="setup-wizard"
+         data-initial-step="{{ initial_wizard_step | default('mode') }}"
+         data-has-error="{{ 'true' if error else 'false' }}"
+         data-locale-label="{{ locale_label }}">
+        <ol class="setup-wizard-stepper" id="setup-stepper" aria-label="Setup progress"></ol>
 
-        <div class="form-group">
-            <p class="form-label form-label-required">Session mode</p>
-            <p class="form-hint">Choose which sections to include and in what order.</p>
-            {% if not coding_available %}
-            <p class="form-hint">Coding modes require Judge0 (set CODING_ENABLED and run the coding profile).</p>
-            {% endif %}
-            <div class="setup-session-modes" id="session-modes">
-                {% for mode in session_modes %}
-                <label class="setup-session-mode{% if not mode.enabled %} setup-session-mode-disabled{% endif %}">
-                    <input type="radio"
-                           name="session_mode"
-                           value="{{ mode.value }}"
-                           class="session-mode-radio"
-                           {% if mode.value == "theory_only" %}checked{% endif %}
-                           {% if not mode.enabled %}disabled{% endif %}>
-                    <span class="setup-session-mode-body">
-                        <span class="setup-session-mode-title">{{ mode.label }}</span>
-                        <span class="setup-session-mode-description">{{ mode.description }}</span>
-                        {% if mode.badge %}
-                        <span class="setup-session-mode-badge">{{ mode.badge }}</span>
-                        {% endif %}
-                    </span>
-                </label>
-                {% endfor %}
-            </div>
-        </div>
+        <form method="post" action="/setup" class="form" id="setup-form">
+            <input type="hidden" name="selection_json" id="selection_json" value="">
 
-        <div class="form-group" id="theory-setup-panel">
-            <p class="form-label form-label-required">Theory: question banks &amp; topics</p>
-            <p class="form-hint">Enable one or more tracks, pick a level per track, then select topics.</p>
-
-            {% if not track_sections %}
-            <p class="form-hint">No question banks found.</p>
-            {% endif %}
-
-            <div class="setup-track-sections" id="track-sections">
-                {% for section in track_sections %}
-                <fieldset class="setup-track-block theory-track-block" data-track="{{ section.slug }}">
-                    <legend class="setup-track-legend">
-                        <label class="setup-track-toggle">
-                            <input type="checkbox" class="track-enable" data-track="{{ section.slug }}">
-                            {{ section.label }}
+            <div class="setup-wizard-step" data-wizard-step="mode">
+                <div class="form-group">
+                    <p class="form-label form-label-required">Session mode</p>
+                    <p class="form-hint">Choose which sections to include and in what order.</p>
+                    {% if not coding_available %}
+                    <p class="form-hint">Coding modes require Judge0 (set CODING_ENABLED and run the coding profile).</p>
+                    {% endif %}
+                    <div class="setup-session-modes" id="session-modes">
+                        {% for mode in session_modes %}
+                        <label class="setup-session-mode{% if not mode.enabled %} setup-session-mode-disabled{% endif %}">
+                            <input type="radio"
+                                   name="session_mode"
+                                   value="{{ mode.value }}"
+                                   class="session-mode-radio"
+                                   {% if mode.value == "theory_only" %}checked{% endif %}
+                                   {% if not mode.enabled %}disabled{% endif %}>
+                            <span class="setup-session-mode-body">
+                                <span class="setup-session-mode-title">{{ mode.label }}</span>
+                                <span class="setup-session-mode-description">{{ mode.description }}</span>
+                                {% if mode.badge %}
+                                <span class="setup-session-mode-badge">{{ mode.badge }}</span>
+                                {% endif %}
+                            </span>
                         </label>
                         {% endfor %}
                     </div>
@@ -139,25 +127,76 @@
                     <p class="form-hint">Applies to each main question and each AI follow-up (1–60).</p>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group" id="theory-count-panel">
-            <label for="question_count" class="form-label">Number of theory questions</label>
-            <input type="number" name="question_count" id="question_count"
-                   class="form-control" value="5" min="{{ min_question_count | default(1) }}" max="20">
-            <p class="form-hint" id="question-count-hint">
-                How many questions in this session (1–20). Must be at least the number of selected topics.
-            </p>
-        </div>
+            <div class="setup-wizard-step" data-wizard-step="coding" hidden>
+                <div class="form-group">
+                    <p class="form-label form-label-required">Coding: task banks &amp; topics</p>
+                    <p class="form-hint">Enable tracks and topics from the coding task bank.</p>
 
-        <div class="form-group" id="theory-timer-panel">
-            <label class="form-label">
-                <input type="checkbox" name="enable_question_timer" id="enable_question_timer"
-                       value="on">
-                Enable per-question timer
-            </label>
-            <p class="form-hint">When time runs out, the current round scores 0 and the interview moves on.</p>
-        </div>
+                    {% if not coding_track_sections %}
+                    <p class="form-hint">No coding task banks found.</p>
+                    {% endif %}
+
+                    <div class="setup-track-sections" id="coding-track-sections">
+                        {% for section in coding_track_sections %}
+                        <fieldset class="setup-track-block coding-track-block" data-track="{{ section.slug }}">
+                            <legend class="setup-track-legend">
+                                <label class="setup-track-toggle">
+                                    <input type="checkbox" class="coding-track-enable" data-track="{{ section.slug }}">
+                                    {{ section.label }}
+                                </label>
+                            </legend>
+                            <div class="setup-track-body" hidden>
+                                <div class="form-group">
+                                    <label class="form-label form-label-required" for="coding-level-{{ section.slug }}">Difficulty level</label>
+                                    <select id="coding-level-{{ section.slug }}" class="form-control coding-track-level" data-track="{{ section.slug }}">
+                                        {% for lvl in section.levels %}
+                                        <option value="{{ lvl }}"{% if lvl == section.default_level %} selected{% endif %}>{{ lvl | capitalize }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <p class="form-label form-label-required">Topics</p>
+                                    <div class="setup-topic-list coding-topic-list" data-track="{{ section.slug }}">
+                                        {% for cat in section.categories %}
+                                        <label class="setup-topic-item">
+                                            <input type="checkbox" class="coding-topic-checkbox" value="{{ cat }}" data-track="{{ section.slug }}">
+                                            {{ cat | replace('-', ' ') | title }}
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="coding_question_count" class="form-label">Number of coding tasks</label>
+                    <input type="number" name="coding_question_count" id="coding_question_count"
+                           class="form-control" value="2" min="{{ min_coding_task_count | default(1) }}" max="20">
+                    <p class="form-hint" id="coding-count-hint">
+                        How many coding tasks in this session (1–20). Must be at least the number of selected topics.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" name="enable_coding_timer" id="enable_coding_timer"
+                               value="on">
+                        Enable per-task timer
+                    </label>
+                    <p class="form-hint">When time runs out, the current coding task scores 0 and the session moves on.</p>
+                </div>
+
+                <div class="form-group" id="coding-timer-minutes-group" hidden>
+                    <label for="coding_time_minutes" class="form-label">Minutes per coding task</label>
+                    <input type="number" name="coding_time_minutes" id="coding_time_minutes"
+                           class="form-control" value="10" min="1" max="120">
+                    <p class="form-hint">Applies to each coding task and follow-up round (1–120).</p>
+                </div>
+            </div>
 
             <div class="setup-wizard-step" data-wizard-step="review" hidden>
                 <div class="form-group">
@@ -167,81 +206,7 @@
                 </div>
             </div>
 
-        <div class="form-group" id="coding-setup-panel" hidden>
-            <p class="form-label form-label-required">Coding: task banks &amp; topics</p>
-            <p class="form-hint">Enable tracks and topics from the coding task bank.</p>
-
-            {% if not coding_track_sections %}
-            <p class="form-hint">No coding task banks found.</p>
-            {% endif %}
-
-            <div class="setup-track-sections" id="coding-track-sections">
-                {% for section in coding_track_sections %}
-                <fieldset class="setup-track-block coding-track-block" data-track="{{ section.slug }}">
-                    <legend class="setup-track-legend">
-                        <label class="setup-track-toggle">
-                            <input type="checkbox" class="coding-track-enable" data-track="{{ section.slug }}">
-                            {{ section.label }}
-                        </label>
-                    </legend>
-                    <div class="setup-track-body" hidden>
-                        <div class="form-group">
-                            <label class="form-label form-label-required" for="coding-level-{{ section.slug }}">Difficulty level</label>
-                            <select id="coding-level-{{ section.slug }}" class="form-control coding-track-level" data-track="{{ section.slug }}">
-                                {% for lvl in section.levels %}
-                                <option value="{{ lvl }}"{% if lvl == section.default_level %} selected{% endif %}>{{ lvl | capitalize }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <p class="form-label form-label-required">Topics</p>
-                            <div class="setup-topic-list coding-topic-list" data-track="{{ section.slug }}">
-                                {% for cat in section.categories %}
-                                <label class="setup-topic-item">
-                                    <input type="checkbox" class="coding-topic-checkbox" value="{{ cat }}" data-track="{{ section.slug }}">
-                                    {{ cat | replace('-', ' ') | title }}
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </fieldset>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="form-group" id="coding-count-panel" hidden>
-            <label for="coding_question_count" class="form-label">Number of coding tasks</label>
-            <input type="number" name="coding_question_count" id="coding_question_count"
-                   class="form-control" value="2" min="{{ min_coding_task_count | default(1) }}" max="20">
-            <p class="form-hint" id="coding-count-hint">
-                How many coding tasks in this session (1–20). Must be at least the number of selected topics.
-            </p>
-        </div>
-
-        <div class="form-group" id="coding-timer-panel" hidden>
-            <label class="form-label">
-                <input type="checkbox" name="enable_coding_timer" id="enable_coding_timer"
-                       value="on">
-                Enable per-task timer
-            </label>
-            <p class="form-hint">When time runs out, the current coding task scores 0 and the session moves on.</p>
-        </div>
-
-        <div class="form-group" id="coding-timer-minutes-group" hidden>
-            <label for="coding_time_minutes" class="form-label">Minutes per coding task</label>
-            <input type="number" name="coding_time_minutes" id="coding_time_minutes"
-                   class="form-control" value="10" min="1" max="120">
-            <p class="form-hint">Applies to each coding task and follow-up round (1–120).</p>
-        </div>
-
-        <div class="form-group">
-            <label for="locale-display" class="form-label">Interview language</label>
-            <input type="text" id="locale-display" class="form-control" value="{{ locale_label }}" readonly>
-            <p class="form-hint">Language for AI feedback and voice dictation. Change in <a href="/config">Configuration</a>.</p>
-        </div>
-
-        <div class="divider"></div>
+            <div class="divider"></div>
 
             <div class="button-group setup-wizard-nav">
                 <button type="button" class="btn btn-outline" id="setup-wizard-back" hidden>Back</button>
@@ -255,386 +220,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-(function () {
-    const form = document.getElementById("setup-form");
-    const selectionInput = document.getElementById("selection_json");
-    const submitBtn = document.getElementById("setup-submit");
-    const questionCountInput = document.getElementById("question_count");
-    const questionCountHint = document.getElementById("question-count-hint");
-    const codingCountInput = document.getElementById("coding_question_count");
-    const codingCountHint = document.getElementById("coding-count-hint");
-    const theorySetupPanel = document.getElementById("theory-setup-panel");
-    const theoryCountPanel = document.getElementById("theory-count-panel");
-    const theoryTimerPanel = document.getElementById("theory-timer-panel");
-    const codingSetupPanel = document.getElementById("coding-setup-panel");
-    const codingCountPanel = document.getElementById("coding-count-panel");
-    const codingTimerPanel = document.getElementById("coding-timer-panel");
-
-    function formatTopic(slug) {
-        return slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, " ");
-    }
-
-    function selectedTheoryTopicCount() {
-        let count = 0;
-        document.querySelectorAll(".theory-track-block").forEach(function (block) {
-            const enable = block.querySelector(".track-enable");
-            if (enable && enable.checked) {
-                block.querySelectorAll(".topic-checkbox:checked").forEach(function () {
-                    count += 1;
-                });
-            }
-        });
-        return count;
-    }
-
-    function selectedCodingTopicCount() {
-        let count = 0;
-        document.querySelectorAll(".coding-track-block").forEach(function (block) {
-            const enable = block.querySelector(".coding-track-enable");
-            if (enable && enable.checked) {
-                block.querySelectorAll(".coding-topic-checkbox:checked").forEach(function () {
-                    count += 1;
-                });
-            }
-        });
-        return count;
-    }
-
-    function syncTheoryCountMin() {
-        const topics = selectedTheoryTopicCount();
-        const minVal = Math.max(1, topics);
-        questionCountInput.min = String(minVal);
-        if (Number(questionCountInput.value) < minVal) {
-            questionCountInput.value = String(minVal);
-        }
-        questionCountHint.textContent =
-            "How many questions in this session (1–20). Must be at least "
-            + minVal + " (one per selected topic).";
-    }
-
-    function syncCodingCountMin() {
-        const topics = selectedCodingTopicCount();
-        const minVal = Math.max(1, topics);
-        codingCountInput.min = String(minVal);
-        if (Number(codingCountInput.value) < minVal) {
-            codingCountInput.value = String(minVal);
-        }
-        codingCountHint.textContent =
-            "How many coding tasks in this session (1–20). Must be at least "
-            + minVal + " (one per selected topic).";
-    }
-
-    function selectedSessionMode() {
-        const checked = document.querySelector(".session-mode-radio:checked");
-        return checked ? checked.value : "theory_only";
-    }
-
-    function branchEnabled(mode, branch) {
-        if (mode === "theory_only") {
-            return branch === "theory";
-        }
-        if (mode === "coding_only") {
-            return branch === "coding";
-        }
-        return true;
-    }
-
-    function buildTheorySources() {
-        const sources = [];
-        document.querySelectorAll(".theory-track-block").forEach(function (block) {
-            const track = block.dataset.track;
-            const enabled = block.querySelector(".track-enable");
-            if (!enabled || !enabled.checked) {
-                return;
-            }
-            const levelSelect = block.querySelector(".track-level");
-            const level = levelSelect ? levelSelect.value : "";
-            const categories = [];
-            block.querySelectorAll(".topic-checkbox:checked").forEach(function (cb) {
-                categories.push(cb.value);
-            });
-            if (categories.length > 0) {
-                sources.push({ track: track, level: level, categories: categories });
-            }
-        });
-        return sources;
-    }
-
-    function buildCodingSources() {
-        const sources = [];
-        document.querySelectorAll(".coding-track-block").forEach(function (block) {
-            const track = block.dataset.track;
-            const enabled = block.querySelector(".coding-track-enable");
-            if (!enabled || !enabled.checked) {
-                return;
-            }
-            const levelSelect = block.querySelector(".coding-track-level");
-            const level = levelSelect ? levelSelect.value : "";
-            const categories = [];
-            block.querySelectorAll(".coding-topic-checkbox:checked").forEach(function (cb) {
-                categories.push(cb.value);
-            });
-            if (categories.length > 0) {
-                sources.push({ track: track, level: level, categories: categories });
-            }
-        });
-        return sources;
-    }
-
-    function buildSelection() {
-        const sessionMode = selectedSessionMode();
-        const theorySources = buildTheorySources();
-        const codingSources = buildCodingSources();
-        const theoryCount = Number(questionCountInput.value);
-        const codingCount = Number(codingCountInput.value);
-        const theoryTimerSeconds = timerCheckbox && timerCheckbox.checked
-            ? Math.max(1, Number(document.getElementById("question_time_minutes").value)) * 60
-            : null;
-        const codingTimerSeconds = codingTimerCheckbox && codingTimerCheckbox.checked
-            ? Math.max(1, Number(document.getElementById("coding_time_minutes").value)) * 60
-            : null;
-        const theoryEnabled = branchEnabled(sessionMode, "theory");
-        const codingEnabled = branchEnabled(sessionMode, "coding");
-        return {
-            version: 2,
-            session_mode: sessionMode,
-            theory: {
-                enabled: theoryEnabled,
-                question_count: theoryEnabled ? theoryCount : 0,
-                task_time_limit_seconds: theoryEnabled ? theoryTimerSeconds : null,
-                sources: theoryEnabled ? theorySources : [],
-            },
-            coding: {
-                enabled: codingEnabled,
-                question_count: codingEnabled ? codingCount : 0,
-                task_time_limit_seconds: codingEnabled ? codingTimerSeconds : null,
-                sources: codingEnabled ? codingSources : [],
-            },
-        };
-    }
-
-    function theoryValid(selection) {
-        if (!selection.theory.enabled) {
-            return true;
-        }
-        const topics = selectedTheoryTopicCount();
-        if (topics === 0 || selection.theory.sources.length === 0) {
-            return false;
-        }
-        const count = Number(questionCountInput.value);
-        return count >= topics && count >= 1 && count <= 20;
-    }
-
-    function codingValid(selection) {
-        if (!selection.coding.enabled) {
-            return true;
-        }
-        const topics = selectedCodingTopicCount();
-        if (topics === 0 || selection.coding.sources.length === 0) {
-            return false;
-        }
-        const count = Number(codingCountInput.value);
-        return count >= topics && count >= 1 && count <= 20;
-    }
-
-    function canSubmit() {
-        const selection = buildSelection();
-        return theoryValid(selection) && codingValid(selection);
-    }
-
-    function syncPanelVisibility() {
-        const mode = selectedSessionMode();
-        const showTheory = branchEnabled(mode, "theory");
-        const showCoding = branchEnabled(mode, "coding");
-        theorySetupPanel.hidden = !showTheory;
-        theoryCountPanel.hidden = !showTheory;
-        theoryTimerPanel.hidden = !showTheory;
-        if (!showTheory && timerMinutesGroup) {
-            timerMinutesGroup.hidden = true;
-        } else {
-            syncTimerFields();
-        }
-        codingSetupPanel.hidden = !showCoding;
-        codingCountPanel.hidden = !showCoding;
-        codingTimerPanel.hidden = !showCoding;
-        if (!showCoding && codingTimerMinutesGroup) {
-            codingTimerMinutesGroup.hidden = true;
-        } else {
-            syncCodingTimerFields();
-        }
-    }
-
-    function syncSubmitState() {
-        syncPanelVisibility();
-        submitBtn.disabled = !canSubmit();
-        syncTheoryCountMin();
-        syncCodingCountMin();
-    }
-
-    async function loadTheoryTopics(block) {
-        const track = block.dataset.track;
-        const levelSelect = block.querySelector(".track-level");
-        const topicList = block.querySelector(".setup-topic-list");
-        if (!levelSelect || !topicList) {
-            return;
-        }
-        const level = levelSelect.value;
-        const url = "/setup/options?track=" + encodeURIComponent(track)
-            + "&level=" + encodeURIComponent(level);
-        const response = await fetch(url);
-        if (!response.ok) {
-            return;
-        }
-        const data = await response.json();
-        const categories = data.categories || [];
-        const checked = new Set();
-        topicList.querySelectorAll(".topic-checkbox:checked").forEach(function (cb) {
-            checked.add(cb.value);
-        });
-        topicList.innerHTML = "";
-        categories.forEach(function (cat) {
-            const label = document.createElement("label");
-            label.className = "setup-topic-item";
-            const input = document.createElement("input");
-            input.type = "checkbox";
-            input.className = "topic-checkbox";
-            input.value = cat;
-            input.dataset.track = track;
-            if (checked.has(cat)) {
-                input.checked = true;
-            }
-            input.addEventListener("change", syncSubmitState);
-            label.appendChild(input);
-            label.appendChild(document.createTextNode(" " + formatTopic(cat)));
-            topicList.appendChild(label);
-        });
-        syncSubmitState();
-    }
-
-    async function loadCodingTopics(block) {
-        const track = block.dataset.track;
-        const levelSelect = block.querySelector(".coding-track-level");
-        const topicList = block.querySelector(".coding-topic-list");
-        if (!levelSelect || !topicList) {
-            return;
-        }
-        const level = levelSelect.value;
-        const url = "/setup/coding-options?track=" + encodeURIComponent(track)
-            + "&level=" + encodeURIComponent(level);
-        const response = await fetch(url);
-        if (!response.ok) {
-            return;
-        }
-        const data = await response.json();
-        const categories = data.categories || [];
-        const checked = new Set();
-        topicList.querySelectorAll(".coding-topic-checkbox:checked").forEach(function (cb) {
-            checked.add(cb.value);
-        });
-        topicList.innerHTML = "";
-        categories.forEach(function (cat) {
-            const label = document.createElement("label");
-            label.className = "setup-topic-item";
-            const input = document.createElement("input");
-            input.type = "checkbox";
-            input.className = "coding-topic-checkbox";
-            input.value = cat;
-            input.dataset.track = track;
-            if (checked.has(cat)) {
-                input.checked = true;
-            }
-            input.addEventListener("change", syncSubmitState);
-            label.appendChild(input);
-            label.appendChild(document.createTextNode(" " + formatTopic(cat)));
-            topicList.appendChild(label);
-        });
-        syncSubmitState();
-    }
-
-    document.querySelectorAll(".theory-track-block").forEach(function (block) {
-        const enable = block.querySelector(".track-enable");
-        const body = block.querySelector(".setup-track-body");
-        const levelSelect = block.querySelector(".track-level");
-
-        if (enable && body) {
-            enable.addEventListener("change", function () {
-                body.hidden = !enable.checked;
-                syncSubmitState();
-            });
-        }
-        if (levelSelect) {
-            levelSelect.addEventListener("change", function () {
-                loadTheoryTopics(block);
-            });
-        }
-        block.querySelectorAll(".topic-checkbox").forEach(function (cb) {
-            cb.addEventListener("change", syncSubmitState);
-        });
-    });
-
-    document.querySelectorAll(".coding-track-block").forEach(function (block) {
-        const enable = block.querySelector(".coding-track-enable");
-        const body = block.querySelector(".setup-track-body");
-        const levelSelect = block.querySelector(".coding-track-level");
-
-        if (enable && body) {
-            enable.addEventListener("change", function () {
-                body.hidden = !enable.checked;
-                syncSubmitState();
-            });
-        }
-        if (levelSelect) {
-            levelSelect.addEventListener("change", function () {
-                loadCodingTopics(block);
-            });
-        }
-        block.querySelectorAll(".coding-topic-checkbox").forEach(function (cb) {
-            cb.addEventListener("change", syncSubmitState);
-        });
-    });
-
-    document.querySelectorAll(".session-mode-radio").forEach(function (radio) {
-        radio.addEventListener("change", syncSubmitState);
-    });
-
-    questionCountInput.addEventListener("input", syncSubmitState);
-    codingCountInput.addEventListener("input", syncSubmitState);
-
-    const timerCheckbox = document.getElementById("enable_question_timer");
-    const timerMinutesGroup = document.getElementById("question-timer-minutes-group");
-    const codingTimerCheckbox = document.getElementById("enable_coding_timer");
-    const codingTimerMinutesGroup = document.getElementById("coding-timer-minutes-group");
-
-    function syncTimerFields() {
-        if (!timerCheckbox || !timerMinutesGroup) return;
-        timerMinutesGroup.hidden = !timerCheckbox.checked;
-    }
-
-    function syncCodingTimerFields() {
-        if (!codingTimerCheckbox || !codingTimerMinutesGroup) return;
-        codingTimerMinutesGroup.hidden = !codingTimerCheckbox.checked;
-    }
-
-    if (timerCheckbox) {
-        timerCheckbox.addEventListener("change", syncTimerFields);
-        syncTimerFields();
-    }
-    if (codingTimerCheckbox) {
-        codingTimerCheckbox.addEventListener("change", syncCodingTimerFields);
-        syncCodingTimerFields();
-    }
-
-    form.addEventListener("submit", function (event) {
-        const selection = buildSelection();
-        if (!theoryValid(selection) || !codingValid(selection)) {
-            event.preventDefault();
-            return;
-        }
-        selectionInput.value = JSON.stringify(selection);
-    });
-
-    syncSubmitState();
-})();
-</script>
+<script src="/static/js/setup_wizard.js?v={{ static_version('js/setup_wizard.js') }}"></script>
 {% endblock %}
