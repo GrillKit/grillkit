@@ -21,7 +21,11 @@ class CodingPageService:
         CodingSectionService.activate_pending(interview_id)
         with CodingUnitOfWork(auto_commit=True) as uow:
             section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None or section.task_time_limit_seconds is None:
+            if (
+                section is None
+                or section.status != "active"
+                or section.task_time_limit_seconds is None
+            ):
                 return
             current = section.find_first_unsubmitted()
             if current is None or current.started_at is not None:

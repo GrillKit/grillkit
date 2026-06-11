@@ -216,7 +216,9 @@ class CodingSection:
                     submit_test_summary=None,
                     score=None,
                     feedback=None,
-                    started_at=timer_start if order == 1 else None,
+                    started_at=(
+                        timer_start if order == 1 and status == "active" else None
+                    ),
                     created_at=when,
                 )
             )

@@ -57,6 +57,7 @@ class SessionCreationService:
             ValueError: If validation fails or no questions are available.
         """
         locale = normalize_locale(locale)
+        phase_order = phase_order_for_mode(session.session_mode)
 
         interview_id = str(uuid4())
         shell = Interview.start_shell(
@@ -74,6 +75,7 @@ class SessionCreationService:
                     locale=locale,
                     question_count=session.theory.question_count,
                     task_time_limit_seconds=session.theory.task_time_limit_seconds,
+                    autostart_timer=phase_order[0] == "theory",
                     uow=uow,
                 )
             if session.coding.enabled:

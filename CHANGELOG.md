@@ -29,8 +29,13 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 - **Session page composition** — `SessionPageService` merges shell + `TheoryPageContext`; phase order from `session_mode`
 - **Session evaluation pipeline** — `SessionEvaluationAggregator`, `SessionEvaluatorService`, and `InterviewSection` protocol with theory prefetch via `on_phase_complete`
 
+### Fixed
+
+- **Multi-section timers** — per-task timers start only when their section becomes the active phase; pending coding sections and deferred theory sections no longer consume time while the user is in the other phase
+
 ### Changed
 
+- **Interview setup wizard** — `/setup` is a multi-step flow: session mode, per-section configuration (theory and/or coding), then a review summary with edit links and Start Interview; validation errors return to the review step with saved form state
 - **Section orchestration consolidation** — typed `SectionService` protocol with `is_user_facing` / `activate_if_pending`, shared section evaluation/review helpers, session evaluation models moved to `app/shared/evaluation_models.py`, multi-section score fallback sums both sections, unified results hub card builder via section registry, `score_breakdown` attached only at session completion via `attach_session_score_breakdown`
 - **Session orchestration refactor** — unified `SESSION_MODE_LABELS`, section service registry instead of unused `InterviewSection` protocol, single `InterviewUnitOfWork` for cross-section phase reads, shared section-feedback prefetch and task timer helpers, score resolution moved out of mappers
 - **Completed session navigation** — dashboard history links to `/interview/{id}/results`; active interview pages no longer embed final evaluation in the sidebar

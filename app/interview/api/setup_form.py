@@ -52,6 +52,7 @@ def setup_form_context(
     error: str | None = None,
     min_question_count: int = 1,
     min_coding_task_count: int = 1,
+    initial_wizard_step: str = "mode",
 ) -> dict[str, object]:
     """Build template context for the multi-track setup form.
 
@@ -60,6 +61,7 @@ def setup_form_context(
         error: Optional error message to display.
         min_question_count: Minimum allowed theory question count.
         min_coding_task_count: Minimum allowed coding task count.
+        initial_wizard_step: Wizard step id to open on load (``mode``, ``review``, etc.).
 
     Returns:
         Context dict for ``setup.html``.
@@ -80,6 +82,7 @@ def setup_form_context(
             "error": error or "No question banks found.",
             "min_question_count": min_question_count,
             "min_coding_task_count": min_coding_task_count,
+            "initial_wizard_step": initial_wizard_step,
         }
 
     track_sections = _build_track_sections(
@@ -135,4 +138,5 @@ def setup_form_context(
         "error": error,
         "min_question_count": min_question_count,
         "min_coding_task_count": min_coding_task_count,
+        "initial_wizard_step": initial_wizard_step,
     }
