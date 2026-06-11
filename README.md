@@ -72,7 +72,7 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 ### Run with Docker
 
 ```bash
-git clone https://github.com/yourusername/grillkit.git
+git clone https://github.com/GrillKit/grillkit.git
 cd grillkit
 docker compose up --build
 ```

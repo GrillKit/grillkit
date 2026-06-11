@@ -54,6 +54,7 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 - **Coding phase activation** — `theory_then_coding` sessions promote coding sections from `pending` to `active` when theory finishes (`SessionPhaseOrchestrator`, `CodingPageService.activate_timer`)
 - **Theory-to-coding handoff** — completing the theory section auto-reloads into the coding page via shared `session_phases.js`; theory-complete state shows a **Continue to Coding** button as fallback
 - Configuration speech model panel tracks the selected Whisper size and locale in the form (status, download, and save now refer to the same model)
+- Piper and Whisper downloads in Docker no longer fail with ``Permission denied: '/.cache'`` (Hub cache uses ``data/.cache/huggingface``)
 - Per-question timer stops when the interview is ended or completed (including during final evaluation)
 - Configuration question voice panel tracks the selected interview language in the form (status and download now refer to the matching Piper voice)
 - Whisper and Piper voices can be downloaded from Configuration before any LLM model is saved; adding an audio-capable catalog entry no longer requires Whisper to be installed first

@@ -16,11 +16,13 @@ class TestConfigureHfHub:
     def test_disables_xet_and_sets_chunk_size(self, monkeypatch) -> None:
         """HTTP downloads are forced and chunk size is reduced for progress updates."""
         monkeypatch.delenv("HF_HUB_DISABLE_XET", raising=False)
+        monkeypatch.delenv("HF_HOME", raising=False)
         import app.shared.infrastructure.hf_hub_runtime as runtime_module
 
         monkeypatch.setattr(runtime_module, "_CONFIGURED", False)
         configure_hf_hub()
         assert os.environ.get("HF_HUB_DISABLE_XET") == "1"
+        assert os.environ.get("HF_HOME", "").endswith("data/.cache/huggingface")
         assert hf_file_download.is_xet_available() is False  # type: ignore[attr-defined]
         assert hf_constants.DOWNLOAD_CHUNK_SIZE == 512 * 1024
 
