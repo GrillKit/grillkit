@@ -5,6 +5,69 @@ level: "junior"
 description: "Python control flow constructs: conditionals, loops, iterators, and context managers"
 
 tasks:
+  - id: "cf-001"
+    difficulty: 1
+    tags: ["break", "loops"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `find_first_even` scans the entire list even after the first even number is found.
+
+          Your task:
+          Stop the loop early with `break` once the first even number is found.
+          Return `None` if no even number exists.
+        ru: |
+          Контекст:
+          `find_first_even` проходит весь список, хотя первое чётное уже найдено.
+
+          Задача:
+          Остановите цикл через `break` после первого чётного. Если чётных нет — верните `None`.
+      starter_code: |
+        def find_first_even(numbers):
+            for n in numbers:
+                if n % 2 == 0:
+                    return n
+            return None
+
+
+        print(find_first_even([1, 3, 4, 6, 8]))
+        print(find_first_even([1, 3, 5]))
+    expected_points:
+      - "Uses break when even number found (or equivalent early exit)"
+      - "Returns first even or None"
+
+  - id: "cf-002"
+    difficulty: 1
+    tags: ["dict", "items", "iteration"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          The loop prints scores by indexing into `scores` with each key from `scores.keys()`.
+          That pattern is verbose and non-idiomatic.
+
+          Your task:
+          Refactor the loop to iterate with `.items()` while keeping the same output.
+        ru: |
+          Контекст:
+          Баллы выводятся через индексацию по ключам из `scores.keys()`.
+
+          Задача:
+          Перепишите цикл на `.items()` с тем же выводом.
+      starter_code: |
+        scores = {"Alice": 85, "Bob": 92, "Charlie": 78}
+
+        for name in scores.keys():
+            print(name, scores[name])
+    expected_points:
+      - "Uses for name, score in scores.items()"
+      - "Same print output as original"
+
   - id: "cf-003"
     difficulty: 2
     tags: ["range", "enumerate", "iteration"]

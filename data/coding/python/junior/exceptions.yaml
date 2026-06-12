@@ -5,6 +5,66 @@ level: "junior"
 description: "Python exception handling: try/except/finally, raising exceptions, and exception hierarchy"
 
 tasks:
+  - id: "exc-001"
+    difficulty: 1
+    tags: ["try-except", "value-error"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `to_int` crashes on invalid input because `int()` raises `ValueError`.
+
+          Your task:
+          Wrap the conversion in try/except. Return `None` when conversion fails.
+        ru: |
+          Контекст:
+          `to_int` падает на невалидном вводе.
+
+          Задача:
+          Оберните преобразование в try/except. При ошибке возвращайте `None`.
+      starter_code: |
+        def to_int(value):
+            return int(value)
+
+
+        print(to_int("42"))
+        print(to_int("abc"))
+        print(to_int(""))
+    expected_points:
+      - "Catches ValueError (or broader Exception) around int()"
+      - "Returns None on invalid input"
+      - "Returns int for valid numeric strings"
+
+  - id: "exc-002"
+    difficulty: 2
+    tags: ["finally", "cleanup"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `read_lines` opens a file but never closes it if an error occurs while reading.
+
+          Your task:
+          Ensure the file is always closed using a `finally` block (do not switch to `with` here).
+        ru: |
+          Контекст:
+          `read_lines` не закрывает файл при ошибке чтения.
+
+          Задача:
+          Гарантируйте закрытие файла через `finally` (без перехода на `with`).
+      starter_code: |
+        def read_lines(path):
+            f = open(path, "r")
+            lines = f.readlines()
+            return [line.strip() for line in lines]
+    expected_points:
+      - "Uses try/finally to close the file handle"
+      - "File closed even when readlines raises"
+
   - id: "exc-005"
     difficulty: 1
     tags: ["assert", "debugging"]

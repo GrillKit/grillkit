@@ -168,11 +168,12 @@ class TestCodingTasks:
         assert [task.id for task in tasks] == ["algo-001", "algo-002", "algo-003"]
 
     def test_load_real_python_junior_basics(self) -> None:
-        """Load migrated production task bank entry."""
+        """Load production basics category including type-hints task."""
         tasks = load_category("python", "junior", "basics", locale="en")
-        assert len(tasks) == 1
-        assert tasks[0].id == "bas-004"
-        assert tasks[0].coding.evaluation_mode == "ai"
-        assert tasks[0].coding.starter_code is not None
-        assert "def process" in tasks[0].coding.starter_code
-        assert "type hints" in tasks[0].text.lower()
+        by_id = {task.id: task for task in tasks}
+        assert "bas-004" in by_id
+        task = by_id["bas-004"]
+        assert task.coding.evaluation_mode == "ai"
+        assert task.coding.starter_code is not None
+        assert "def process" in task.coding.starter_code
+        assert "type hints" in task.text.lower()

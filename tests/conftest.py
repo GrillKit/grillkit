@@ -116,4 +116,4 @@ def uow(isolated_db):
         yield work
 
 
-pytest_plugins = ["tests.test_questions"]
+pytest_plugins = ["tests.shared.test_questions"]

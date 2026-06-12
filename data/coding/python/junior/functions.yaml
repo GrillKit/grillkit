@@ -5,6 +5,99 @@ level: "junior"
 description: "Python functions: parameters, return values, scoping, and advanced function concepts"
 
 tasks:
+  - id: "func-001"
+    difficulty: 1
+    tags: ["default-arguments"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `greet` always requires a prefix argument. Callers want a sensible default.
+
+          Your task:
+          Add a default value `"Hello"` to the `prefix` parameter. Keep the function body unchanged.
+        ru: |
+          Контекст:
+          `greet` всегда требует аргумент `prefix`.
+
+          Задача:
+          Задайте значение по умолчанию `"Hello"` для `prefix`. Тело функции не меняйте.
+      starter_code: |
+        def greet(name, prefix):
+            return f"{prefix}, {name}!"
+
+
+        print(greet("Alice"))
+        print(greet("Bob", "Hi"))
+    expected_points:
+      - "prefix has default value \"Hello\""
+      - "greet(\"Alice\") works without second argument"
+
+  - id: "func-002"
+    difficulty: 2
+    tags: ["args", "variadic"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `total` should accept any number of numeric arguments and return their sum.
+
+          Your task:
+          Implement `total` using `*args`. Return `0` when called with no arguments.
+        ru: |
+          Контекст:
+          `total` должна суммировать произвольное число аргументов.
+
+          Задача:
+          Реализуйте `total` через `*args`. Без аргументов возвращайте `0`.
+      starter_code: |
+        def total(*args):
+            pass
+
+
+        print(total(1, 2, 3))
+        print(total())
+        print(total(10, -5, 2.5))
+    expected_points:
+      - "Uses *args in signature"
+      - "Returns sum of all arguments"
+      - "Empty call returns 0"
+
+  - id: "func-003"
+    difficulty: 2
+    tags: ["keyword-only", "parameters"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `connect` accepts host and port, but callers sometimes pass the port positionally
+          by mistake. The port should be keyword-only.
+
+          Your task:
+          Make `port` a keyword-only parameter (use `*` in the signature).
+          Keep the return format unchanged.
+        ru: |
+          Контекст:
+          В `connect` порт иногда передают позиционно по ошибке.
+
+          Задача:
+          Сделайте `port` keyword-only (через `*` в сигнатуре). Формат возврата не меняйте.
+      starter_code: |
+        def connect(host, port):
+            return f"{host}:{port}"
+
+
+        print(connect("localhost", port=5432))
+    expected_points:
+      - "port is keyword-only after bare *"
+      - "connect(\"localhost\", port=5432) still works"
+
   - id: "func-006"
     difficulty: 2
     tags: ["docstrings", "annotations"]

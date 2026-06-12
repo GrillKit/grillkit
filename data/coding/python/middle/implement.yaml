@@ -57,3 +57,44 @@ tasks:
       - "Only lists are flattened; scalars appended in order"
       - "Handles empty input and deeply nested single value"
       - "Includes runnable tests covering examples and edge cases"
+
+  - id: "im-config-002"
+    difficulty: 2
+    tags: ["dict", "validation", "types"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `parse_config` receives a plain dict from JSON. Required keys are `host` (str)
+          and `port` (int). Optional `debug` defaults to `False`.
+
+          Your task:
+          Implement validation:
+          - raise `ValueError` with a clear message if `host` or `port` is missing
+          - raise `TypeError` if `port` is not an int
+          - return a new dict with `host`, `port`, and `debug` (default False)
+        ru: |
+          Контекст:
+          `parse_config` валидирует словарь конфигурации из JSON.
+
+          Задача:
+          - `ValueError`, если нет `host` или `port`
+          - `TypeError`, если `port` не int
+          - вернуть dict с `host`, `port`, `debug` (по умолчанию False)
+      starter_code: |
+        def parse_config(raw):
+            """Validate and normalize application config from a JSON dict."""
+            raise NotImplementedError
+
+
+        cfg = parse_config({"host": "localhost", "port": 8080})
+        print(cfg)
+
+        cfg_debug = parse_config({"host": "api", "port": 443, "debug": True})
+        print(cfg_debug)
+    expected_points:
+      - "Raises ValueError on missing host or port"
+      - "Raises TypeError when port is not int"
+      - "Returns dict with debug defaulting to False"
