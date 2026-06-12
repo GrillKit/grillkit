@@ -290,6 +290,10 @@ a:hover {
     white-space: nowrap;
 }
 
+.btn[hidden] {
+    display: none !important;
+}
+
 .btn:focus {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
@@ -732,6 +736,26 @@ textarea.form-control {
     font-style: italic;
 }
 
+.meta-list .interview-timer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.interview-timer-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.interview-timer-display {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
 .interview-timer-display.timer-warning {
     color: var(--warning, #b45309);
     font-weight: 600;
@@ -843,6 +867,38 @@ textarea.form-control {
 
 .composer-footer .btn-question-voice {
     flex-shrink: 0;
+}
+
+.question-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.question-bubble-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.question-bubble-header strong {
+    display: inline;
+    margin-bottom: 0;
+}
+
+.btn-question-play {
+    flex-shrink: 0;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.btn-question-play.is-playing {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
 }
 
 .composer-footer .btn-primary {
@@ -1150,6 +1206,96 @@ textarea.form-control {
     .history-table td:nth-child(2) {
         display: none;
     }
+}
+
+.setup-wizard-stepper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+}
+
+.setup-wizard-stepper-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.setup-wizard-stepper-item-active {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.setup-wizard-stepper-item-complete {
+    color: var(--text-color);
+}
+
+.setup-wizard-stepper-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.setup-wizard-stepper-item-active .setup-wizard-stepper-marker {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+.setup-wizard-stepper-item-complete .setup-wizard-stepper-marker {
+    background: var(--bg-muted);
+}
+
+.setup-wizard-nav {
+    align-items: center;
+}
+
+.setup-wizard-nav-review #setup-wizard-next {
+    display: none;
+}
+
+.setup-review-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.setup-review-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+}
+
+.setup-review-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.setup-review-card-title {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.setup-review-card-body p {
+    margin: 0.25rem 0;
+}
+
+.setup-review-empty {
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 .setup-session-modes {

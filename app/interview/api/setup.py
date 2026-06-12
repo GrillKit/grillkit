@@ -256,6 +256,7 @@ async def create_interview(
                     error=str(e),
                     min_question_count=min_theory,
                     min_coding_task_count=min_coding,
+                    initial_wizard_step="review",
                 ),
                 **SpeechModelPageService.build_page_context(
                     config,

@@ -52,7 +52,11 @@ async def test_process_answer_persists_score_and_next_question(
     feedback = events[2]
     assert isinstance(feedback, AnswerFeedbackEvent)
     assert feedback.follow_up_needed is False
+    reloaded = InterviewQuery.get_interview(interview_id)
+    assert reloaded is not None
+    q2 = next(a for a in reloaded.answers if a.question_id == "q2" and a.round == 0)
     assert feedback.next_question == {
+        "id": q2.id,
         "question_id": "q2",
         "order": 2,
         "question_text": "Question two?",
@@ -60,8 +64,6 @@ async def test_process_answer_persists_score_and_next_question(
         "round": 0,
     }
 
-    reloaded = InterviewQuery.get_interview(interview_id)
-    assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1" and a.round == 0)
     assert q1.answer_text == "Lists are mutable."
     assert q1.score == 5

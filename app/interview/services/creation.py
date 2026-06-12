@@ -13,7 +13,10 @@ from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.domain.value_objects import SessionMode, SessionSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
-from app.interview.services.sections import phase_order_for_mode
+from app.interview.services.sections import (
+    is_first_user_facing_section,
+    phase_order_for_mode,
+)
 from app.shared.locales import normalize_locale
 from app.theory.services.creation import TheorySectionCreationService
 
@@ -74,6 +77,10 @@ class SessionCreationService:
                     locale=locale,
                     question_count=session.theory.question_count,
                     task_time_limit_seconds=session.theory.task_time_limit_seconds,
+                    start_first_task_timer=is_first_user_facing_section(
+                        session.session_mode,
+                        "theory",
+                    ),
                     uow=uow,
                 )
             if session.coding.enabled:

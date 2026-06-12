@@ -30,6 +30,7 @@ class AnswerFeedbackEvent:
         timed_out: Whether this round ended due to timer expiry.
         feedback: Short feedback for the client (e.g. timeout message).
         timer_remaining_seconds: Seconds left on the next round timer, if any.
+        follow_up_answer_id: Task row id for a newly created follow-up round.
     """
 
     question_id: str
@@ -41,6 +42,7 @@ class AnswerFeedbackEvent:
     timed_out: bool = False
     feedback: str | None = None
     timer_remaining_seconds: int | None = None
+    follow_up_answer_id: int | None = None
 
 
 @dataclass(frozen=True)

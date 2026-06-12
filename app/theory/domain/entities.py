@@ -194,6 +194,7 @@ class TheorySection:
         planned_questions: tuple[PlannedTheoryQuestion, ...],
         task_time_limit_seconds: int | None = None,
         theory_section_id: int = NEW_ID,
+        start_first_task_timer: bool = True,
     ) -> TheorySection:
         """Build a new active theory section from a question plan.
 
@@ -204,6 +205,7 @@ class TheorySection:
             planned_questions: Ordered questions for this section (non-empty).
             task_time_limit_seconds: Per-task time limit, or None to disable.
             theory_section_id: Existing section ID, or ``NEW_ID`` before insert.
+            start_first_task_timer: Whether to start the timer on the first task now.
 
         Returns:
             Active section with initial task rows (``TheoryTask.NEW_ID``).
@@ -216,7 +218,11 @@ class TheorySection:
 
         when = datetime.now(UTC)
         question_ids = tuple(question.id for question in planned_questions)
-        timer_start = when if task_time_limit_seconds is not None else None
+        timer_start = (
+            when
+            if task_time_limit_seconds is not None and start_first_task_timer
+            else None
+        )
         tasks: list[TheoryTask] = []
         for order, question in enumerate(planned_questions, start=1):
             tasks.append(
