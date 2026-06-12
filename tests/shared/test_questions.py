@@ -196,6 +196,42 @@ class TestQuestions:
         categories = list_categories("java", "junior")
         assert categories == []
 
+    def test_load_category_expected_points(self, temp_questions_dir):
+        """Test loading expected_points rubric bullets."""
+        path = temp_questions_dir / "python" / "junior" / "rubric.yaml"
+        _write_category_yaml(
+            path,
+            [
+                {
+                    "id": "rub-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "expected_points": ["Point A", "Point B"],
+                    "question": {"text": "Explain lists.", "code": None},
+                }
+            ],
+        )
+        questions = load_category("python", "junior", "rubric")
+        assert questions[0].expected_points == ("Point A", "Point B")
+
+    def test_load_category_invalid_expected_points_raises(self, temp_questions_dir):
+        """Invalid expected_points shape raises ValueError."""
+        path = temp_questions_dir / "python" / "junior" / "bad-rubric.yaml"
+        _write_category_yaml(
+            path,
+            [
+                {
+                    "id": "bad-rub-001",
+                    "type": "knowledge",
+                    "difficulty": 1,
+                    "expected_points": "not-a-list",
+                    "question": {"text": "Bad rubric.", "code": None},
+                }
+            ],
+        )
+        with pytest.raises(ValueError, match="bad-rub-001"):
+            load_category("python", "junior", "bad-rubric")
+
     def test_load_category_with_code(self, temp_questions_dir):
         """Test loading a question with a code snippet."""
         path = temp_questions_dir / "python" / "junior" / "with-code.yaml"

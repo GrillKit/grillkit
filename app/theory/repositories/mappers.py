@@ -20,6 +20,37 @@ from app.theory.domain.entities import TheoryTask as DomainTheoryTask
 from app.theory.schemas.theory import TheorySectionRead, TheoryTaskRead
 
 
+def _expected_points_to_json(points: tuple[str, ...]) -> str | None:
+    """Serialize rubric bullets for ORM storage.
+
+    Args:
+        points: Domain rubric tuple.
+
+    Returns:
+        JSON array string, or None when empty.
+    """
+    if not points:
+        return None
+    return json.dumps(list(points), separators=(",", ":"))
+
+
+def _expected_points_from_json(raw: str | None) -> tuple[str, ...]:
+    """Deserialize rubric bullets from an ORM column.
+
+    Args:
+        raw: JSON array string or None for legacy rows.
+
+    Returns:
+        Tuple of rubric bullet strings.
+    """
+    if raw is None:
+        return ()
+    data = json.loads(raw)
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(point) for point in data)
+
+
 def _question_ids_from_tasks(tasks: tuple[DomainTheoryTask, ...]) -> tuple[str, ...]:
     """Derive ordered question IDs from initial task rounds.
 
@@ -59,6 +90,7 @@ def theory_task_from_orm(
         round=answer.round,
         question_text=answer.question_text,
         question_code=answer.question_code,
+        expected_points=_expected_points_from_json(answer.expected_points),
         answer_text=answer.answer_text,
         score=answer.score,
         feedback=answer.feedback,
@@ -91,6 +123,7 @@ def domain_theory_task_to_orm(
         round=task.round,
         question_text=task.question_text,
         question_code=task.question_code,
+        expected_points=_expected_points_to_json(task.expected_points),
         answer_text=task.answer_text,
         score=task.score,
         feedback=task.feedback,

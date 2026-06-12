@@ -123,6 +123,7 @@ class Answer(Base):
         round: Follow-up round number (0 = initial, 1+ = follow-ups).
         question_text: Snapshot of the question text at time of asking.
         question_code: Snapshot of the optional code snippet.
+        expected_points: JSON array of rubric bullets (None for legacy rows).
         answer_text: User's answer text (None if skipped).
         score: AI-assigned score (1-5, or 0 on timeout), None if not yet evaluated.
         feedback: AI-generated feedback text.
@@ -143,6 +144,7 @@ class Answer(Base):
     round: Mapped[int] = mapped_column(Integer, default=0)
     question_text: Mapped[str] = mapped_column(Text)
     question_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_points: Mapped[str | None] = mapped_column(Text, nullable=True)
     answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
