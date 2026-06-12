@@ -102,7 +102,9 @@ def phase_order_for_mode(session_mode: SessionMode) -> tuple[SectionKind, ...]:
     return ("coding", "theory")
 
 
-def is_first_user_facing_section(session_mode: SessionMode, section: SectionKind) -> bool:
+def is_first_user_facing_section(
+    session_mode: SessionMode, section: SectionKind
+) -> bool:
     """Return whether ``section`` is the first interactive phase for a session mode.
 
     Args:

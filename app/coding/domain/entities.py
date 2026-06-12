@@ -200,9 +200,7 @@ class CodingSection:
         when = datetime.now(UTC)
         task_ids = tuple(task.id for task in planned_tasks)
         timer_start = (
-            when
-            if task_time_limit_seconds is not None and status == "active"
-            else None
+            when if task_time_limit_seconds is not None and status == "active" else None
         )
         tasks: list[CodingTask] = []
         for order, planned in enumerate(planned_tasks, start=1):

@@ -95,7 +95,6 @@ class TestTheorySectionDomain:
         assert section.tasks[0].started_at is not None
         assert section.tasks[1].started_at is None
 
-
     def test_start_defers_timer_when_not_first_task(self) -> None:
         """First task timer stays unset when the section is not active yet."""
         section = DomainTheorySection.start(
