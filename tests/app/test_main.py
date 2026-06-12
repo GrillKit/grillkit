@@ -19,7 +19,7 @@ class TestCreateApp:
         assert app is not None
         assert app.title == "GrillKit"
         assert app.description == "AI Interview Trainer"
-        assert app.version == "2026.5.31"
+        assert app.version == "2026.6.12"
 
     def test_static_files_mounted(self):
         """Test that static files are mounted."""
