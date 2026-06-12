@@ -54,6 +54,7 @@ class TheorySubmissionContext:
         question_code: Optional code snippet for the question.
         initial_question_text: Original question text (round 0).
         initial_answer_text: User's initial answer text (round 0).
+        expected_points: Rubric bullets for AI evaluation.
         locale: Section locale for AI and speech.
         answer_text: Text persisted on the task row (may be empty for audio).
     """
@@ -65,6 +66,7 @@ class TheorySubmissionContext:
     question_code: str | None
     initial_question_text: str
     initial_answer_text: str
+    expected_points: tuple[str, ...]
     locale: str
     answer_text: str
 
@@ -96,6 +98,7 @@ async def _evaluate_last_follow_up_in_background(
     answer_text: str,
     initial_question_text: str,
     initial_answer_text: str,
+    expected_points: tuple[str, ...],
     provider: AIProvider,
     locale: str,
     audio_wav: bytes | None = None,
@@ -111,6 +114,7 @@ async def _evaluate_last_follow_up_in_background(
         answer_text: The user's answer text (transcript when audio was submitted).
         initial_question_text: Original question text (round 0).
         initial_answer_text: User's initial answer text (round 0).
+        expected_points: Rubric bullets for AI evaluation.
         provider: AI provider for evaluation.
         locale: Locale for AI feedback.
         audio_wav: Optional spoken answer WAV for multimodal evaluation.
@@ -125,6 +129,7 @@ async def _evaluate_last_follow_up_in_background(
                 question_code=question_code,
                 initial_question_text=initial_question_text,
                 initial_answer_text=initial_answer_text,
+                expected_points=expected_points,
                 audio_wav=audio_wav,
             )
         else:
@@ -136,6 +141,7 @@ async def _evaluate_last_follow_up_in_background(
                 question_code=question_code,
                 initial_question_text=initial_question_text,
                 initial_answer_text=initial_answer_text,
+                expected_points=expected_points,
                 answer_text=answer_text,
             )
         TheoryEvaluationPersistenceService.persist_evaluation_only(
@@ -230,6 +236,7 @@ class TheorySubmissionService:
                     question_code=saved.question_code,
                     initial_question_text=initial_question_text,
                     initial_answer_text=initial_answer_text,
+                    expected_points=saved.expected_points,
                     locale=updated.locale,
                     answer_text=answer_text,
                 )
@@ -306,6 +313,7 @@ class TheorySubmissionService:
                 answer_text=ctx.answer_text,
                 initial_question_text=ctx.initial_question_text,
                 initial_answer_text=ctx.initial_answer_text,
+                expected_points=ctx.expected_points,
                 provider=provider,
                 locale=ctx.locale,
                 audio_wav=audio_wav,
@@ -433,6 +441,7 @@ class TheorySubmissionService:
                 question_code=ctx.question_code,
                 initial_question_text=ctx.initial_question_text,
                 initial_answer_text=ctx.initial_answer_text,
+                expected_points=ctx.expected_points,
                 answer_text=ctx.answer_text,
             )
         )
@@ -537,6 +546,7 @@ class TheorySubmissionService:
                 question_code=ctx.question_code,
                 initial_question_text=ctx.initial_question_text,
                 initial_answer_text=ctx.initial_answer_text,
+                expected_points=ctx.expected_points,
                 audio_wav=wav_bytes,
             ),
             name=f"audio-eval-{interview_id}-{ctx.question_id}-r{ctx.round_num}",

@@ -49,11 +49,13 @@ class PlannedQuestion:
         id: Unique question identifier from the question bank.
         text: Localized question text shown to the user.
         code: Optional code snippet, or None when not applicable.
+        expected_points: Rubric bullets for AI evaluation.
     """
 
     id: str
     text: str
     code: str | None
+    expected_points: tuple[str, ...] = ()
 
 
 class InterviewSelectionHolder(Protocol):

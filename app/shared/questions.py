@@ -29,6 +29,7 @@ class Question:
         tags: List of topic tags.
         text: The question text.
         code: Optional code snippet (None if not applicable).
+        expected_points: Rubric bullets for AI evaluation.
     """
 
     id: str
@@ -37,6 +38,7 @@ class Question:
     tags: list[str]
     text: str
     code: str | None
+    expected_points: tuple[str, ...] = ()
 
 
 def _resolve_localized_string(
@@ -111,6 +113,10 @@ def load_category(
     questions = []
     for q in data.get("questions", []):
         qid = q["id"]
+        points_raw = q.get("expected_points", [])
+        if not isinstance(points_raw, list):
+            msg = f"Question {qid}: invalid expected_points"
+            raise ValueError(msg)
         questions.append(
             Question(
                 id=qid,
@@ -124,6 +130,7 @@ def load_category(
                     question_id=qid,
                 ),
                 code=q["question"].get("code"),
+                expected_points=tuple(str(point) for point in points_raw),
             )
         )
     return questions
