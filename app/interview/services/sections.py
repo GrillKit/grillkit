@@ -102,6 +102,20 @@ def phase_order_for_mode(session_mode: SessionMode) -> tuple[SectionKind, ...]:
     return ("coding", "theory")
 
 
+def is_first_user_facing_section(session_mode: SessionMode, section: SectionKind) -> bool:
+    """Return whether ``section`` is the first interactive phase for a session mode.
+
+    Args:
+        session_mode: Session mode from setup.
+        section: Section kind to check.
+
+    Returns:
+        True when ``section`` is the first entry in the mode phase order.
+    """
+    order = phase_order_for_mode(session_mode)
+    return bool(order) and order[0] == section
+
+
 def section_services() -> dict[SectionKind, SectionService]:
     """Return section service classes keyed by section kind.
 

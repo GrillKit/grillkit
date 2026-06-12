@@ -62,6 +62,73 @@ def _complete_theory_section(interview_id: str) -> None:
         uow.theory_sections.save_aggregate(replace(section, tasks=tasks))
 
 
+def test_pending_coding_section_does_not_start_timer_at_creation(
+    isolated_db, temp_questions_dir, monkeypatch
+) -> None:
+    """Pending coding sections defer the task timer until the coding phase begins."""
+    del temp_questions_dir
+    monkeypatch.setattr("random.shuffle", lambda items: None)
+
+    interview = SessionCreationService.create_session(
+        _theory_then_coding_session(),
+        locale="en",
+    )
+
+    with CodingUnitOfWork() as uow:
+        section = uow.coding_sections.get_aggregate(interview.id)
+    assert section is not None
+    assert section.status == "pending"
+    assert section.tasks[0].started_at is None
+
+
+def test_coding_then_theory_defers_theory_timer_until_theory_phase(
+    isolated_db, temp_questions_dir, monkeypatch
+) -> None:
+    """Theory timers start only after the coding phase when theory comes second."""
+    del temp_questions_dir
+    monkeypatch.setattr("random.shuffle", lambda items: None)
+
+    session = SessionSelection(
+        session_mode="coding_then_theory",
+        theory=SectionBranchSpec(
+            enabled=True,
+            question_count=1,
+            task_time_limit_seconds=120,
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("data-structures",),
+                ),
+            ),
+        ),
+        coding=SectionBranchSpec(
+            enabled=True,
+            question_count=1,
+            task_time_limit_seconds=600,
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            ),
+        ),
+    )
+    interview = SessionCreationService.create_session(session, locale="en")
+
+    with TheoryUnitOfWork() as uow:
+        theory = uow.theory_sections.get_aggregate(interview.id)
+    assert theory is not None
+    assert theory.tasks[0].started_at is None
+
+    with CodingUnitOfWork() as uow:
+        coding = uow.coding_sections.get_aggregate(interview.id)
+    assert coding is not None
+    assert coding.status == "active"
+    assert coding.tasks[0].started_at is not None
+
+
 def test_activate_pending_promotes_coding_after_theory_complete(
     isolated_db, temp_questions_dir, monkeypatch
 ) -> None:

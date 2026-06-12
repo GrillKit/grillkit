@@ -114,6 +114,7 @@ class TheoryEvaluationPersistenceService:
         """
         next_question_data: dict[str, Any] | None = None
         timer_remaining: int | None = None
+        follow_up_answer_id: int | None = None
 
         with TheoryUnitOfWork(auto_commit=True) as uow:
             section = uow.theory_sections.get_aggregate(interview_id)
@@ -142,6 +143,7 @@ class TheoryEvaluationPersistenceService:
                 if reloaded is None:
                     raise TheorySectionNotFoundError(interview_id)
                 follow_up = reloaded.find_task(question_id, follow_up_round)
+                follow_up_answer_id = follow_up.id
                 timed = reloaded.start_timer_for_task(follow_up.id)
                 uow.theory_sections.save_aggregate(timed)
                 activated = next(
@@ -168,4 +170,5 @@ class TheoryEvaluationPersistenceService:
             follow_up_text=follow_up_text,
             next_question=next_question_data,
             timer_remaining_seconds=timer_remaining,
+            follow_up_answer_id=follow_up_answer_id,
         )

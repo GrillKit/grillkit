@@ -290,6 +290,10 @@ a:hover {
     white-space: nowrap;
 }
 
+.btn[hidden] {
+    display: none !important;
+}
+
 .btn:focus {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
@@ -732,6 +736,26 @@ textarea.form-control {
     font-style: italic;
 }
 
+.meta-list .interview-timer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.interview-timer-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.interview-timer-display {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
 .interview-timer-display.timer-warning {
     color: var(--warning, #b45309);
     font-weight: 600;
@@ -843,6 +867,38 @@ textarea.form-control {
 
 .composer-footer .btn-question-voice {
     flex-shrink: 0;
+}
+
+.question-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.question-bubble-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.question-bubble-header strong {
+    display: inline;
+    margin-bottom: 0;
+}
+
+.btn-question-play {
+    flex-shrink: 0;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.btn-question-play.is-playing {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
 }
 
 .composer-footer .btn-primary {

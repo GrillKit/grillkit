@@ -70,8 +70,8 @@
                 {% endif %}
                 <dt>Status</dt>
                 <dd><span id="interview-status">{{ interview.status | capitalize }}</span></dd>
-                <dt id="interview-timer-label"{% if not question_timer_enabled %} hidden{% endif %}>Timer</dt>
-                <dd id="interview-timer-row"{% if not question_timer_enabled %} hidden{% endif %}>
+                <dd id="interview-timer-row" class="interview-timer"{% if not question_timer_enabled %} hidden{% endif %}>
+                    <span class="interview-timer-label">Timer</span>
                     <span id="interview-timer" class="interview-timer-display">—</span>
                 </dd>
             </dl>
@@ -85,18 +85,32 @@
         </div>
     </aside>
 
-    <section class="interview-chat-panel" id="theory-panel"{% if not show_theory_panel %} hidden{% endif %}>
+    <section class="interview-chat-panel" id="theory-panel"{% if not show_theory_panel %} hidden{% endif %}
+             data-interview-id="{{ interview.id }}"
+             {% if question_voice_enabled %}data-question-voice-enabled="true"{% endif %}>
         <div class="interview-chat" id="chat-container">
             {% for answer in answers %}
             {% if answer.answer_text is not none or (current_question and answer.id == current_question.id) %}
-            <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
+            <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}" data-answer-id="{{ answer.id }}">
                 <div class="chat-bubble question-bubble">
-                    <strong>Q{{ answer.order }}:</strong>
-                    {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
-                    {{ answer.question_text }}
-                    {% if answer.question_code %}
-                    <pre class="code-block"><code>{{ answer.question_code }}</code></pre>
-                    {% endif %}
+                    <div class="question-bubble-header">
+                        <span class="question-bubble-label">
+                            <strong>Q{{ answer.order }}:</strong>
+                            {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
+                        </span>
+                        {% if question_voice_enabled %}
+                        <button type="button" class="btn btn-sm btn-outline btn-question-play"
+                                data-answer-id="{{ answer.id }}"
+                                aria-label="Play question" title="Play question"
+                                aria-pressed="false">Play</button>
+                        {% endif %}
+                    </div>
+                    <div class="question-bubble-body">
+                        {{ answer.question_text }}
+                        {% if answer.question_code %}
+                        <pre class="code-block"><code>{{ answer.question_code }}</code></pre>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -214,12 +228,8 @@ window.grillkitCodingBootstrap = {
             window.grillkitQuestionTimer.stop();
         }
         const timerRow = document.getElementById("interview-timer-row");
-        const timerLabel = document.getElementById("interview-timer-label");
         if (timerRow) {
             timerRow.hidden = true;
-        }
-        if (timerLabel) {
-            timerLabel.hidden = true;
         }
     }
 
@@ -467,16 +477,62 @@ window.grillkitCodingBootstrap = {
         }
     }
 
+    function buildQuestionBubbleHtml(options) {
+        const order = options.order;
+        const round = options.round != null ? Number(options.round) : 0;
+        const questionText = options.question_text || "";
+        const questionCode = options.question_code;
+        const answerId = options.id;
+        let html = '<div class="chat-bubble question-bubble">';
+        html += '<div class="question-bubble-header">';
+        html += '<span class="question-bubble-label"><strong>Q' + order + ':</strong>';
+        if (round > 0) {
+            html += ' <em>(follow-up)</em>';
+        }
+        html += '</span>';
+        if (window.grillkitQuestionPlayButtonHtml && answerId) {
+            html += window.grillkitQuestionPlayButtonHtml(answerId);
+        }
+        html += '</div><div class="question-bubble-body">';
+        html += escapeHtml(questionText);
+        if (questionCode) {
+            html += '<pre class="code-block"><code>' + escapeHtml(questionCode) + '</code></pre>';
+        }
+        html += '</div></div>';
+        return html;
+    }
+
+    function appendQuestionMessage(options) {
+        const chatContainer = document.getElementById('chat-container');
+        if (!chatContainer) {
+            return null;
+        }
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message question';
+        messageDiv.setAttribute('data-question-id', options.question_id);
+        messageDiv.setAttribute('data-round', String(options.round != null ? options.round : 0));
+        if (options.id) {
+            messageDiv.setAttribute('data-answer-id', String(options.id));
+        }
+        messageDiv.innerHTML = buildQuestionBubbleHtml(options);
+        chatContainer.appendChild(messageDiv);
+        if (window.grillkitBindQuestionPlayButtons) {
+            window.grillkitBindQuestionPlayButtons(messageDiv);
+        }
+        return messageDiv;
+    }
+
     function showNextAfterFeedback(data) {
         const chatContainer = document.getElementById('chat-container');
 
         if (data.follow_up_question) {
-            const followUpDiv = document.createElement('div');
-            followUpDiv.className = 'chat-message question';
-            followUpDiv.setAttribute('data-question-id', data.question_id);
-            followUpDiv.setAttribute('data-round', String(data.round + 1));
-            followUpDiv.innerHTML = '<div class="chat-bubble question-bubble"><strong>Q' + data.order + ':</strong> <em>(follow-up)</em> ' + escapeHtml(data.follow_up_question) + '</div>';
-            chatContainer.appendChild(followUpDiv);
+            appendQuestionMessage({
+                question_id: data.question_id,
+                order: data.order,
+                round: data.round + 1,
+                question_text: data.follow_up_question,
+                id: data.follow_up_answer_id,
+            });
 
             currentQuestionId = data.question_id;
             currentRound = data.round + 1;
@@ -484,24 +540,13 @@ window.grillkitCodingBootstrap = {
             window.isSubmitting = false;
             enableForm(true);
             restartQuestionTimer(data.timer_remaining_seconds);
-            if (window.grillkitPlayQuestionAudio) {
-                window.grillkitPlayQuestionAudio();
+            if (window.grillkitPlayQuestionAudio && data.follow_up_answer_id) {
+                window.grillkitPlayQuestionAudio(data.follow_up_answer_id);
             }
         }
         else if (data.next_question) {
             const nq = data.next_question;
-            const nextQDiv = document.createElement('div');
-            nextQDiv.className = 'chat-message question';
-            nextQDiv.setAttribute('data-question-id', nq.question_id);
-            nextQDiv.setAttribute('data-round', String(nq.round != null ? nq.round : 0));
-            let qHtml = '<div class="chat-bubble question-bubble">';
-            qHtml += '<strong>Q' + nq.order + ':</strong> ' + escapeHtml(nq.question_text);
-            if (nq.question_code) {
-                qHtml += '<pre class="code-block"><code>' + escapeHtml(nq.question_code) + '</code></pre>';
-            }
-            qHtml += '</div>';
-            nextQDiv.innerHTML = qHtml;
-            chatContainer.appendChild(nextQDiv);
+            appendQuestionMessage(nq);
 
             currentQuestionId = nq.question_id;
             currentRound = nq.round != null ? nq.round : 0;
@@ -510,8 +555,8 @@ window.grillkitCodingBootstrap = {
             window.isSubmitting = false;
             enableForm(true);
             restartQuestionTimer(data.timer_remaining_seconds);
-            if (window.grillkitPlayQuestionAudio) {
-                window.grillkitPlayQuestionAudio();
+            if (window.grillkitPlayQuestionAudio && nq.id) {
+                window.grillkitPlayQuestionAudio(nq.id);
             }
         } else {
             updateProgressDisplay(null);
@@ -632,7 +677,7 @@ window.grillkitCodingBootstrap = {
 {% if audio_answer_enabled %}
 <script src="/static/js/interview_audio_answer.js?v={{ static_version('js/interview_audio_answer.js') }}"></script>
 {% endif %}
-{% if question_voice_enabled and interview.status == "active" and current_question and show_theory_panel %}
+{% if question_voice_enabled and interview.status == "active" and show_theory_panel %}
 <script src="/static/js/interview_voice.js?v={{ static_version('js/interview_voice.js') }}"></script>
 {% endif %}
 {% endblock %}

@@ -48,6 +48,7 @@ class AnswerFeedbackMessage(BaseModel):
     timed_out: bool = False
     feedback: str | None = None
     timer_remaining_seconds: int | None = None
+    follow_up_answer_id: int | None = None
 
 
 class InterviewCompletedMessage(BaseModel):
@@ -78,5 +79,7 @@ def server_message_to_dict(message: BaseModel) -> dict[str, Any]:
             payload.pop("feedback", None)
         if payload.get("timer_remaining_seconds") is None:
             payload.pop("timer_remaining_seconds", None)
+        if payload.get("follow_up_answer_id") is None:
+            payload.pop("follow_up_answer_id", None)
         return payload
     return message.model_dump(mode="json")

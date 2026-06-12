@@ -20,6 +20,7 @@ def next_task_payload(task: TheoryTask) -> dict[str, Any]:
         Dict with question fields for the client.
     """
     return {
+        "id": task.id,
         "question_id": task.question_id,
         "order": task.order,
         "question_text": task.question_text,

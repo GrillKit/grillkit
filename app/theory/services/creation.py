@@ -20,6 +20,7 @@ class TheorySectionCreationService:
         locale: str,
         question_count: int,
         task_time_limit_seconds: int | None,
+        start_first_task_timer: bool = True,
         uow: InterviewUnitOfWork,
     ) -> TheorySection:
         """Plan questions and persist a theory section with initial tasks.
@@ -30,6 +31,7 @@ class TheorySectionCreationService:
             locale: Locale for AI feedback and follow-ups.
             question_count: Number of questions for this section.
             task_time_limit_seconds: Per-round time limit, or None to disable.
+            start_first_task_timer: Whether to start the timer on the first task now.
             uow: Active interview unit of work sharing the persistence session.
 
         Returns:
@@ -48,5 +50,6 @@ class TheorySectionCreationService:
             locale=locale,
             planned_questions=theory_planned,
             task_time_limit_seconds=task_time_limit_seconds,
+            start_first_task_timer=start_first_task_timer,
         )
         return uow.theory_sections.create_aggregate(section)

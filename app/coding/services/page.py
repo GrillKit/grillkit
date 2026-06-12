@@ -48,7 +48,10 @@ class CodingPageService:
             completed_tasks = sum(
                 1 for task in section.tasks if task.submitted_code is not None
             )
-            task_timer_enabled = section.task_time_limit_seconds is not None
+            task_timer_enabled = (
+                section.task_time_limit_seconds is not None
+                and section.status == "active"
+            )
             timer_remaining = (
                 current.remaining_seconds(section.task_time_limit_seconds)
                 if task_timer_enabled and current is not None

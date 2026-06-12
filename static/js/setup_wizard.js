@@ -2,6 +2,7 @@
     "use strict";
 
     const STORAGE_KEY = "grillkit_setup_wizard";
+    const SUBMITTED_KEY = "grillkit_setup_wizard_submitted";
 
     const SESSION_MODE_LABELS = {
         theory_only: "Theory only",
@@ -472,6 +473,38 @@
         }
     }
 
+    function clearWizardState() {
+        try {
+            sessionStorage.removeItem(STORAGE_KEY);
+        } catch (_error) {
+            /* ignore quota errors */
+        }
+    }
+
+    function markWizardSubmitted() {
+        try {
+            sessionStorage.setItem(SUBMITTED_KEY, "1");
+        } catch (_error) {
+            /* ignore quota errors */
+        }
+    }
+
+    function clearWizardSubmitted() {
+        try {
+            sessionStorage.removeItem(SUBMITTED_KEY);
+        } catch (_error) {
+            /* ignore quota errors */
+        }
+    }
+
+    function wasWizardSubmitted() {
+        try {
+            return sessionStorage.getItem(SUBMITTED_KEY) === "1";
+        } catch (_error) {
+            return false;
+        }
+    }
+
     async function restoreBranchState(prefix, tracks, enableClass, levelClass, topicClass, loadTopics) {
         for (const block of document.querySelectorAll("." + prefix + "-track-block")) {
             const track = block.dataset.track;
@@ -739,6 +772,7 @@
             }
             selectionInput.value = JSON.stringify(selection);
             saveWizardState();
+            markWizardSubmitted();
         });
     }
 
@@ -748,7 +782,16 @@
         syncTimerFields();
         syncCodingTimerFields();
 
-        const restored = await restoreWizardState();
+        let restored = false;
+        if (hasServerError) {
+            clearWizardSubmitted();
+            restored = await restoreWizardState();
+        } else if (wasWizardSubmitted()) {
+            clearWizardSubmitted();
+            clearWizardState();
+        } else {
+            restored = await restoreWizardState();
+        }
         let startStep = initialStep;
         if (restored && hasServerError) {
             startStep = "review";

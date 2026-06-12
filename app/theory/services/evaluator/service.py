@@ -9,7 +9,10 @@ from pydantic import BaseModel
 from app.ai.base import AIProvider, Message
 from app.shared.evaluation_models import InterviewEvaluation, SectionEvaluation
 from app.shared.locales import DEFAULT_LOCALE
-from app.shared.structured_evaluation import evaluate_with_schema
+from app.shared.structured_evaluation import (
+    evaluate_with_schema,
+    generate_and_parse_json_response,
+)
 from app.theory.services.evaluator.models import (
     AnswerEvaluation,
     FollowUpEvaluation,
@@ -21,7 +24,6 @@ from app.theory.services.evaluator.prompts import (
     SESSION_EVALUATION_INSTRUCTIONS,
     build_evaluator_instructions,
     looks_like_json_schema_fragment,
-    parse_json_response,
 )
 
 __all__ = [
@@ -69,7 +71,7 @@ class TheoryEvaluatorService:
         response_model: type[T],
         user_text: str,
         audio_wav: bytes | None = None,
-        max_tokens: int = 1000,
+        max_tokens: int = 2000,
     ) -> T:
         """Run a structured evaluation via text or multimodal generation.
 
@@ -400,7 +402,7 @@ class TheoryEvaluatorService:
             instructions=SECTION_EVALUATION_INSTRUCTIONS,
             response_model=SectionEvaluation,
             user_text=user_text,
-            max_tokens=1200,
+            max_tokens=2000,
         )
 
     @staticmethod
@@ -454,12 +456,9 @@ class TheoryEvaluatorService:
             Message(role="system", content=system_prompt),
             Message(role="user", content=user_text),
         ]
-        result = await provider.generate(
+        return await generate_and_parse_json_response(
+            provider,
             messages=messages,
-            temperature=0.3,
+            response_model=InterviewEvaluation,
             max_tokens=2000,
         )
-        content = result.content.strip()
-        if not content:
-            raise ValueError("AI returned empty response")
-        return parse_json_response(content, InterviewEvaluation)

@@ -91,7 +91,11 @@ def test_websocket_answer_runs_full_processing_pipeline(
     assert feedback["round"] == 0
     assert feedback["timed_out"] is False
     assert feedback["follow_up_question"] is None
+    reloaded = InterviewQuery.get_interview(interview_id)
+    assert reloaded is not None
+    answer2 = next(a for a in reloaded.answers if a.question_id == "q2")
     assert feedback["next_question"] == {
+        "id": answer2.id,
         "question_id": "q2",
         "order": 2,
         "question_text": "Question two?",
@@ -99,8 +103,6 @@ def test_websocket_answer_runs_full_processing_pipeline(
         "round": 0,
     }
 
-    reloaded = InterviewQuery.get_interview(interview_id)
-    assert reloaded is not None
     answer = next(a for a in reloaded.answers if a.question_id == "q1")
     assert answer.answer_text == "My structured answer."
     assert answer.score == 4

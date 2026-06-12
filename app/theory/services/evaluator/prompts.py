@@ -185,6 +185,8 @@ def build_prompt_with_schema(instructions: str, model_class: type[BaseModel]) ->
         '"required", "description", "$schema", or property-definition objects.\n\n'
         f"Required response shape (for reference — fill with data, do not echo):\n"
         f"{schema_str}\n\n"
+        "Keep string fields concise so the JSON fits in one response "
+        "(feedback at most 4 sentences; follow-up questions one sentence).\n"
         "Return ONLY one valid JSON object, no markdown fences, no extra text."
     )
 
