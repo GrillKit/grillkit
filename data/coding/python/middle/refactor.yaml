@@ -78,3 +78,69 @@ tasks:
       - "Type hints on public methods"
       - "Docstrings describe return semantics"
       - "PEP 8 spacing after commas and around operators"
+
+  - id: "rf-list-comp-002"
+    difficulty: 2
+    tags: ["list-comprehension", "idioms"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `square_evens` builds a result list with append in a loop. A list comprehension
+          is shorter and idiomatic for simple filters and transforms.
+
+          Your task:
+          Rewrite the function body as a single list comprehension. Keep the same behavior:
+          return squares of even numbers only.
+        ru: |
+          Контекст:
+          `square_evens` собирает результат через append в цикле.
+
+          Задача:
+          Перепишите тело функции одним list comprehension. Квадраты только чётных чисел.
+      starter_code: |
+        def square_evens(numbers):
+            result = []
+            for n in numbers:
+                if n % 2 == 0:
+                    result.append(n * n)
+            return result
+
+
+        print(square_evens([1, 2, 3, 4, 5, 6]))
+    expected_points:
+      - "Single list comprehension with filter for even n"
+      - "Same output as loop version"
+
+  - id: "rf-with-open-003"
+    difficulty: 2
+    tags: ["context-managers", "files"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `read_config` opens a file and closes it manually. If `read()` raises,
+          the handle may leak.
+
+          Your task:
+          Refactor to use `with open(...) as f`. Preserve the return value (file contents).
+        ru: |
+          Контекст:
+          `read_config` закрывает файл вручную — при ошибке чтения возможна утечка дескриптора.
+
+          Задача:
+          Перепишите на `with open(...) as f`. Возвращайте содержимое файла как раньше.
+      starter_code: |
+        def read_config(path):
+            f = open(path, "r")
+            data = f.read()
+            f.close()
+            return data
+    expected_points:
+      - "Uses with open for reading"
+      - "Returns full file contents"
+      - "No manual close after refactor"

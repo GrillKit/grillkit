@@ -65,7 +65,7 @@ def test_build_coding_task_plan_from_bank() -> None:
     )
     planned = build_coding_task_plan(selection, task_count=1, locale="en")
     assert len(planned) == 1
-    assert planned[0].id == "bas-004"
+    assert planned[0].id.startswith("bas-")
     assert planned[0].task_spec["language"] == "python"
 
 

@@ -55,3 +55,83 @@ tasks:
       - "set removes old queue entry before re-appending on update"
       - "eviction uses popleft on order and deletes key from data"
       - "FIFO semantics preserved after updates and inserts"
+
+  - id: "cc-freq-002"
+    difficulty: 2
+    tags: ["dict", "counting", "collections"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `top_n` should return the `n` most frequent items from a list as `(item, count)` pairs,
+          sorted by count descending.
+
+          Your task:
+          Complete `top_n`: build frequencies, then return the top `n` pairs.
+          You may use `sorted` with a key; ties can be broken arbitrarily.
+        ru: |
+          Контекст:
+          `top_n` возвращает `n` самых частых элементов как пары `(элемент, счётчик)`.
+
+          Задача:
+          Допишите `top_n`: посчитайте частоты, верните топ-`n` по убыванию счётчика.
+      starter_code: |
+        def top_n(items, n):
+            counts = {}
+            for item in items:
+                counts[item] = counts.get(item, 0) + 1
+            # return n most common (item, count) pairs
+            pass
+
+
+        print(top_n(["a", "b", "a", "c", "a", "b"], 2))
+    expected_points:
+      - "Builds frequency dict correctly"
+      - "Returns up to n pairs sorted by count descending"
+
+  - id: "cc-context-003"
+    difficulty: 3
+    tags: ["context-managers", "dunder"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `Timer` is a context manager skeleton. It should record elapsed wall time
+          between entering and exiting the block.
+
+          Your task:
+          Implement `__enter__` and `__exit__` so that after the `with` block,
+          `timer.elapsed` holds the duration in seconds (float).
+        ru: |
+          Контекст:
+          `Timer` — заготовка контекстного менеджера для замера времени блока.
+
+          Задача:
+          Реализуйте `__enter__` и `__exit__`: после `with` в `timer.elapsed` — длительность в секундах.
+      starter_code: |
+        import time
+
+
+        class Timer:
+            def __init__(self):
+                self.elapsed = 0.0
+
+            def __enter__(self):
+                pass
+
+            def __exit__(self, exc_type, exc, tb):
+                pass
+
+
+        with Timer() as timer:
+            time.sleep(0.01)
+
+        print(timer.elapsed > 0)
+    expected_points:
+      - "__enter__ records start time"
+      - "__exit__ sets elapsed from monotonic or perf counter"
+      - "elapsed is positive after block"

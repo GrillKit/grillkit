@@ -5,6 +5,72 @@ level: "junior"
 description: "Python string operations, formatting, and manipulation"
 
 tasks:
+  - id: "str-001"
+    difficulty: 1
+    tags: ["split", "strip", "parsing"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          A log line stores key-value pairs separated by commas (`key=value`).
+          The parser must extract the value for a given key.
+
+          Your task:
+          Complete `parse_value` so it splits the line, strips whitespace, and returns
+          the value for `key`, or `None` if the key is absent.
+        ru: |
+          Контекст:
+          Строка лога содержит пары `key=value` через запятую.
+
+          Задача:
+          Допишите `parse_value`: разбейте строку, уберите пробелы, верните значение для `key`
+          или `None`, если ключа нет.
+      starter_code: |
+        def parse_value(line, key):
+            # split by comma, then by '=', strip parts
+            pass
+
+
+        line = "user=alice, role=admin, active=true"
+        print(parse_value(line, "role"))
+        print(parse_value(line, "missing"))
+    expected_points:
+      - "Splits on comma and equals with strip"
+      - "Returns correct value for existing key"
+      - "Returns None when key is missing"
+
+  - id: "str-002"
+    difficulty: 1
+    tags: ["case", "normalization"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          User emails are compared case-sensitively, so `"User@Mail.com"` and
+          `"user@mail.com"` are treated as different accounts.
+
+          Your task:
+          Normalize both emails with `.lower()` before comparison in `emails_match`.
+        ru: |
+          Контекст:
+          Email сравниваются с учётом регистра — дубликаты не находятся.
+
+          Задача:
+          Нормализуйте оба email через `.lower()` в `emails_match` перед сравнением.
+      starter_code: |
+        def emails_match(a, b):
+            return a == b
+
+
+        print(emails_match("User@Mail.com", "user@mail.com"))
+    expected_points:
+      - "Calls .lower() on both operands before =="
+      - "Returns True for case-insensitive match"
+
   - id: "str-004"
     difficulty: 2
     tags: ["join", "split", "concatenation"]

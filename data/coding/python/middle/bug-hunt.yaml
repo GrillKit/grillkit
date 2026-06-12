@@ -47,3 +47,69 @@ tasks:
       - "Non-numeric lines cause ValueError without handling"
       - "Fix skips blank lines and catches ValueError per line"
       - "Negative numbers are ignored as required"
+
+  - id: "bh-mutable-default-002"
+    difficulty: 2
+    tags: ["mutable-default", "functions"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `add_item` uses a mutable list as a default argument. Repeated calls share
+          the same list, which surprises callers.
+
+          Your task:
+          1. Explain the bug (in a comment at the top of the file).
+          2. Fix `add_item` so each call without `items` gets a fresh empty list.
+        ru: |
+          Контекст:
+          `add_item` использует изменяемый список по умолчанию — вызовы делят один список.
+
+          Задача:
+          1. Опишите баг в комментарии в начале файла.
+          2. Исправьте `add_item`: без `items` каждый вызов получает новый пустой список.
+      starter_code: |
+        def add_item(value, items=[]):
+            items.append(value)
+            return items
+
+
+        print(add_item("a"))
+        print(add_item("b"))
+    expected_points:
+      - "Comment describes shared mutable default"
+      - "Uses None sentinel and items = items or [] (or equivalent)"
+      - "Second call without items does not contain first call's value"
+
+  - id: "bh-string-is-003"
+    difficulty: 2
+    tags: ["identity", "strings", "comparison"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `is_admin_role` compares role strings with `is`. String content should be
+          compared with `==`, not identity.
+
+          Your task:
+          Fix the comparison so `"admin"` matches regardless of how the string was created.
+        ru: |
+          Контекст:
+          `is_admin_role` сравнивает строки через `is` вместо сравнения значений.
+
+          Задача:
+          Исправьте сравнение: роль `"admin"` должна определяться по содержимому.
+      starter_code: |
+        def is_admin_role(role):
+            return role is "admin"
+
+
+        user_input = "admin"
+        print(is_admin_role(user_input))
+    expected_points:
+      - "Uses == for string equality"
+      - "Returns True for role equal to admin"

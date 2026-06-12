@@ -2,9 +2,9 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-2026.5.31-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.6.12-blue.svg)](CHANGELOG.md)
 
-Open-source AI technical interview trainer. Practice from curated YAML question banks, get structured scoring and follow-ups, and optionally use voice — with your own LLM (cloud or local).
+Open-source AI technical interview trainer. Practice **theory Q&A**, **live coding**, or **both in one session** from curated YAML banks — with structured scoring, follow-ups, optional voice, and a local results history. Bring your own LLM (cloud or local).
 
 [Why GrillKit](#why-grillkit-not-just-chatgpt) · [Quick start](#quick-start) · [Changelog](CHANGELOG.md) · [Architecture](ARCHITECTURE.md)
 
@@ -15,9 +15,10 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 | What you need | ChatGPT-style chat | GrillKit |
 |---------------|-------------------|----------|
 | Curated technical questions | You prompt each time | Built-in **tracks** (Python, Kafka, System Design, …), **levels**, and **topics** |
-| Interview flow | Free-form thread | Fixed session: N questions, up to **2 AI follow-ups** per question, **1–5 scoring**, session summary |
-| Practice history | Scattered chats | **Dashboard** with past sessions stored locally |
-| Time pressure | None | Optional **per-round timer** (expired round → 0, move on) |
+| Interview flow | Free-form thread | Fixed session: theory Q&A and/or coding tasks, up to **2 AI follow-ups** per item, **1–5 scoring**, session summary |
+| Live coding practice | Paste code in chat | **Monaco editor**, **Run** against public tests, **Submit** for hidden tests + AI review (needs Judge0) |
+| Practice history | Scattered chats | **Dashboard** with past sessions; open **results** and per-section **review** pages after completion |
+| Time pressure | None | Optional **per-round timer** on theory and coding (expired round → 0, move on) |
 | Voice practice | Depends on product | Offline **Whisper** dictation; optional **Piper** question audio; **audio answers** when your model supports it |
 | Where data lives | Vendor cloud | **Self-hosted**: SQLite + `data/` on your machine; use **Ollama**, vLLM, or any OpenAI-compatible API |
 
@@ -45,7 +46,13 @@ A general chat assistant is flexible, but it does not run an **interview** for y
   <img src="./assets/interview-setup.png" alt="Interview setup" width="900" />
 </p>
 
-**Interview session** — real-time Q&A with AI scoring and final evaluation
+**Coding section** — Monaco editor, Run on public tests, Submit for AI evaluation
+
+<p align="center">
+  <img src="./assets/coding.png" alt="Coding interview session" width="900" />
+</p>
+
+**Theory section** — real-time Q&A with AI scoring and final evaluation
 
 <p align="center">
   <img src="./assets/interview-session.png" alt="Completed interview with evaluation" width="900" />
@@ -53,13 +60,30 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 
 ## Features
 
-- **Interviews** — multi-track setup, several topics per session, WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
-- **Question banks** — Python, Database/SQL, System Design, Kafka, RabbitMQ, Docker, Kubernetes, Observability, Airflow, and more under `data/questions/{track}/` (junior / middle / senior where applicable)
-- **Timer** — optional per-round time limit; expired rounds score 0 and the session moves on
-- **Voice** — offline Whisper dictation for typed answers; optional Piper TTS to read questions aloud
-- **Audio answers** — when the configured model supports audio input and Whisper is ready, record and send a WAV answer from the interview page
-- **Setup** — model catalog on `/config`, interview locale (AI feedback language), Whisper/Piper downloads from the UI
-- **Dashboard** — recent interview history on the home page
+### Session modes
+
+Pick one mode on **New interview** (`/setup`):
+
+| Mode | What you practice |
+|------|-------------------|
+| **Theory only** | Technical Q&A from `data/questions/` — type, dictate, or record answers |
+| **Coding only** | Programming tasks from `data/coding/` — edit, Run, Submit |
+| **Theory then coding** | Q&A first, then coding panel when theory finishes |
+| **Coding then theory** | Coding first, then theory |
+
+Coding modes need a running [Judge0](https://github.com/judge0/judge0) instance (see **Coding sessions** below).
+
+### Practice tools
+
+- **Theory** — WebSocket Q&A, AI scoring 1–5, up to 2 follow-ups per question
+- **Coding** — Monaco editor, Run (`POST /coding/run`) on public tests, Submit (`WS /coding/ws`) with hidden tests and AI feedback
+- **Question banks** — Python, Database/SQL, System Design, Kafka, RabbitMQ, Docker, Kubernetes, Observability, Airflow, and more (junior / middle / senior where applicable)
+- **Timer** — optional per-round limit on theory and coding; expired rounds score 0 and the session moves on
+- **Voice** — offline Whisper dictation; optional Piper TTS to read theory questions aloud
+- **Audio answers** — record a WAV theory answer when your model supports audio input and Whisper is ready
+- **Results hub** — after you finish, `/interview/{id}/results` shows overall evaluation and links to **theory** and **coding** review pages with full chat/code history
+- **Dashboard** — recent sessions on the home page (completed sessions link to results)
+- **Setup** — model catalog on `/config`, interview locale, Whisper/Piper downloads from the UI
 - **Deployment** — Docker Compose on port 8000 with `./data` volume for config, DB, and models
 
 ## Quick start
@@ -106,9 +130,10 @@ On some Linux hosts Judge0 needs **cgroup v1** (`systemd.unified_cgroup_hierarch
 
 ### First-time flow
 
-1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save.
-2. **New interview** (`/setup`) — pick a **session mode** (theory only, coding only, or combined). Configure theory and/or coding tracks, topics, task counts, and per-task timers. Coding modes require Judge0 (see **Coding sessions** above).
-3. **Interview** (`/interview/{id}`) — theory answers over `WS /theory/ws`; coding uses Monaco + Run (`POST /coding/run`) and Submit (`WS /coding/ws`). End interview from the sidebar at any time.
+1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save. Download Whisper (and optionally a Piper voice) from the same page if you want voice features.
+2. **New interview** (`/setup`) — pick a **session mode** (theory only, coding only, or combined). Choose tracks, levels, topics, how many questions/tasks, and optional per-round timers. Coding modes require Judge0 (see **Coding sessions** above).
+3. **Practice** (`/interview/{id}`) — answer theory questions in the chat (type, dictate, or record audio). On coding phases, use the editor: **Run** to check public tests, **Submit** when ready. Combined sessions switch panels automatically when a section ends (or use **Continue to Coding**). End the interview from the sidebar at any time.
+4. **Review** (`/interview/{id}/results`) — after completion, read the overall evaluation, then open **Theory** or **Coding** review for full conversation history, scores, and feedback.
 
 Without saved provider config, `/setup` redirects to `/config`.
 
@@ -168,8 +193,8 @@ Optional environment variables (full list in [ARCHITECTURE.md](ARCHITECTURE.md#p
 
 | Document | Contents |
 |----------|----------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, HTTP/WebSocket routes, data flows, persistence, question banks |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, tests, ruff/mypy/pytest, contribution workflow |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Feature modules, routes, data flows, persistence, test layout |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, quality checks, question/coding YAML guidelines |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Security

@@ -1,0 +1,76 @@
+category: "Collections"
+track: "python"
+level: "junior"
+
+description: "Lists, dicts, sets, and common collection operations"
+
+tasks:
+  - id: "col-001"
+    difficulty: 1
+    tags: ["set", "deduplication"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `unique_tags` removes duplicates manually with nested loops. That is slow
+          and harder to read than built-in tools.
+
+          Your task:
+          Rewrite `unique_tags` using `set` (preserve order is not required).
+          Return a list of unique tags.
+        ru: |
+          Контекст:
+          `unique_tags` убирает дубликаты вложенными циклами.
+
+          Задача:
+          Перепишите через `set`. Верните список уникальных тегов (порядок не важен).
+      starter_code: |
+        def unique_tags(tags):
+            result = []
+            for tag in tags:
+                if tag not in result:
+                    result.append(tag)
+            return result
+
+
+        print(unique_tags(["python", "web", "python", "api", "web"]))
+    expected_points:
+      - "Uses set for deduplication"
+      - "Returns list without duplicates"
+
+  - id: "col-002"
+    difficulty: 2
+    tags: ["dict", "get", "counting"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `count_words` should return how many times each word appears in a list.
+          The skeleton uses a plain dict.
+
+          Your task:
+          Complete the loop using `dict.get` (or `.setdefault`) to increment counts.
+          Return the frequency dictionary.
+        ru: |
+          Контекст:
+          `count_words` считает частоту слов в списке.
+
+          Задача:
+          Допишите цикл через `dict.get` (или `.setdefault`). Верните словарь частот.
+      starter_code: |
+        def count_words(words):
+            counts = {}
+            for word in words:
+                # increment counts[word]
+                pass
+            return counts
+
+
+        print(count_words(["a", "b", "a", "c", "b", "a"]))
+    expected_points:
+      - "Increments count with get/setdefault or equivalent"
+      - "Correct frequencies for repeated words"

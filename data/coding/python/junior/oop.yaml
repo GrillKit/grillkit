@@ -1,0 +1,77 @@
+category: "OOP"
+track: "python"
+level: "junior"
+
+description: "Classes, instances, methods, and basic object-oriented patterns"
+
+tasks:
+  - id: "oop-001"
+    difficulty: 2
+    tags: ["str", "repr", "dunder"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `Point` stores coordinates but printing an instance shows the default
+          `<Point object at 0x...>` representation.
+
+          Your task:
+          Add `__str__` so `print(Point(3, 4))` outputs `Point(x=3, y=4)`.
+        ru: |
+          Контекст:
+          У `Point` нет читаемого строкового представления.
+
+          Задача:
+          Добавьте `__str__`, чтобы `print(Point(3, 4))` выводил `Point(x=3, y=4)`.
+      starter_code: |
+        class Point:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+
+        p = Point(3, 4)
+        print(p)
+    expected_points:
+      - "Defines __str__ returning Point(x=..., y=...) format"
+      - "Uses self.x and self.y"
+
+  - id: "oop-002"
+    difficulty: 2
+    tags: ["methods", "encapsulation"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `BankAccount` stores a balance but allows direct mutation via `account.balance`.
+          Add a method to deposit money safely.
+
+          Your task:
+          Implement `deposit(amount)` that adds a positive amount to `balance`.
+          Raise `ValueError` when `amount` is zero or negative.
+        ru: |
+          Контекст:
+          `BankAccount` хранит баланс; нужен безопасный способ пополнения.
+
+          Задача:
+          Реализуйте `deposit(amount)`: прибавляет положительную сумму к `balance`.
+          При нуле или отрицательной сумме — `ValueError`.
+      starter_code: |
+        class BankAccount:
+            def __init__(self, balance=0):
+                self.balance = balance
+
+            def deposit(self, amount):
+                pass
+
+
+        account = BankAccount(100)
+        account.deposit(50)
+        print(account.balance)
+    expected_points:
+      - "Increases balance for positive amount"
+      - "Raises ValueError for zero or negative deposit"

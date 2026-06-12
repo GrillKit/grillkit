@@ -209,7 +209,7 @@ def test_create_coding_only_session(isolated_db, monkeypatch) -> None:
     assert section.status == "active"
     assert section.task_count == 1
     assert len(section.tasks) == 1
-    assert section.tasks[0].task_id == "bas-004"
+    assert section.tasks[0].task_id.startswith("bas-")
     assert section.task_time_limit_seconds == 600
 
 

@@ -5,6 +5,108 @@ level: "junior"
 description: "Core Python fundamentals: types, variables, operators, and language essentials"
 
 tasks:
+  - id: "bas-001"
+    difficulty: 1
+    tags: ["f-strings", "formatting"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          The greeting uses old-style `%` formatting. Modern Python code prefers f-strings
+          for readability.
+
+          Your task:
+          Rewrite the `greeting` assignment to use an f-string. Keep the same output.
+        ru: |
+          Контекст:
+          Приветствие собирается через `%`-форматирование.
+
+          Задача:
+          Перепишите присваивание `greeting` на f-string с тем же результатом.
+      starter_code: |
+        name = "Alice"
+        score = 95
+
+        greeting = "Hello, %s! Your score is %d." % (name, score)
+        print(greeting)
+    expected_points:
+      - "Uses f-string with name and score interpolated"
+      - "Same printed output as original"
+
+  - id: "bas-002"
+    difficulty: 1
+    tags: ["none", "identity", "comparison"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `find_user` checks for a missing user with `== None`. In Python, singletons
+          like `None` should be compared with `is` / `is not`.
+
+          Your task:
+          Fix the None check. Do not change behavior for valid users.
+        ru: |
+          Контекст:
+          `find_user` сравнивает результат с `None` через `==`.
+
+          Задача:
+          Исправьте проверку на `None` через `is` / `is not`. Поведение для найденных пользователей не меняйте.
+      starter_code: |
+        users = {"alice": "Alice", "bob": "Bob"}
+
+
+        def find_user(user_id):
+            return users.get(user_id)
+
+
+        result = find_user("charlie")
+        if result == None:
+            print("User not found")
+        else:
+            print(f"Found: {result}")
+    expected_points:
+      - "Uses `is None` or `is not None` instead of == None"
+      - "Same output for missing and existing users"
+
+  - id: "bas-003"
+    difficulty: 2
+    tags: ["truthiness", "conditionals"]
+    coding:
+      language: python
+      evaluation_mode: ai
+      assignment:
+        en: |
+          Context:
+          `is_valid` treats any truthy value as valid, so non-empty strings like `"0"`
+          pass even when they should not.
+
+          Your task:
+          Rewrite `is_valid` so only actual boolean `True` is accepted.
+          Use an explicit identity check against `True`.
+        ru: |
+          Контекст:
+          `is_valid` принимает любое truthy-значение, включая строку `"0"`.
+
+          Задача:
+          Перепишите `is_valid`: валидным считается только булев `True` (явная проверка идентичности).
+      starter_code: |
+        def is_valid(flag):
+            if flag:
+                return "ok"
+            return "invalid"
+
+
+        print(is_valid(True))
+        print(is_valid("0"))
+        print(is_valid(1))
+    expected_points:
+      - "Checks `flag is True` (or equivalent explicit boolean check)"
+      - "String \"0\" and integer 1 return invalid"
+
   - id: "bas-004"
     difficulty: 2
     tags: ["type-conversion", "type-hints"]

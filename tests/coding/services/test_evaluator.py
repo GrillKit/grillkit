@@ -48,3 +48,28 @@ async def test_evaluate_submission_uses_run_history_context() -> None:
     assert follow_up_needed is True
     assert follow_up_text == "Add type hints."
     assert follow_up_mode == "code"
+
+
+@pytest.mark.asyncio
+async def test_coding_evaluator_evaluate_section() -> None:
+    """Coding section evaluation returns parsed section narrative."""
+    from tests.fakes import FakeProvider, section_evaluation_json
+
+    provider = FakeProvider(
+        replies=[section_evaluation_json(section_feedback="Strong coding section.")]
+    )
+    result = await CodingEvaluatorService.evaluate_section(
+        provider=provider,
+        task_submissions=[
+            {
+                "task_id": "cod-001",
+                "round": 0,
+                "prompt_text": "Solve it.",
+                "submitted_code": "return 1",
+                "score": 4,
+            }
+        ],
+        sources_text="Python / junior: basics",
+        locale="en",
+    )
+    assert result.section_feedback == "Strong coding section."
