@@ -66,6 +66,27 @@ class CodingSectionRepository(SqlAlchemyRepository[CodingSection]):
             return None
         return coding_section_from_orm(orm_section)
 
+    def get_aggregates_by_interview_ids(
+        self, interview_ids: list[str]
+    ) -> dict[str, DomainCodingSection]:
+        """Load coding section aggregates for several interviews at once.
+
+        Args:
+            interview_ids: Parent interview UUIDs.
+
+        Returns:
+            Mapping of interview ID to domain aggregate for sections that exist.
+        """
+        if not interview_ids:
+            return {}
+        rows = (
+            self._session.query(CodingSection)
+            .options(selectinload(CodingSection.tasks))
+            .filter(CodingSection.interview_id.in_(interview_ids))
+            .all()
+        )
+        return {row.interview_id: coding_section_from_orm(row) for row in rows}
+
     def create_aggregate(self, section: DomainCodingSection) -> DomainCodingSection:
         """Insert a coding section and its task rows.
 

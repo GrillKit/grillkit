@@ -49,7 +49,7 @@ env/
 *.sqlite
 *.sqlite3
 data/config.json
-data/llm_models.json
+llm_models.json
 data/whisper-models/*
 !data/whisper-models/.gitkeep
 data/piper-voices/*

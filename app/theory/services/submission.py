@@ -32,11 +32,11 @@ from app.theory.domain.exceptions import (
     TaskTimerNotExpiredError,
     TheorySectionNotFoundError,
 )
-from app.theory.repositories.uow import TheoryUnitOfWork
 from app.theory.services.evaluation_persistence import (
     TheoryEvaluationPersistenceService,
 )
 from app.theory.services.evaluator.service import TheoryEvaluatorService
+from app.theory.services.navigation import TheoryNavigationService
 from app.theory.services.timer import TheoryTimerService
 
 logger = logging.getLogger(__name__)
@@ -69,23 +69,6 @@ class TheorySubmissionContext:
     answer_text: str
 
 
-def _ensure_interview_active(interview_id: str) -> None:
-    """Ensure the parent interview session accepts submissions.
-
-    Args:
-        interview_id: Parent interview UUID.
-
-    Raises:
-        InterviewNotFoundError: If the interview does not exist.
-        InterviewNotActiveError: If the interview is completed.
-    """
-    with InterviewUnitOfWork() as uow:
-        aggregate = uow.interviews.get_aggregate(interview_id)
-        if aggregate is None:
-            raise InterviewNotFoundError(interview_id)
-        aggregate.ensure_active()
-
-
 async def _evaluate_last_follow_up_in_background(
     *,
     interview_id: str,
@@ -101,6 +84,10 @@ async def _evaluate_last_follow_up_in_background(
     audio_wav: bytes | None = None,
 ) -> None:
     """Run AI evaluation for the last follow-up round and persist score only.
+
+    Uses a dedicated auto-commit unit of work because the request-scoped UoW may
+    already have committed navigation changes while this evaluation runs after the
+    client received the next question.
 
     Args:
         interview_id: The session UUID.
@@ -138,12 +125,13 @@ async def _evaluate_last_follow_up_in_background(
                 initial_answer_text=initial_answer_text,
                 answer_text=answer_text,
             )
-        TheoryEvaluationPersistenceService.persist_evaluation_only(
-            interview_id=interview_id,
-            question_id=question_id,
-            round_num=round_num,
-            evaluation=evaluation,
-        )
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            TheoryEvaluationPersistenceService(uow).persist_evaluation_only(
+                interview_id=interview_id,
+                question_id=question_id,
+                round_num=round_num,
+                evaluation=evaluation,
+            )
     except Exception:
         logger.exception(
             "Background evaluation failed for interview=%s question=%s round=%s",
@@ -155,6 +143,29 @@ async def _evaluate_last_follow_up_in_background(
 
 class TheorySubmissionService:
     """Orchestrates theory task submission, timeout handling, and event streaming."""
+
+    def __init__(
+        self,
+        uow: InterviewUnitOfWork,
+        *,
+        persistence: TheoryEvaluationPersistenceService | None = None,
+        navigation: TheoryNavigationService | None = None,
+        timer: TheoryTimerService | None = None,
+    ) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this submission workflow.
+            persistence: Optional evaluation persistence collaborator.
+            navigation: Optional navigation collaborator.
+            timer: Optional timer collaborator.
+        """
+        self._uow = uow
+        self._navigation = navigation or TheoryNavigationService(uow)
+        self._persistence = persistence or TheoryEvaluationPersistenceService(
+            uow, navigation=self._navigation
+        )
+        self._timer = timer or TheoryTimerService(uow, navigation=self._navigation)
 
     @staticmethod
     def require_audio_answer_enabled() -> None:
@@ -170,8 +181,35 @@ class TheorySubmissionService:
         if entry is None or not entry.accepts_audio_input:
             raise ValueError("Selected interview model does not accept audio input")
 
-    @staticmethod
+    def _ensure_interview_active(self, interview_id: str) -> None:
+        """Ensure the parent interview session accepts submissions.
+
+        Args:
+            interview_id: Parent interview UUID.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+            InterviewNotActiveError: If the interview is completed.
+        """
+        aggregate = self._uow.interviews.get_aggregate(interview_id)
+        if aggregate is None:
+            raise InterviewNotFoundError(interview_id)
+        aggregate.ensure_active()
+
+    def _commit_submission_workflow(self) -> None:
+        """Commit durable submission changes for the current request scope."""
+        self._uow.commit()
+
+    def _rollback_submission_workflow(self) -> None:
+        """Discard uncommitted submission changes after a workflow failure."""
+        self._uow.rollback()
+
+    def _release_submission_write_lock(self) -> None:
+        """Commit the opened answer row so long-running AI work does not hold SQLite."""
+        self._commit_submission_workflow()
+
     async def _open_submission(
+        self,
         interview_id: str,
         question_id: str,
         answer_text: str,
@@ -192,50 +230,50 @@ class TheorySubmissionService:
         timed_out_round: int | None = None
         submission: TheorySubmissionContext | None = None
 
-        _ensure_interview_active(interview_id)
+        self._ensure_interview_active(interview_id)
 
-        with TheoryUnitOfWork(auto_commit=True) as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                raise TheorySectionNotFoundError(interview_id)
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            raise TheorySectionNotFoundError(interview_id)
 
-            section.ensure_active()
-            current = section.find_unanswered_for_question(question_id)
-            round_num = current.round
-            limit = section.task_time_limit_seconds
+        section.ensure_active()
+        current = section.find_unanswered_for_question(question_id)
+        round_num = current.round
+        limit = section.task_time_limit_seconds
 
-            if limit and current.is_timer_expired(limit, grace_seconds=0):
-                timed_out_round = round_num
-            else:
-                updated = section.with_task_text(current.id, answer_text)
-                uow.theory_sections.save_aggregate(updated)
-                saved = next(task for task in updated.tasks if task.id == current.id)
+        if limit and current.is_timer_expired(limit, grace_seconds=0):
+            timed_out_round = round_num
+        else:
+            updated = section.with_task_text(current.id, answer_text)
+            self._uow.theory_sections.save_aggregate(updated)
+            self._uow.flush()
+            saved = next(task for task in updated.tasks if task.id == current.id)
 
-                initial_question_text = saved.question_text
-                initial_answer_text = ""
-                if round_num > 0:
-                    initial = next(
-                        task
-                        for task in updated.tasks
-                        if task.question_id == question_id and task.round == 0
-                    )
-                    initial_question_text = initial.question_text
-                    initial_answer_text = initial.answer_text or ""
-
-                submission = TheorySubmissionContext(
-                    question_id=question_id,
-                    round_num=round_num,
-                    order=saved.order,
-                    question_text=saved.question_text,
-                    question_code=saved.question_code,
-                    initial_question_text=initial_question_text,
-                    initial_answer_text=initial_answer_text,
-                    locale=updated.locale,
-                    answer_text=answer_text,
+            initial_question_text = saved.question_text
+            initial_answer_text = ""
+            if round_num > 0:
+                initial = next(
+                    task
+                    for task in updated.tasks
+                    if task.question_id == question_id and task.round == 0
                 )
+                initial_question_text = initial.question_text
+                initial_answer_text = initial.answer_text or ""
+
+            submission = TheorySubmissionContext(
+                question_id=question_id,
+                round_num=round_num,
+                order=saved.order,
+                question_text=saved.question_text,
+                question_code=saved.question_code,
+                initial_question_text=initial_question_text,
+                initial_answer_text=initial_answer_text,
+                locale=updated.locale,
+                answer_text=answer_text,
+            )
 
         if timed_out_round is not None:
-            async for event in TheorySubmissionService.stream_timeout_submission(
+            async for event in self.stream_timeout_submission(
                 interview_id=interview_id,
                 question_id=question_id,
                 round_num=timed_out_round,
@@ -246,8 +284,8 @@ class TheorySubmissionService:
         if submission is not None:
             yield submission
 
-    @staticmethod
     async def _transcribe_and_persist(
+        self,
         *,
         interview_id: str,
         question_id: str,
@@ -271,17 +309,17 @@ class TheorySubmissionService:
         """
         samples = wav_bytes_to_float32(wav_bytes)
         transcript = await transcriber.transcribe(samples, locale)
-        with TheoryUnitOfWork(auto_commit=True) as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                raise TheorySectionNotFoundError(interview_id)
-            current = section.find_task(question_id, round_num)
-            updated = section.with_task_text(current.id, transcript)
-            uow.theory_sections.save_aggregate(updated)
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            raise TheorySectionNotFoundError(interview_id)
+        current = section.find_task(question_id, round_num)
+        updated = section.with_task_text(current.id, transcript)
+        self._uow.theory_sections.save_aggregate(updated)
+        self._uow.flush()
         return transcript
 
-    @staticmethod
     def _schedule_last_follow_up_evaluation(
+        self,
         *,
         interview_id: str,
         ctx: TheorySubmissionContext,
@@ -289,6 +327,9 @@ class TheorySubmissionService:
         audio_wav: bytes | None = None,
     ) -> None:
         """Run last-round AI evaluation in the background.
+
+        The foreground workflow commits navigation first, then schedules this task
+        so score persistence does not race with the request-scoped unit of work.
 
         Args:
             interview_id: Interview UUID.
@@ -316,8 +357,8 @@ class TheorySubmissionService:
             ),
         )
 
-    @staticmethod
     async def stream_timeout_submission(
+        self,
         interview_id: str,
         question_id: str,
         round_num: int,
@@ -340,32 +381,49 @@ class TheorySubmissionService:
             TaskTimerNotExpiredError: If the deadline has not passed yet.
             UnansweredTaskNotFoundError: If the round is not open.
         """
-        _ensure_interview_active(interview_id)
+        try:
+            async for event in self._iter_timeout_submission(
+                interview_id=interview_id,
+                question_id=question_id,
+                round_num=round_num,
+            ):
+                yield event
+            self._commit_submission_workflow()
+        except Exception:
+            self._rollback_submission_workflow()
+            raise
 
-        with TheoryUnitOfWork() as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                raise TheorySectionNotFoundError(interview_id)
+    async def _iter_timeout_submission(
+        self,
+        interview_id: str,
+        question_id: str,
+        round_num: int,
+    ) -> AsyncIterator[InterviewEvent]:
+        self._ensure_interview_active(interview_id)
 
-            section.ensure_active()
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            raise TheorySectionNotFoundError(interview_id)
 
-            limit = section.task_time_limit_seconds
-            if not limit:
-                raise TaskTimerNotEnabledError(interview_id)
+        section.ensure_active()
 
-            current = section.find_task(question_id, round_num)
-            now = datetime.now(UTC)
+        limit = section.task_time_limit_seconds
+        if not limit:
+            raise TaskTimerNotEnabledError(interview_id)
 
-            if current.answer_text is not None:
-                return
+        current = section.find_task(question_id, round_num)
+        now = datetime.now(UTC)
 
-            if not current.client_timeout_due(limit, now):
-                raise TaskTimerNotExpiredError(interview_id, question_id)
+        if current.answer_text is not None:
+            return
 
-            order = current.order
-            locale = section.locale
+        if not current.client_timeout_due(limit, now):
+            raise TaskTimerNotExpiredError(interview_id, question_id)
 
-        yield TheoryTimerService.persist_timed_out_round(
+        order = current.order
+        locale = section.locale
+
+        yield self._timer.persist_timed_out_round(
             interview_id=interview_id,
             question_id=question_id,
             round_num=round_num,
@@ -373,8 +431,8 @@ class TheorySubmissionService:
             locale=locale,
         )
 
-    @staticmethod
     async def stream_answer_submission(
+        self,
         interview_id: str,
         question_id: str,
         answer_text: str,
@@ -391,10 +449,28 @@ class TheorySubmissionService:
         Yields:
             Semantic events for WebSocket delivery in order.
         """
+        try:
+            async for event in self._iter_answer_submission(
+                interview_id=interview_id,
+                question_id=question_id,
+                answer_text=answer_text,
+                provider=provider,
+            ):
+                yield event
+            self._commit_submission_workflow()
+        except Exception:
+            self._rollback_submission_workflow()
+            raise
+
+    async def _iter_answer_submission(
+        self,
+        interview_id: str,
+        question_id: str,
+        answer_text: str,
+        provider: AIProvider,
+    ) -> AsyncIterator[InterviewEvent]:
         ctx: TheorySubmissionContext | None = None
-        async for item in TheorySubmissionService._open_submission(
-            interview_id, question_id, answer_text
-        ):
+        async for item in self._open_submission(interview_id, question_id, answer_text):
             if isinstance(item, TheorySubmissionContext):
                 ctx = item
                 break
@@ -402,15 +478,18 @@ class TheorySubmissionService:
         if ctx is None:
             return
 
+        self._release_submission_write_lock()
+
         if ctx.round_num >= TheoryEvaluatorService.MAX_FOLLOW_UP_DEPTH:
             yield AnswerSavedEvent()
-            yield TheoryEvaluationPersistenceService.advance_without_evaluation(
+            yield self._persistence.advance_without_evaluation(
                 interview_id=interview_id,
                 question_id=ctx.question_id,
                 round_num=ctx.round_num,
                 order=ctx.order,
             )
-            TheorySubmissionService._schedule_last_follow_up_evaluation(
+            self._release_submission_write_lock()
+            self._schedule_last_follow_up_evaluation(
                 interview_id=interview_id,
                 ctx=ctx,
                 provider=provider,
@@ -437,7 +516,7 @@ class TheorySubmissionService:
             )
         )
 
-        yield TheoryEvaluationPersistenceService.persist(
+        yield self._persistence.persist(
             interview_id=interview_id,
             question_id=ctx.question_id,
             round_num=ctx.round_num,
@@ -447,8 +526,8 @@ class TheorySubmissionService:
             follow_up_text=follow_up_text,
         )
 
-    @staticmethod
     async def stream_audio_answer_submission(
+        self,
         interview_id: str,
         question_id: str,
         wav_bytes: bytes,
@@ -467,13 +546,33 @@ class TheorySubmissionService:
         Yields:
             Semantic events for HTTP NDJSON or WebSocket delivery.
         """
-        TheorySubmissionService.require_audio_answer_enabled()
+        try:
+            async for event in self._iter_audio_answer_submission(
+                interview_id=interview_id,
+                question_id=question_id,
+                wav_bytes=wav_bytes,
+                provider=provider,
+                transcriber=transcriber,
+            ):
+                yield event
+            self._commit_submission_workflow()
+        except Exception:
+            self._rollback_submission_workflow()
+            raise
+
+    async def _iter_audio_answer_submission(
+        self,
+        interview_id: str,
+        question_id: str,
+        wav_bytes: bytes,
+        provider: AIProvider,
+        transcriber: SpeechTranscriber,
+    ) -> AsyncIterator[InterviewEvent]:
+        self.require_audio_answer_enabled()
         validate_wav_bytes(wav_bytes)
 
         ctx: TheorySubmissionContext | None = None
-        async for item in TheorySubmissionService._open_submission(
-            interview_id, question_id, ""
-        ):
+        async for item in self._open_submission(interview_id, question_id, ""):
             if isinstance(item, TheorySubmissionContext):
                 ctx = item
                 break
@@ -481,17 +580,20 @@ class TheorySubmissionService:
         if ctx is None:
             return
 
+        self._release_submission_write_lock()
+
         yield AnswerSavedEvent()
 
         if ctx.round_num >= TheoryEvaluatorService.MAX_FOLLOW_UP_DEPTH:
-            yield TheoryEvaluationPersistenceService.advance_without_evaluation(
+            yield self._persistence.advance_without_evaluation(
                 interview_id=interview_id,
                 question_id=ctx.question_id,
                 round_num=ctx.round_num,
                 order=ctx.order,
             )
+            self._release_submission_write_lock()
             transcript_task = asyncio.create_task(
-                TheorySubmissionService._transcribe_and_persist(
+                self._transcribe_and_persist(
                     interview_id=interview_id,
                     question_id=ctx.question_id,
                     round_num=ctx.round_num,
@@ -501,7 +603,7 @@ class TheorySubmissionService:
                 ),
                 name=f"audio-transcript-{interview_id}-{ctx.question_id}-r{ctx.round_num}",
             )
-            TheorySubmissionService._schedule_last_follow_up_evaluation(
+            self._schedule_last_follow_up_evaluation(
                 interview_id=interview_id,
                 ctx=ctx,
                 provider=provider,
@@ -518,7 +620,7 @@ class TheorySubmissionService:
         yield EvaluatingEvent()
 
         transcript_task = asyncio.create_task(
-            TheorySubmissionService._transcribe_and_persist(
+            self._transcribe_and_persist(
                 interview_id=interview_id,
                 question_id=ctx.question_id,
                 round_num=ctx.round_num,
@@ -555,7 +657,7 @@ class TheorySubmissionService:
             follow_up_text,
         ) = await asyncio.shield(evaluation_task)
 
-        yield TheoryEvaluationPersistenceService.persist(
+        yield self._persistence.persist(
             interview_id=interview_id,
             question_id=ctx.question_id,
             round_num=ctx.round_num,
@@ -565,8 +667,8 @@ class TheorySubmissionService:
             follow_up_text=follow_up_text,
         )
 
-    @staticmethod
     async def process_answer_submission(
+        self,
         interview_id: str,
         question_id: str,
         answer_text: str,
@@ -585,7 +687,7 @@ class TheorySubmissionService:
         """
         return [
             event
-            async for event in TheorySubmissionService.stream_answer_submission(
+            async for event in self.stream_answer_submission(
                 interview_id=interview_id,
                 question_id=question_id,
                 answer_text=answer_text,
@@ -593,8 +695,8 @@ class TheorySubmissionService:
             )
         ]
 
-    @staticmethod
     async def process_audio_answer_submission(
+        self,
         interview_id: str,
         question_id: str,
         wav_bytes: bytes,
@@ -615,7 +717,7 @@ class TheorySubmissionService:
         """
         return [
             event
-            async for event in TheorySubmissionService.stream_audio_answer_submission(
+            async for event in self.stream_audio_answer_submission(
                 interview_id=interview_id,
                 question_id=question_id,
                 wav_bytes=wav_bytes,
@@ -624,8 +726,8 @@ class TheorySubmissionService:
             )
         ]
 
-    @staticmethod
     async def process_timeout_submission(
+        self,
         interview_id: str,
         question_id: str,
         round_num: int,
@@ -642,7 +744,7 @@ class TheorySubmissionService:
         """
         return [
             event
-            async for event in TheorySubmissionService.stream_timeout_submission(
+            async for event in self.stream_timeout_submission(
                 interview_id=interview_id,
                 question_id=question_id,
                 round_num=round_num,

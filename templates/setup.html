@@ -200,6 +200,16 @@
 
             <div class="setup-wizard-step" data-wizard-step="review" hidden>
                 <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="exclude_known" checked>
+                        Exclude questions I already know
+                    </label>
+                    <p class="form-hint" id="exclude-known-hint">
+                        Known questions are skipped when building a new session.
+                        <a href="/known-questions/manage">Manage known questions</a>
+                    </p>
+                </div>
+                <div class="form-group">
                     <p class="form-label">Review your settings</p>
                     <p class="form-hint">Confirm everything looks right, then start the interview.</p>
                     <div id="setup-review-summary" class="setup-review-summary"></div>

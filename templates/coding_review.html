@@ -45,6 +45,14 @@
                     </summary>
 
                     <div class="coding-task-panel__body">
+                        <div class="coding-task-panel__actions">
+                            <button type="button"
+                                    class="btn btn-outline btn-sm known-question-toggle"
+                                    data-branch="coding"
+                                    data-item-id="{{ task.task_id }}">
+                                Mark as known
+                            </button>
+                        </div>
                         <div class="coding-task-panel__prompt">
                             <h3>Assignment</h3>
                             <p>{{ task.initial_prompt }}</p>
@@ -98,4 +106,15 @@
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/known_questions.js?v={{ static_version('js/known_questions.js') }}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (window.KnownQuestions) {
+            window.KnownQuestions.initReviewButtons("coding");
+        }
+    });
+</script>
 {% endblock %}

@@ -69,3 +69,40 @@ def test_build_theory_question_plan_skips_coding_type_rows(
     planned = build_theory_question_plan(selection, question_count=1, locale="en")
     assert len(planned) == 1
     assert planned[0].id == "theory-001"
+
+
+def test_build_theory_question_plan_excludes_known_ids(
+    temp_questions_dir: Path,
+) -> None:
+    """Theory planning omits excluded question IDs from the result."""
+    category_path = temp_questions_dir / "python" / "junior" / "data-structures.yaml"
+    with open(category_path) as handle:
+        content = yaml.safe_load(handle)
+    content["questions"].append(
+        {
+            "id": "ds-002",
+            "type": "knowledge",
+            "difficulty": 1,
+            "question": {"text": "Second question", "code": None},
+        }
+    )
+    with open(category_path, "w") as handle:
+        yaml.dump(content, handle)
+
+    selection = InterviewSelection(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("data-structures",),
+            ),
+        )
+    )
+    planned = build_theory_question_plan(
+        selection,
+        question_count=1,
+        locale="en",
+        excluded_ids=frozenset({"ds-001"}),
+    )
+    assert len(planned) == 1
+    assert planned[0].id == "ds-002"

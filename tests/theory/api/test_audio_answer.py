@@ -254,7 +254,7 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.SessionPageService.prepare_page",
+                "app.interview.services.page.SessionPageService.prepare_page",
                 new=AsyncMock(
                     return_value=SessionPageRender(
                         redirect_url=None,
@@ -286,7 +286,7 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.api.routes.SessionPageService.prepare_page",
+                "app.interview.services.page.SessionPageService.prepare_page",
                 new=AsyncMock(
                     return_value=SessionPageRender(
                         redirect_url=None,

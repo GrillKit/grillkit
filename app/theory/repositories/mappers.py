@@ -17,7 +17,7 @@ from app.shared.infrastructure.models import TheorySection as OrmTheorySection
 from app.theory.domain.entities import TheorySection as DomainTheorySection
 from app.theory.domain.entities import TheorySectionStatus
 from app.theory.domain.entities import TheoryTask as DomainTheoryTask
-from app.theory.schemas.theory import TheorySectionRead, TheoryTaskRead
+from app.theory.schemas.theory import TheoryTaskRead
 
 
 def _question_ids_from_tasks(tasks: tuple[DomainTheoryTask, ...]) -> tuple[str, ...]:
@@ -206,27 +206,4 @@ def theory_task_read_from_domain(task: DomainTheoryTask) -> TheoryTaskRead:
         score=task.score,
         feedback=task.feedback,
         started_at=task.started_at,
-    )
-
-
-def theory_section_to_read(section: DomainTheorySection) -> TheorySectionRead:
-    """Map a domain theory section to a read model.
-
-    Args:
-        section: Domain theory section aggregate.
-
-    Returns:
-        Immutable TheorySectionRead for services and API.
-    """
-    return TheorySectionRead(
-        id=section.id,
-        interview_id=section.interview_id,
-        status=section.status,
-        locale=section.locale,
-        selection_spec=selection_to_spec(section.selection),
-        question_count=section.question_count,
-        task_time_limit_seconds=section.task_time_limit_seconds,
-        tasks=[theory_task_read_from_domain(task) for task in section.tasks],
-        section_score=section.section_score,
-        section_feedback=section.section_feedback,
     )

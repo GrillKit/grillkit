@@ -13,13 +13,13 @@ from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from app.interview.domain.value_objects import InterviewSelection, TrackSelection
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview, TheorySection
 from app.shared.paths import ALEMBIC_INI
 from app.theory.domain.entities import TheorySection as DomainTheorySection
 from app.theory.domain.entities import TheoryTask
 from app.theory.domain.value_objects import PlannedTheoryQuestion
-from app.theory.repositories.uow import TheoryUnitOfWork
 from tests.helpers.legacy_interview import insert_pre_session_mode_interview
 
 
@@ -113,7 +113,7 @@ class TestTheorySectionRepository:
 
     def test_create_aggregate_persists_tasks(self, isolated_db) -> None:
         """Repository round-trips a theory section with linked answer rows."""
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             uow.session.add(
                 Interview(
                     id="iv-theory",
@@ -129,7 +129,7 @@ class TestTheorySectionRepository:
             planned_questions=_sample_planned(),
             task_time_limit_seconds=120,
         )
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             created = uow.theory_sections.create_aggregate(section)
             uow.commit()
 
@@ -140,7 +140,7 @@ class TestTheorySectionRepository:
         assert created.tasks[0].id != TheoryTask.NEW_ID
         assert created.question_ids == ("py-001", "py-002")
 
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.theory_sections.get_aggregate("iv-theory")
 
         assert loaded is not None

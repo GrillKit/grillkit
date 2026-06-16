@@ -4,15 +4,23 @@
 
 from typing import Any
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.rules.selection import selection_sources_summary
 from app.interview.services.section_evaluation import build_section_evaluation_summary
 from app.interview.services.sections import SectionEvaluationSummary
 from app.theory.domain.entities import TheorySection
-from app.theory.repositories.uow import TheoryUnitOfWork
 
 
 class TheoryQueryService:
     """Read-only queries for theory section aggregates."""
+
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this read scope.
+        """
+        self._uow = uow
 
     @staticmethod
     def _qa_items_from_section(
@@ -39,8 +47,10 @@ class TheoryQueryService:
             if task.answer_text is not None
         )
 
-    @staticmethod
-    def get_evaluation_summary(interview_id: str) -> SectionEvaluationSummary | None:
+    def get_evaluation_summary(
+        self,
+        interview_id: str,
+    ) -> SectionEvaluationSummary | None:
         """Return theory section evaluation data for session completion.
 
         Uses cached ``section_feedback`` when present.
@@ -51,22 +61,20 @@ class TheoryQueryService:
         Returns:
             Section summary, or None when no theory section exists.
         """
-        with TheoryUnitOfWork() as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                return None
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            return None
 
-            return build_section_evaluation_summary(
-                "theory",
-                section_status=section.status,
-                items=TheoryQueryService._qa_items_from_section(section),
-                total_score=section.total_score(),
-                max_score=section.max_score(),
-                cached_narrative=section.section_feedback,
-            )
+        return build_section_evaluation_summary(
+            "theory",
+            section_status=section.status,
+            items=self._qa_items_from_section(section),
+            total_score=section.total_score(),
+            max_score=section.max_score(),
+            cached_narrative=section.section_feedback,
+        )
 
-    @staticmethod
-    def sources_text_for_section(interview_id: str) -> str:
+    def sources_text_for_section(self, interview_id: str) -> str:
         """Build selection summary text for theory evaluation prompts.
 
         Args:
@@ -75,8 +83,7 @@ class TheoryQueryService:
         Returns:
             Human-readable selection summary, or empty string when missing.
         """
-        with TheoryUnitOfWork() as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                return ""
-            return selection_sources_summary(section.selection)
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            return ""
+        return selection_sources_summary(section.selection)

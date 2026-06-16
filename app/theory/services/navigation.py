@@ -4,10 +4,10 @@
 
 from typing import Any
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.phases import SessionPhaseOrchestrator
 from app.theory.domain.entities import TheorySection, TheoryTask
 from app.theory.domain.exceptions import TheorySectionNotFoundError
-from app.theory.repositories.uow import TheoryUnitOfWork
 
 
 def next_task_payload(task: TheoryTask) -> dict[str, Any]:
@@ -32,9 +32,16 @@ def next_task_payload(task: TheoryTask) -> dict[str, Any]:
 class TheoryNavigationService:
     """Shared navigation after a theory task round is completed or timed out."""
 
-    @staticmethod
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+        """
+        self._uow = uow
+
     def advance_to_next_unanswered(
-        uow: TheoryUnitOfWork,
+        self,
         interview_id: str,
         *,
         question_id: str,
@@ -43,7 +50,6 @@ class TheoryNavigationService:
         """Activate the next unanswered task and build client payload.
 
         Args:
-            uow: Active unit of work.
             interview_id: Parent interview UUID.
             question_id: Question ID of the completed round.
             round_num: Follow-up round that was just completed.
@@ -55,7 +61,7 @@ class TheoryNavigationService:
             TheorySectionNotFoundError: If the theory section does not exist.
             TheorySectionNotActiveError: If the section is not active.
         """
-        section = uow.theory_sections.get_aggregate(interview_id)
+        section = self._uow.theory_sections.get_aggregate(interview_id)
         if section is None:
             raise TheorySectionNotFoundError(interview_id)
 
@@ -68,20 +74,18 @@ class TheoryNavigationService:
         )
         next_task = section.find_next_unanswered_after(current_index)
         if next_task is None:
-            TheoryNavigationService._notify_phase_complete_if_needed(
-                interview_id, section
-            )
+            self._notify_phase_complete_if_needed(interview_id, section)
             return None, None
 
         updated = section.start_timer_for_task(next_task.id)
-        uow.theory_sections.save_aggregate(updated)
+        self._uow.theory_sections.save_aggregate(updated)
 
         activated = next(task for task in updated.tasks if task.id == next_task.id)
         timer_remaining = activated.remaining_seconds(updated.task_time_limit_seconds)
         return next_task_payload(activated), timer_remaining
 
-    @staticmethod
     def _notify_phase_complete_if_needed(
+        self,
         interview_id: str,
         section: TheorySection,
     ) -> None:
@@ -92,4 +96,7 @@ class TheoryNavigationService:
             section: Theory section after the latest navigation update.
         """
         if section.is_complete():
-            SessionPhaseOrchestrator.notify_section_complete(interview_id, "theory")
+            SessionPhaseOrchestrator(self._uow).notify_section_complete(
+                interview_id,
+                "theory",
+            )

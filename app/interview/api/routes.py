@@ -9,9 +9,9 @@ delegated to the service layer; theory transport lives under ``/theory/``.
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
+from app.interview.api.deps import SessionPageServiceDep
 from app.interview.api.errors import http_exception_from_domain_error
 from app.interview.domain.exceptions import InterviewDomainError
-from app.interview.services.page import SessionPageService
 from app.platform.api.deps import ConfigServiceDep
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
 from app.question_voice.services.question_audio import get_question_audio_path
@@ -45,6 +45,7 @@ async def interview_page(
     interview_id: str,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    page_service: SessionPageServiceDep,
 ) -> Response:
     """View an interview session.
 
@@ -61,7 +62,7 @@ async def interview_page(
         HTML response with interview view, or redirect if not found.
     """
     config = config_service.get_config()
-    page = await SessionPageService.prepare_page(
+    page = await page_service.prepare_page(
         interview_id,
         config=config,
         whisper_model_service=whisper_model_service,

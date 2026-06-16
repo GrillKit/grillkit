@@ -18,6 +18,7 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 | Interview flow | Free-form thread | Fixed session: theory Q&A and/or coding tasks, up to **2 AI follow-ups** per item, **1–5 scoring**, session summary |
 | Live coding practice | Paste code in chat | **Monaco editor**, **Run** against public tests, **Submit** for hidden tests + AI review (needs Judge0) |
 | Practice history | Scattered chats | **Dashboard** with past sessions; open **results** and per-section **review** pages after completion |
+| Skip what you already know | You repeat the same prompts | **Known questions** — mark bank items during practice; optionally exclude them when starting a new session |
 | Time pressure | None | Optional **per-round timer** on theory and coding (expired round → 0, move on) |
 | Voice practice | Depends on product | Offline **Whisper** dictation; optional **Piper** question audio; **audio answers** when your model supports it |
 | Where data lives | Vendor cloud | **Self-hosted**: SQLite + `data/` on your machine; use **Ollama**, vLLM, or any OpenAI-compatible API |
@@ -31,7 +32,10 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 **Demo video** — full flow from setup to scored feedback
 
 <p align="center">
-  <img src="./assets/demo_cut.gif" alt="Demo video" width="900" />
+  <video src="./assets/demo-video.mp4" width="900" controls playsinline>
+    Your browser does not support the video tag.
+    <a href="./assets/demo-video.mp4">Download the demo video</a>.
+  </video>
 </p>
 
 **Dashboard** — recent sessions and quick start
@@ -82,6 +86,7 @@ Coding modes need a running [Judge0](https://github.com/judge0/judge0) instance 
 - **Voice** — offline Whisper dictation; optional Piper TTS to read theory questions aloud
 - **Audio answers** — record a WAV theory answer when your model supports audio input and Whisper is ready
 - **Results hub** — after you finish, `/interview/{id}/results` shows overall evaluation and links to **theory** and **coding** review pages with full chat/code history
+- **Known questions** — mark theory or coding bank items as **I know this** during an interview or on review pages; optionally exclude them on **New interview** setup; manage the list at `/known-questions/manage`
 - **Dashboard** — recent sessions on the home page (completed sessions link to results)
 - **Setup** — model catalog on `/config`, interview locale, Whisper/Piper downloads from the UI
 - **Deployment** — Docker Compose on port 8000 with `./data` volume for config, DB, and models
@@ -131,7 +136,7 @@ On some Linux hosts Judge0 needs **cgroup v1** (`systemd.unified_cgroup_hierarch
 ### First-time flow
 
 1. **Configuration** (`/config`) — add one or more OpenAI-compatible models to the catalog, select an interview model, set interview locale; test connection, then save. Download Whisper (and optionally a Piper voice) from the same page if you want voice features.
-2. **New interview** (`/setup`) — pick a **session mode** (theory only, coding only, or combined). Choose tracks, levels, topics, how many questions/tasks, and optional per-round timers. Coding modes require Judge0 (see **Coding sessions** above).
+2. **New interview** (`/setup`) — pick a **session mode** (theory only, coding only, or combined). Choose tracks, levels, topics, how many questions/tasks, optional per-round timers, and whether to **exclude known questions**. Coding modes require Judge0 (see **Coding sessions** above).
 3. **Practice** (`/interview/{id}`) — answer theory questions in the chat (type, dictate, or record audio). On coding phases, use the editor: **Run** to check public tests, **Submit** when ready. Combined sessions switch panels automatically when a section ends (or use **Continue to Coding**). End the interview from the sidebar at any time.
 4. **Review** (`/interview/{id}/results`) — after completion, read the overall evaluation, then open **Theory** or **Coding** review for full conversation history, scores, and feedback.
 
@@ -160,7 +165,7 @@ Any **OpenAI-compatible** HTTP API works:
 
 On `/config`:
 
-- **Add model to catalog** — base URL, model name, optional API key; enable **Accepts audio input** only if the model supports multimodal audio (and download Whisper for transcription).
+- **Add model to catalog** — display name, base URL, model name, optional API key (a stable catalog id is generated automatically from the display name); enable **Accepts audio input** only if the model supports multimodal audio (and download Whisper for transcription).
 - **Interview model** — pick from the catalog, **Test Connection**, save.
 - **Locale** — language for AI feedback and speech (stored in `data/config.json`, gitignored).
 - **Whisper** — choose size (`small`, `medium`, `large`), download from the UI for dictation and audio answers.

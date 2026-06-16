@@ -52,6 +52,7 @@ class TheoryAudioAnswerAdapter:
         wav_bytes: bytes,
         provider: AIProvider,
         transcriber: SpeechTranscriber,
+        submission_service: TheorySubmissionService,
     ) -> AsyncIterator[str]:
         """Map audio answer service events to NDJSON response lines.
 
@@ -61,12 +62,13 @@ class TheoryAudioAnswerAdapter:
             wav_bytes: Validated WAV payload.
             provider: Configured AI provider.
             transcriber: Loaded speech transcriber.
+            submission_service: Request-scoped theory submission service.
 
         Yields:
             One JSON object per line for ``StreamingResponse``.
         """
         try:
-            async for event in TheorySubmissionService.stream_audio_answer_submission(
+            async for event in submission_service.stream_audio_answer_submission(
                 interview_id=interview_id,
                 question_id=question_id,
                 wav_bytes=wav_bytes,

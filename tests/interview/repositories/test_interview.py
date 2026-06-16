@@ -11,9 +11,11 @@ from sqlalchemy.orm import sessionmaker
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.value_objects import SessionSelection, TrackSelection
 from app.interview.repositories.interview import InterviewRepository
+from app.interview.services.read_model import assemble_interview_read
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository
+from app.theory.repositories.theory_section import TheorySectionRepository
 from tests.helpers.selection import minimal_selection_spec
 from tests.helpers.theory_seed import attach_theory_section_to_answers
 
@@ -232,15 +234,18 @@ class TestInterviewRepository:
         assert aggregate.id == "session-1"
         assert aggregate.status == "active"
 
-    def test_get_read_model_composes_theory_tasks(self, db_session):
-        """get_read_model composes answers from the linked theory section."""
+    def test_load_interview_read_composes_theory_tasks(self, db_session):
+        """assemble_interview_read composes answers from the linked theory section."""
         _create_test_interview(db_session)
         _create_test_answer(db_session, question_id="q1", order=1)
 
-        repo = InterviewRepository(db_session)
-        read_model = repo.get_read_model("session-1")
+        interview_repo = InterviewRepository(db_session)
+        theory_repo = TheorySectionRepository(db_session)
+        shell = interview_repo.get_aggregate("session-1")
+        theory = theory_repo.get_aggregate("session-1")
+        assert shell is not None
+        read_model = assemble_interview_read(shell, theory, None)
 
-        assert read_model is not None
         assert read_model.question_count == 3
         assert len(read_model.answers) == 1
         assert read_model.answers[0].question_id == "q1"

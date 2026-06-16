@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.interview.services.sections import SectionEvaluationSummary, SectionKind
+from app.interview.domain.value_objects import SectionKind
+from app.interview.services.sections import SectionEvaluationSummary
 
 
 def build_section_evaluation_summary(

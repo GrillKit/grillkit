@@ -8,16 +8,13 @@ Provides data access for interview session shell rows.
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.coding.repositories.coding_section import CodingSectionRepository
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.mappers import (
     interview_from_orm,
-    interview_read_from_orm,
     interview_shell_to_orm,
     interview_to_orm_fields,
 )
-from app.interview.schemas.interview import InterviewRead
 from app.shared.infrastructure.models import Interview, TheorySection
 from app.shared.repositories.base import SqlAlchemyRepository
 
@@ -73,20 +70,25 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
             return None
         return interview_from_orm(orm_interview)
 
-    def get_read_model(self, entity_id: str) -> InterviewRead | None:
-        """Load a composed interview read model with theory tasks.
+    def list_recent_aggregates(self, limit: int = 20) -> list[DomainInterview]:
+        """Return recent interview shell aggregates, newest first.
+
+        Sort key is ``completed_at`` when set, otherwise ``started_at``.
 
         Args:
-            entity_id: The session UUID.
+            limit: Maximum number of rows to return.
 
         Returns:
-            Interview read model, or None when the session does not exist.
+            Domain shell aggregates in dashboard display order.
         """
-        orm_interview = self.get(entity_id)
-        if orm_interview is None:
-            return None
-        coding = CodingSectionRepository(self._session).get_aggregate(entity_id)
-        return interview_read_from_orm(orm_interview, coding=coding)
+        sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
+        rows = (
+            self._session.query(Interview)
+            .order_by(sort_key.desc())
+            .limit(limit)
+            .all()
+        )
+        return [interview_from_orm(row) for row in rows]
 
     def create_shell(self, interview: DomainInterview) -> DomainInterview:
         """Insert a new interview shell row.
@@ -123,35 +125,3 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
 
         for field, value in interview_to_orm_fields(interview).items():
             setattr(orm_interview, field, value)
-
-    def list_recent_read_models(self, limit: int = 20) -> list[InterviewRead]:
-        """Return recent interview read models, newest first.
-
-        Sort key is ``completed_at`` when set, otherwise ``started_at``.
-
-        Args:
-            limit: Maximum number of rows to return.
-
-        Returns:
-            Composed interview read models with theory tasks when present.
-        """
-        sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
-        orm_rows = (
-            self._session.query(Interview)
-            .options(
-                selectinload(Interview.theory_section).selectinload(
-                    TheorySection.tasks
-                ),
-            )
-            .order_by(sort_key.desc())
-            .limit(limit)
-            .all()
-        )
-        coding_repo = CodingSectionRepository(self._session)
-        return [
-            interview_read_from_orm(
-                row,
-                coding=coding_repo.get_aggregate(row.id),
-            )
-            for row in orm_rows
-        ]

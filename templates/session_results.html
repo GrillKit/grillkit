@@ -70,8 +70,10 @@
                 <div class="section-result-card__head">
                     <h3>{{ card.label }}</h3>
                     <p class="section-result-card__score">
-                        {% if card.skipped %}
+                        {% if card.skipped and card.max_score == 0 %}
                         Skipped
+                        {% elif card.skipped %}
+                        {{ card.score }} / {{ card.max_score }} (incomplete)
                         {% else %}
                         {{ card.score }} / {{ card.max_score }}
                         {% endif %}

@@ -14,11 +14,12 @@ from app.interview.domain.value_objects import (
     SessionSelection,
     TrackSelection,
 )
-from app.interview.repositories.interview import InterviewRepository
 from app.interview.repositories.mappers import interview_read_from_orm
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
 from app.interview.services.dashboard import DashboardBuilder
+from app.interview.services.read_model import load_recent_interview_reads
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview
 from tests.helpers.selection import minimal_selection_spec
@@ -92,7 +93,7 @@ def test_interview_display_title_coding_only():
 
 
 def test_list_recent_ordering(db_session):
-    """list_recent_read_models returns completed before older active when newer."""
+    """load_recent_interview_reads returns completed before older active when newer."""
     now = datetime.now(UTC)
     active = Interview(
         id="active-1",
@@ -122,8 +123,13 @@ def test_list_recent_ordering(db_session):
     )
     db_session.commit()
 
-    repo = InterviewRepository(db_session)
-    recent = repo.list_recent_read_models(limit=20)
+    class TestUow(InterviewUnitOfWork):
+        def __init__(self) -> None:
+            super().__init__()
+            self._session = db_session
+
+    with TestUow() as uow:
+        recent = load_recent_interview_reads(uow, limit=20)
     assert [i.id for i in recent] == ["done-1", "active-1"]
 
 
@@ -191,27 +197,21 @@ def test_list_dashboard_rows(monkeypatch):
         started_at=now,
     )
 
-    class FakeInterviews:
-        @staticmethod
-        def list_recent_read_models(limit=20):
-            return [completed, active]
-
-    class FakeUow:
-        def __init__(self, auto_commit=False):
-            self.interviews = FakeInterviews()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
     monkeypatch.setattr(
-        "app.interview.services.dashboard.InterviewUnitOfWork",
-        FakeUow,
+        "app.interview.services.dashboard.load_recent_interview_reads",
+        lambda uow, limit=20: [completed, active],
     )
 
-    rows = DashboardBuilder.list_rows(limit=20)
+    class _FakeCodingSections:
+        @staticmethod
+        def get_aggregates_by_interview_ids(interview_ids):
+            del interview_ids
+            return {}
+
+    class _FakeUow:
+        coding_sections = _FakeCodingSections()
+
+    rows = DashboardBuilder(_FakeUow()).list_rows(limit=20)  # type: ignore[arg-type]
     assert len(rows) == 2
     assert rows[0].title == "Python Interview"
     assert rows[0].session_mode_label == "Theory"

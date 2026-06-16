@@ -8,14 +8,17 @@ This module provides the home page with interview history.
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from app.interview.services.dashboard import DashboardBuilder
+from app.interview.api.deps import DashboardBuilderDep
 from app.templating import templates
 
 router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/", response_class=HTMLResponse)
-async def dashboard_page(request: Request) -> HTMLResponse:
+async def dashboard_page(
+    request: Request,
+    dashboard: DashboardBuilderDep,
+) -> HTMLResponse:
     """Render the dashboard with recent interview history.
 
     Args:
@@ -28,6 +31,6 @@ async def dashboard_page(request: Request) -> HTMLResponse:
         request,
         "dashboard.html",
         {
-            "interview_history": DashboardBuilder.list_rows(limit=20),
+            "interview_history": dashboard.list_rows(limit=20),
         },
     )

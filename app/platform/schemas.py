@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.ai.llm_models import validate_new_model_id
 from app.question_voice.schemas import PiperVoiceStatusRead
 from app.shared.speech_models import (
     SPEECH_MODEL_BY_SIZE,
@@ -133,8 +132,10 @@ class ConfigPageContext(BaseModel):
 class NewLLMModel(BaseModel):
     """User input for adding a catalog model.
 
+    The stable catalog id is derived from ``display_name`` when the model is
+    persisted, so it is not part of the user-supplied input.
+
     Attributes:
-        model_id: Stable lowercase id for the catalog entry.
         display_name: Human-readable label shown in the UI.
         base_url: OpenAI-compatible base URL.
         model: Provider model name.
@@ -145,18 +146,12 @@ class NewLLMModel(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, frozen=True)
 
-    model_id: str
     display_name: str
     base_url: str
     model: str
     api_key_required: bool = False
     api_key: str | None = None
     accepts_audio_input: bool = False
-
-    @field_validator("model_id")
-    @classmethod
-    def _validate_model_id(cls, value: str) -> str:
-        return validate_new_model_id(value)
 
     @field_validator("display_name")
     @classmethod

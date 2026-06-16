@@ -104,6 +104,14 @@
                                 aria-label="Play question" title="Play question"
                                 aria-pressed="false">Play</button>
                         {% endif %}
+                        {% if interview.status == "active" and answer.round == 0 %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline known-question-toggle known-question-toggle--interview"
+                                data-branch="theory"
+                                data-item-id="{{ answer.question_id }}">
+                            I know this
+                        </button>
+                        {% endif %}
                     </div>
                     <div class="question-bubble-body">
                         {{ answer.question_text }}
@@ -204,6 +212,7 @@ window.grillkitCodingBootstrap = {
 {% if (question_timer_enabled or (coding is defined and coding is not none and coding.task_timer_enabled)) and interview.status == "active" %}
 <script src="/static/js/interview_timer.js?v={{ static_version('js/interview_timer.js') }}"></script>
 {% endif %}
+<script src="/static/js/known_questions.js?v={{ static_version('js/known_questions.js') }}"></script>
 <script>
     const initialInterviewStatus = '{{ interview.status }}';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -493,6 +502,13 @@ window.grillkitCodingBootstrap = {
         if (window.grillkitQuestionPlayButtonHtml && answerId) {
             html += window.grillkitQuestionPlayButtonHtml(answerId);
         }
+        if (round === 0 && window.KnownQuestions && window.KnownQuestions.knownToggleButtonHtml) {
+            html += window.KnownQuestions.knownToggleButtonHtml(
+                "theory",
+                options.question_id,
+                true
+            );
+        }
         html += '</div><div class="question-bubble-body">';
         html += escapeHtml(questionText);
         if (questionCode) {
@@ -518,6 +534,9 @@ window.grillkitCodingBootstrap = {
         chatContainer.appendChild(messageDiv);
         if (window.grillkitBindQuestionPlayButtons) {
             window.grillkitBindQuestionPlayButtons(messageDiv);
+        }
+        if (window.KnownQuestions && window.KnownQuestions.bindKnownToggleIn) {
+            window.KnownQuestions.bindKnownToggleIn(messageDiv);
         }
         return messageDiv;
     }
@@ -669,6 +688,9 @@ window.grillkitCodingBootstrap = {
             const theoryPanel = document.getElementById('theory-panel');
             if (theoryPanel && !theoryPanel.hidden) {
                 restartQuestionTimer({{ timer_remaining_seconds | tojson }});
+                if (window.KnownQuestions && window.KnownQuestions.initInterviewTheory) {
+                    window.KnownQuestions.initInterviewTheory();
+                }
             }
         }
     });

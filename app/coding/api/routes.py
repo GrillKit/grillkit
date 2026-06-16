@@ -19,8 +19,11 @@ from app.coding.schemas.coding import (
     run_attempt_to_response,
 )
 from app.coding.services.run_execution import CodingRunExecutionService
-from app.coding.services.state import CodingStateService
-from app.interview.api.deps import AIProviderDep
+from app.interview.api.deps import (
+    AIProviderDep,
+    CodingStateServiceDep,
+    CodingSubmissionServiceDep,
+)
 from app.interview.domain.exceptions import InterviewDomainError
 
 router = APIRouter(prefix="/interview", tags=["coding"])
@@ -74,7 +77,10 @@ async def coding_run(
 
 
 @router.get("/{interview_id}/coding/state")
-async def coding_state(interview_id: str) -> JSONResponse:
+async def coding_state(
+    interview_id: str,
+    service: CodingStateServiceDep,
+) -> JSONResponse:
     """Return coding session progress and Run history for the active task.
 
     Args:
@@ -87,7 +93,7 @@ async def coding_state(interview_id: str) -> JSONResponse:
         HTTPException: When the coding section does not exist.
     """
     try:
-        state = CodingStateService.get_state(interview_id)
+        state = service.get_state(interview_id)
     except CodingDomainError as exc:
         raise http_exception_from_coding_error(exc) from exc
     return JSONResponse(coding_state_to_dict(state))
@@ -98,6 +104,7 @@ async def coding_ws(
     websocket: WebSocket,
     interview_id: str,
     provider: AIProviderDep,
+    submission_service: CodingSubmissionServiceDep,
 ) -> None:
     """WebSocket endpoint for coding task submit and feedback.
 
@@ -118,6 +125,7 @@ async def coding_ws(
                 raw,
                 interview_id=interview_id,
                 provider=provider,
+                submission_service=submission_service,
             ):
                 if not await _safe_send_json(websocket, message):
                     break

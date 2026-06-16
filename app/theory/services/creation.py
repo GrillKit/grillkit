@@ -12,8 +12,16 @@ from app.theory.services.planning import build_theory_question_plan
 class TheorySectionCreationService:
     """Service for creating theory sections within an interview session."""
 
-    @staticmethod
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+        """
+        self._uow = uow
+
     def create(
+        self,
         interview_id: str,
         *,
         selection: InterviewSelection,
@@ -21,7 +29,7 @@ class TheorySectionCreationService:
         question_count: int,
         task_time_limit_seconds: int | None,
         start_first_task_timer: bool = True,
-        uow: InterviewUnitOfWork,
+        excluded_ids: frozenset[str] = frozenset(),
     ) -> TheorySection:
         """Plan questions and persist a theory section with initial tasks.
 
@@ -32,7 +40,7 @@ class TheorySectionCreationService:
             question_count: Number of questions for this section.
             task_time_limit_seconds: Per-round time limit, or None to disable.
             start_first_task_timer: Whether to start the timer on the first task now.
-            uow: Active interview unit of work sharing the persistence session.
+            excluded_ids: Question IDs to omit during planning.
 
         Returns:
             Persisted theory section aggregate with assigned task IDs.
@@ -42,7 +50,10 @@ class TheorySectionCreationService:
         """
         validate_question_count(selection, question_count)
         theory_planned = build_theory_question_plan(
-            selection, question_count, locale=locale
+            selection,
+            question_count,
+            locale=locale,
+            excluded_ids=excluded_ids,
         )
         section = TheorySection.start(
             interview_id,
@@ -52,4 +63,4 @@ class TheorySectionCreationService:
             task_time_limit_seconds=task_time_limit_seconds,
             start_first_task_timer=start_first_task_timer,
         )
-        return uow.theory_sections.create_aggregate(section)
+        return self._uow.theory_sections.create_aggregate(section)

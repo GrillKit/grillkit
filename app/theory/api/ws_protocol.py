@@ -5,6 +5,14 @@
 from typing import Any
 
 from app.interview.domain.exceptions import InterviewDomainError
+from app.interview.schemas.ws import (
+    AnswerFeedbackMessage,
+    AnswerSavedMessage,
+    EvaluatingMessage,
+    InterviewCompletedMessage,
+    TranscriptMessage,
+    server_message_to_dict,
+)
 from app.interview.services.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
@@ -14,14 +22,6 @@ from app.interview.services.events import (
     TranscriptEvent,
 )
 from app.theory.domain.exceptions import TheoryDomainError
-from app.theory.schemas.ws import (
-    AnswerFeedbackMessage,
-    AnswerSavedMessage,
-    EvaluatingMessage,
-    InterviewCompletedMessage,
-    TranscriptMessage,
-    server_message_to_dict,
-)
 
 __all__ = [
     "domain_error_to_wire",

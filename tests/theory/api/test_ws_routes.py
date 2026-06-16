@@ -75,10 +75,7 @@ class TestTheoryWebSocket:
 
     def test_websocket_unknown_message(self, client):
         """Test WebSocket returns error for unknown message type."""
-        with (
-            patch("app.interview.services.query.InterviewQuery.get_interview"),
-            client.websocket_connect("/interview/test-id/theory/ws") as ws,
-        ):
+        with client.websocket_connect("/interview/test-id/theory/ws") as ws:
             ws.send_json({"type": "unknown_command"})
             response = ws.receive_json()
             assert response["type"] == "error"
@@ -120,10 +117,7 @@ class TestTheoryWebSocket:
 
     def test_websocket_answer_missing_fields(self, client):
         """Test WebSocket returns error when question_id or answer_text is missing."""
-        with (
-            patch("app.interview.services.query.InterviewQuery.get_interview"),
-            client.websocket_connect("/interview/test-id/theory/ws") as ws,
-        ):
+        with client.websocket_connect("/interview/test-id/theory/ws") as ws:
             ws.send_json({"type": "answer", "question_id": ""})
             response = ws.receive_json()
             assert response["type"] == "error"

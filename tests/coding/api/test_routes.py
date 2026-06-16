@@ -2,10 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for coding HTTP and WebSocket routes."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 from app.coding.domain.value_objects import CodingRunResult
 from app.coding.services.evaluator.models import CodingAnswerEvaluation
+from app.interview.repositories.uow import InterviewUnitOfWork
+from app.shared.infrastructure.models import CodingTask
 from tests.helpers.coding_seed import seed_active_coding_interview
 
 
@@ -71,6 +74,27 @@ class TestCodingRunApi:
             )
         assert first.status_code == 200
         assert second.status_code == 429
+
+    def test_run_rechecks_current_task_after_judge0(self, client, isolated_db):
+        """Run is rejected if the task is completed before persistence."""
+        interview_id, task_id = seed_active_coding_interview("coding-run-race")
+
+        async def complete_task_before_return(**_kwargs):
+            with InterviewUnitOfWork(auto_commit=True) as uow:
+                task = uow.session.query(CodingTask).filter_by(task_id=task_id).one()
+                task.submitted_code = "already submitted"
+            return _success_run_result()
+
+        with patch(
+            "app.coding.services.run_execution.CodingRunnerService.run_public_tests",
+            new=AsyncMock(side_effect=complete_task_before_return),
+        ):
+            response = client.post(
+                f"/interview/{interview_id}/coding/run",
+                json={"task_id": task_id, "source_code": "pass"},
+            )
+
+        assert response.status_code == 400
 
 
 class TestCodingStateApi:
@@ -152,3 +176,29 @@ class TestCodingWebSocket:
             ws.send_json({"type": "submit", "task_id": "cod-001"})
             error = ws.receive_json()
             assert error["type"] == "error"
+
+    def test_timeout_marks_current_task_as_zero_score(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
+        """Expired coding timers submit the round with zero score."""
+        interview_id, task_id = seed_active_coding_interview("coding-ws-timeout")
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            section = uow.coding_sections.get_aggregate(interview_id)
+            assert section is not None
+            row = uow.session.query(CodingTask).filter_by(task_id=task_id).one()
+            db_section = row.coding_section
+            db_section.task_time_limit_seconds = 1
+            row.started_at = datetime.now(UTC) - timedelta(seconds=5)
+
+        override_ws_ai_provider(client, [])
+        with client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws:
+            ws.send_json({"type": "timeout", "task_id": task_id, "round": 0})
+            feedback = ws.receive_json()
+
+        assert feedback["type"] == "feedback"
+        assert feedback["task_id"] == task_id
+        assert feedback["feedback"]
+        with InterviewUnitOfWork() as uow:
+            task = uow.session.query(CodingTask).filter_by(task_id=task_id).one()
+            assert task.submitted_code == "[Time expired]"
+            assert task.score == 0

@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Coding feature availability checks for setup and session creation."""
 
-import asyncio
 import os
 
 import httpx
@@ -72,17 +71,3 @@ async def is_coding_available_async() -> bool:
     if not _coding_enabled_env():
         return False
     return await is_judge0_healthy_async()
-
-
-def run_is_coding_available_async() -> bool:
-    """Run the async availability probe from synchronous code.
-
-    Returns:
-        True when coding sessions may be started from setup.
-    """
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(is_coding_available_async())
-    msg = "run_is_coding_available_async() cannot be used inside a running event loop"
-    raise RuntimeError(msg)
