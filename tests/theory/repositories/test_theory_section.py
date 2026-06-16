@@ -176,7 +176,7 @@ class TestTheorySectionRepository:
 
     def test_create_aggregate_round_trips_expected_points(self, isolated_db) -> None:
         """Repository persists rubric bullets on answer rows."""
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             uow.session.add(
                 Interview(
                     id="iv-rubric",
@@ -191,11 +191,11 @@ class TestTheorySectionRepository:
             locale="en",
             planned_questions=_sample_planned(),
         )
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             uow.theory_sections.create_aggregate(section)
             uow.commit()
 
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.theory_sections.get_aggregate("iv-rubric")
 
         assert loaded is not None
