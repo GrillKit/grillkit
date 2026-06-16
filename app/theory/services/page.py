@@ -80,14 +80,20 @@ class TheoryPageService:
         )
 
     @staticmethod
-    def build_context_for(interview: InterviewRead) -> TheoryPageContext | None:
+    def build_context_for(
+        interview: InterviewRead,
+        uow: InterviewUnitOfWork | None = None,
+    ) -> TheoryPageContext | None:
         """Build theory page context using a short-lived unit of work.
 
         Args:
             interview: Interview read model with theory tasks mirrored as answers.
+            uow: Optional unit of work (useful in tests to use an isolated DB).
 
         Returns:
             Theory page context, or None when the session has no theory tasks.
         """
-        with InterviewUnitOfWork() as uow:
+        if uow is not None:
             return TheoryPageService(uow).build_context(interview)
+        with InterviewUnitOfWork() as new_uow:
+            return TheoryPageService(new_uow).build_context(interview)
