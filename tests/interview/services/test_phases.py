@@ -177,12 +177,14 @@ def test_notify_theory_complete_activates_pending_coding(
     )
     _complete_theory_section(interview.id)
 
-    with patch.object(TheorySectionService, "on_phase_complete"):
-        with InterviewUnitOfWork(auto_commit=True) as uow:
-            SessionPhaseOrchestrator(uow).notify_section_complete(
-                interview.id,
-                "theory",
-            )
+    with (
+        patch.object(TheorySectionService, "on_phase_complete"),
+        InterviewUnitOfWork(auto_commit=True) as uow,
+    ):
+        SessionPhaseOrchestrator(uow).notify_section_complete(
+            interview.id,
+            "theory",
+        )
 
     with InterviewUnitOfWork() as uow:
         section = uow.coding_sections.get_aggregate(interview.id)

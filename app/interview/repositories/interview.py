@@ -83,10 +83,7 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         """
         sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
         rows = (
-            self._session.query(Interview)
-            .order_by(sort_key.desc())
-            .limit(limit)
-            .all()
+            self._session.query(Interview).order_by(sort_key.desc()).limit(limit).all()
         )
         return [interview_from_orm(row) for row in rows]
 
