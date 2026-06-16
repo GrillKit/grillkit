@@ -64,7 +64,12 @@ def _to_planned(question: Question) -> PlannedQuestion:
     Returns:
         Domain value object for theory section creation.
     """
-    return PlannedQuestion(id=question.id, text=question.text, code=question.code)
+    return PlannedQuestion(
+        id=question.id,
+        text=question.text,
+        code=question.code,
+        expected_points=question.expected_points,
+    )
 
 
 def validate_selection(selection: InterviewSelection) -> None:
@@ -156,6 +161,11 @@ def build_theory_question_plan(
         excluded_ids=excluded_ids,
     )
     return tuple(
-        PlannedTheoryQuestion(id=question.id, text=question.text, code=question.code)
+        PlannedTheoryQuestion(
+            id=question.id,
+            text=question.text,
+            code=question.code,
+            expected_points=question.expected_points,
+        )
         for question in planned
     )

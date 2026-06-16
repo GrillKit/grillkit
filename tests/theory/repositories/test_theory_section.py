@@ -41,6 +41,7 @@ def _sample_planned() -> tuple[PlannedTheoryQuestion, ...]:
             id="py-001",
             text="What is a list?",
             code=None,
+            expected_points=("Mutable sequence", "Ordered"),
         ),
         PlannedTheoryQuestion(
             id="py-002",
@@ -70,6 +71,7 @@ class TestTheoryTaskTimer:
             feedback=None,
             started_at=started,
             created_at=started,
+            expected_points=(),
         )
         deadline = task.timer_deadline(120)
         assert deadline == started + timedelta(seconds=120)
@@ -106,6 +108,29 @@ class TestTheorySectionDomain:
             start_first_task_timer=False,
         )
         assert section.tasks[0].started_at is None
+
+    def test_start_preserves_expected_points_on_tasks(self) -> None:
+        """Planned rubric bullets are copied onto initial task rows."""
+        section = DomainTheorySection.start(
+            "iv-1",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        assert section.tasks[0].expected_points == ("Mutable sequence", "Ordered")
+        assert section.tasks[1].expected_points == ()
+
+    def test_with_follow_up_copies_expected_points(self) -> None:
+        """Follow-up task rows inherit rubric bullets from the base question."""
+        section = DomainTheorySection.start(
+            "iv-1",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        updated, follow_up = section.with_follow_up("py-001", "Give an example.")
+        assert follow_up.expected_points == ("Mutable sequence", "Ordered")
+        assert updated.tasks[-1].expected_points == ("Mutable sequence", "Ordered")
 
 
 class TestTheorySectionRepository:
@@ -148,6 +173,34 @@ class TestTheorySectionRepository:
         assert loaded.question_count == 2
         assert len(loaded.tasks) == 2
         assert loaded.tasks[0].theory_section_id == loaded.id
+
+    def test_create_aggregate_round_trips_expected_points(self, isolated_db) -> None:
+        """Repository persists rubric bullets on answer rows."""
+        with TheoryUnitOfWork() as uow:
+            uow.session.add(
+                Interview(
+                    id="iv-rubric",
+                    selection_spec='{"sources":[{"track":"python","level":"junior","categories":["basics"]}]}',
+                )
+            )
+            uow.commit()
+
+        section = DomainTheorySection.start(
+            "iv-rubric",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        with TheoryUnitOfWork() as uow:
+            uow.theory_sections.create_aggregate(section)
+            uow.commit()
+
+        with TheoryUnitOfWork() as uow:
+            loaded = uow.theory_sections.get_aggregate("iv-rubric")
+
+        assert loaded is not None
+        assert loaded.tasks[0].expected_points == ("Mutable sequence", "Ordered")
+        assert loaded.tasks[1].expected_points == ()
 
 
 @pytest.fixture

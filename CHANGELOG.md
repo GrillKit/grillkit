@@ -10,6 +10,8 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Changed
 
+- **Theory answer evaluation** — load `expected_points` rubric bullets from question banks, pass them through evaluation prompts with explicit candidate-only scoring rules, and use temperature 0 for structured LLM evaluation
+
 ### Fixed
 
 ### Removed
