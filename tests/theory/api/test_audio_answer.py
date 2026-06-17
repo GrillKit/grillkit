@@ -225,9 +225,10 @@ class TestInterviewAudioAnswerPage:
     """Tests for audio answer controls on the interview page."""
 
     def test_interview_page_shows_audio_controls_when_enabled(
-        self, client, monkeypatch
+        self, client, monkeypatch, isolated_db
     ):
         """Record / Send audio buttons render when LLM and Whisper are ready."""
+        del isolated_db
         interview = _active_interview_read("audio-ui-1")
         monkeypatch.setattr(
             "app.interview.services.page.LLMCatalogService.get_model",
@@ -270,8 +271,11 @@ class TestInterviewAudioAnswerPage:
         assert 'data-audio-answer-enabled="true"' in response.text
         assert "interview_audio_answer.js" in response.text
 
-    def test_interview_page_hides_audio_controls_without_catalog_flag(self, client):
+    def test_interview_page_hides_audio_controls_without_catalog_flag(
+        self, client, isolated_db
+    ):
         """Audio controls stay hidden when the configured model is text-only."""
+        del isolated_db
         interview = _active_interview_read("audio-ui-2")
         page_context = SessionPageService.build_page_context(
             interview,
