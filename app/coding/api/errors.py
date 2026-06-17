@@ -12,7 +12,11 @@ from app.coding.domain.exceptions import (
     CodingTaskNotCurrentError,
     CodingTaskNotFoundError,
 )
-from app.interview.domain.exceptions import InterviewDomainError
+from app.interview.domain.exceptions import (
+    InterviewDomainError,
+    InterviewNotActiveError,
+    InterviewNotFoundError,
+)
 
 
 def coding_ws_error_payload(
@@ -42,14 +46,16 @@ def http_exception_from_coding_error(
     """
     if isinstance(
         exc,
-        CodingSectionNotFoundError | CodingTaskNotFoundError,
+        InterviewNotFoundError | CodingSectionNotFoundError | CodingTaskNotFoundError,
     ):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, CodingRunLimitExceededError):
         return HTTPException(status_code=429, detail=str(exc))
     if isinstance(
         exc,
-        CodingSectionNotActiveError | CodingTaskNotCurrentError,
+        InterviewNotActiveError
+        | CodingSectionNotActiveError
+        | CodingTaskNotCurrentError,
     ):
         return HTTPException(status_code=400, detail=str(exc))
     return HTTPException(status_code=400, detail=str(exc))

@@ -313,3 +313,22 @@ class CodeRunAttempt(Base):
     coding_task: Mapped["CodingTask"] = relationship(
         "CodingTask", back_populates="run_attempts"
     )
+
+
+class KnownQuestion(Base):
+    """Bank item ID marked as known and excluded from future session planning.
+
+    Attributes:
+        branch: Section branch (``theory`` or ``coding``).
+        bank_item_id: ID from the YAML bank for that branch.
+        created_at: Timestamp when the item was marked as known.
+    """
+
+    __tablename__ = "known_questions"
+
+    branch: Mapped[str] = mapped_column(String, primary_key=True)
+    bank_item_id: Mapped[str] = mapped_column(String, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )

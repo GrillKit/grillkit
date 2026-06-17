@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for TheoryReviewService."""
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.theory.services.review import TheoryReviewService
 from tests.helpers.completed_session_seed import seed_completed_theory_interview
 
@@ -9,7 +10,8 @@ from tests.helpers.completed_session_seed import seed_completed_theory_interview
 def test_theory_review_service_builds_chat_history(isolated_db) -> None:
     """Theory review exposes answered rounds and fallback section feedback."""
     interview_id = seed_completed_theory_interview()
-    context = TheoryReviewService.build_context(interview_id)
+    with InterviewUnitOfWork() as uow:
+        context = TheoryReviewService(uow).build_context_for(interview_id)
     assert context is not None
     assert len(context.answers) == 1
     assert context.answers[0].feedback == "Clear and concise."

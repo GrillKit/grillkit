@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.main import create_app
 from app.platform.services.config import AppConfig
+from app.shared.infrastructure import models  # noqa: F401 - registers all ORM models
 from app.shared.infrastructure.database import Base
 from tests.fakes import FakeProvider
 

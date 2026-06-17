@@ -31,9 +31,9 @@ class TheoryWebSocketService:
         *,
         interview_id: str,
         provider: AIProvider,
-        submission_service: type[TheorySubmissionService] = TheorySubmissionService,
-        session_completion: type[SessionCompletionService] = SessionCompletionService,
-        interview_query: type[InterviewQuery] = InterviewQuery,
+        submission_service: TheorySubmissionService,
+        session_completion: SessionCompletionService,
+        interview_query: InterviewQuery,
     ) -> AsyncIterator[dict[str, Any]]:
         """Handle one client message and yield JSON payloads for the socket.
 
@@ -41,9 +41,9 @@ class TheoryWebSocketService:
             raw: Parsed client JSON message.
             interview_id: Interview session UUID.
             provider: AI provider for answer and session evaluation.
-            submission_service: Theory submission service class.
-            session_completion: Session completion service class.
-            interview_query: Interview read service class.
+            submission_service: Request-scoped theory submission service.
+            session_completion: Request-scoped session completion service.
+            interview_query: Request-scoped interview read helper.
 
         Yields:
             WebSocket message dicts to send to the client.
@@ -96,7 +96,7 @@ class TheoryWebSocketService:
         *,
         interview_id: str,
         provider: AIProvider,
-        submission_service: type[TheorySubmissionService],
+        submission_service: TheorySubmissionService,
     ) -> AsyncIterator[dict[str, Any]]:
         question_id = raw.get("question_id", "")
         answer_text = raw.get("answer_text", "")
@@ -132,7 +132,7 @@ class TheoryWebSocketService:
         raw: dict[str, Any],
         *,
         interview_id: str,
-        submission_service: type[TheorySubmissionService],
+        submission_service: TheorySubmissionService,
     ) -> AsyncIterator[dict[str, Any]]:
         question_id = raw.get("question_id", "")
         round_num = raw.get("round")
@@ -166,7 +166,7 @@ class TheoryWebSocketService:
     def _handle_ping(
         interview_id: str,
         *,
-        interview_query: type[InterviewQuery],
+        interview_query: InterviewQuery,
     ) -> dict[str, Any]:
         try:
             interview = interview_query.get_interview(interview_id)
@@ -181,7 +181,7 @@ class TheoryWebSocketService:
         *,
         interview_id: str,
         provider: AIProvider,
-        session_completion: type[SessionCompletionService],
+        session_completion: SessionCompletionService,
     ) -> AsyncIterator[dict[str, Any]]:
         try:
             events = await session_completion.complete_session(

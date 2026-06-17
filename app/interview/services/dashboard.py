@@ -5,12 +5,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from app.coding.repositories.uow import CodingUnitOfWork
+from app.coding.domain.entities import CodingSection
 from app.interview.domain.serialization import parse_session_spec
 from app.interview.domain.value_objects import InterviewSelection, session_mode_label
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.dashboard import DashboardRowRead
 from app.interview.schemas.interview import InterviewRead
+from app.interview.services.read_model import load_recent_interview_reads
 from app.interview.services.rules.selection import (
     selection_summary_lines,
     session_display_title,
@@ -20,6 +21,10 @@ from app.theory.domain.entities import TheorySection
 
 class DashboardBuilder:
     """Build dashboard rows and display helpers for interview history."""
+
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work."""
+        self._uow = uow
 
     @staticmethod
     def format_local_datetime(dt: datetime | None) -> str:
@@ -78,6 +83,9 @@ class DashboardBuilder:
     def compute_max_score(
         interview: InterviewRead,
         score_breakdown: dict[str, Any] | None = None,
+        *,
+        uow: InterviewUnitOfWork | None = None,
+        coding_section: CodingSection | None = None,
     ) -> int:
         """Compute maximum achievable score for a session.
 
@@ -87,6 +95,9 @@ class DashboardBuilder:
         Args:
             interview: Interview read model with answers loaded.
             score_breakdown: Optional per-question breakdown from session evaluation.
+            uow: Unit of work used to load the coding section on demand.
+            coding_section: Pre-loaded coding section that takes precedence over
+                ``uow`` (used to avoid per-row queries in batched contexts).
 
         Returns:
             Maximum possible score for the session.
@@ -117,10 +128,11 @@ class DashboardBuilder:
                 return theory_max
 
         if session.coding.enabled:
-            with CodingUnitOfWork() as uow:
+            section = coding_section
+            if section is None and uow is not None:
                 section = uow.coding_sections.get_aggregate(interview.id)
-                if section is not None:
-                    return section.max_score()
+            if section is not None:
+                return section.max_score()
             if interview.question_count > 0:
                 return interview.question_count * TheorySection.MAX_SCORE_PER_ROUND
 
@@ -138,8 +150,7 @@ class DashboardBuilder:
         """
         return selection_summary_lines(selection)
 
-    @staticmethod
-    def list_rows(limit: int = 20) -> list[DashboardRowRead]:
+    def list_rows(self, limit: int = 20) -> list[DashboardRowRead]:
         """Load recent interviews for the dashboard history table.
 
         Args:
@@ -148,15 +159,21 @@ class DashboardBuilder:
         Returns:
             Rows sorted newest-first (completed or started time).
         """
-        with InterviewUnitOfWork() as uow:
-            interviews = uow.interviews.list_recent_read_models(limit=limit)
+        interviews = load_recent_interview_reads(self._uow, limit=limit)
+        coding_sections = self._uow.coding_sections.get_aggregates_by_interview_ids(
+            [interview.id for interview in interviews]
+        )
 
         rows: list[DashboardRowRead] = []
         for interview in interviews:
             if interview.status == "completed":
                 feedback = interview.overall_feedback
                 breakdown = feedback.get("score_breakdown") if feedback else None
-                max_score = DashboardBuilder.compute_max_score(interview, breakdown)
+                max_score = DashboardBuilder.compute_max_score(
+                    interview,
+                    breakdown,
+                    coding_section=coding_sections.get(interview.id),
+                )
                 score = interview.score if interview.score is not None else 0
                 score_display = f"{score} / {max_score}"
                 status_label = "Completed"

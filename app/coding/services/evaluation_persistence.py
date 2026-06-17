@@ -8,17 +8,32 @@ from dataclasses import replace
 from typing import Any, Literal
 
 from app.coding.domain.exceptions import CodingSectionNotFoundError
-from app.coding.repositories.uow import CodingUnitOfWork
 from app.coding.services.evaluator.models import (
     CodingAnswerEvaluation,
     CodingFollowUpEvaluation,
 )
 from app.coding.services.events import CodingFeedbackEvent
 from app.coding.services.navigation import CodingNavigationService, next_task_payload
+from app.interview.repositories.uow import InterviewUnitOfWork
 
 
 class CodingEvaluationPersistenceService:
     """Save coding evaluation scores and advance timed task rounds."""
+
+    def __init__(
+        self,
+        uow: InterviewUnitOfWork,
+        *,
+        navigation: CodingNavigationService | None = None,
+    ) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+            navigation: Optional navigation collaborator sharing the same uow.
+        """
+        self._uow = uow
+        self._navigation = navigation or CodingNavigationService(uow)
 
     @staticmethod
     def _apply_hidden_test_cap(
@@ -53,8 +68,8 @@ class CodingEvaluationPersistenceService:
             follow_up_mode=evaluation.follow_up_mode or "code",
         )
 
-    @staticmethod
     def persist(
+        self,
         *,
         interview_id: str,
         task_id: str,
@@ -84,10 +99,7 @@ class CodingEvaluationPersistenceService:
         Returns:
             Feedback event for the coding WebSocket client.
         """
-        evaluation = CodingEvaluationPersistenceService._apply_hidden_test_cap(
-            evaluation,
-            submit_test_summary,
-        )
+        evaluation = self._apply_hidden_test_cap(evaluation, submit_test_summary)
         if (
             isinstance(evaluation, CodingAnswerEvaluation)
             and evaluation.follow_up_needed
@@ -104,56 +116,50 @@ class CodingEvaluationPersistenceService:
         timer_remaining: int | None = None
         resolved_follow_up_mode = follow_up_mode
 
-        with CodingUnitOfWork(auto_commit=True) as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                raise CodingSectionNotFoundError(interview_id)
-            section.ensure_active()
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            raise CodingSectionNotFoundError(interview_id)
+        section.ensure_active()
 
-            updated = section.with_evaluation(
-                task_id,
-                round_num,
-                evaluation.score,
-                evaluation.feedback,
+        updated = section.with_evaluation(
+            task_id,
+            round_num,
+            evaluation.score,
+            evaluation.feedback,
+        )
+        follow_up_round: int | None = None
+        if follow_up_needed:
+            starter_code = (
+                submitted_source_code if resolved_follow_up_mode == "code" else None
             )
-            follow_up_round: int | None = None
-            if follow_up_needed:
-                starter_code = (
-                    submitted_source_code if resolved_follow_up_mode == "code" else None
-                )
-                updated, pending = updated.with_follow_up(
-                    task_id,
-                    follow_up_text or "",
-                    starter_code=starter_code,
-                )
-                follow_up_round = pending.round
+            updated, pending = updated.with_follow_up(
+                task_id,
+                follow_up_text or "",
+                starter_code=starter_code,
+            )
+            follow_up_round = pending.round
 
-            uow.coding_sections.save_aggregate(updated)
+        self._uow.coding_sections.save_aggregate(updated)
 
-            if follow_up_needed and follow_up_round is not None:
-                uow.flush()
-                reloaded = uow.coding_sections.get_aggregate(interview_id)
-                if reloaded is None:
-                    raise CodingSectionNotFoundError(interview_id)
-                follow_up = reloaded.find_task(task_id, follow_up_round)
-                timed = reloaded.start_timer_for_task(follow_up.id)
-                uow.coding_sections.save_aggregate(timed)
-                activated = next(
-                    task for task in timed.tasks if task.id == follow_up.id
+        if follow_up_needed and follow_up_round is not None:
+            self._uow.flush()
+            reloaded = self._uow.coding_sections.get_aggregate(interview_id)
+            if reloaded is None:
+                raise CodingSectionNotFoundError(interview_id)
+            follow_up = reloaded.find_task(task_id, follow_up_round)
+            timed = reloaded.start_timer_for_task(follow_up.id)
+            self._uow.coding_sections.save_aggregate(timed)
+            activated = next(task for task in timed.tasks if task.id == follow_up.id)
+            timer_remaining = activated.remaining_seconds(timed.task_time_limit_seconds)
+            next_task_data = next_task_payload(activated)
+        elif not follow_up_needed:
+            next_task_data, timer_remaining = (
+                self._navigation.advance_to_next_unsubmitted(
+                    interview_id,
+                    task_id=task_id,
+                    round_num=round_num,
                 )
-                timer_remaining = activated.remaining_seconds(
-                    timed.task_time_limit_seconds
-                )
-                next_task_data = next_task_payload(activated)
-            elif not follow_up_needed:
-                next_task_data, timer_remaining = (
-                    CodingNavigationService.advance_to_next_unsubmitted(
-                        uow,
-                        interview_id,
-                        task_id=task_id,
-                        round_num=round_num,
-                    )
-                )
+            )
 
         return CodingFeedbackEvent(
             task_id=task_id,

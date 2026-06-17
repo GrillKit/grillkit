@@ -171,6 +171,15 @@ class TestUnitOfWork:
         _ = uow.session  # trigger creation
         assert uow._session is not None
 
+    def test_code_run_attempts_accessor(self, patch_session_local):
+        """Test that ``.code_run_attempts`` returns the run attempt repository."""
+        with InterviewUnitOfWork() as uow:
+            from app.coding.repositories.code_run_attempt import (
+                CodeRunAttemptRepository,
+            )
+
+            assert isinstance(uow.code_run_attempts, CodeRunAttemptRepository)
+
     def test_lazy_repository_initialization(self, patch_session_local):
         """Test that the interview repository is created lazily."""
         uow = InterviewUnitOfWork()

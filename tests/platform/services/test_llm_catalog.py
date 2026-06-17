@@ -8,8 +8,9 @@ import pytest
 
 from app.ai.llm_models import (
     CUSTOM_PRESET_ID,
+    generate_model_id,
     normalize_model_id,
-    validate_new_model_id,
+    slugify_model_id,
 )
 from app.platform.schemas import NewLLMModel
 from app.platform.services.llm_catalog import LLMCatalogService
@@ -38,57 +39,58 @@ class TestLLMCatalog:
         """Audio capability flag round-trips through llm_models.json."""
         entry = LLMCatalogService.add_user_model(
             NewLLMModel(
-                model_id="audio",
                 display_name="Audio API",
                 base_url="https://api.example.com/v1",
                 model="gpt-4o-audio",
                 accepts_audio_input=True,
             )
         )
+        assert entry.id == "audio-api"
         assert entry.accepts_audio_input is True
         saved = json.loads(llm_catalog_path.read_text())
-        assert saved["models"]["audio"]["accepts_audio_input"] is True
+        assert saved["models"]["audio-api"]["accepts_audio_input"] is True
 
     def test_add_user_model_persists_api_key(self, llm_catalog_path):
         """Models can store an API key in llm_models.json."""
         entry = LLMCatalogService.add_user_model(
             NewLLMModel(
-                model_id="cloud",
                 display_name="Cloud API",
                 base_url="https://api.example.com/v1",
                 model="gpt-4",
                 api_key="secret-key",
             )
         )
+        assert entry.id == "cloud-api"
         assert entry.api_key == "secret-key"
         saved = json.loads(llm_catalog_path.read_text())
-        assert saved["models"]["cloud"]["api_key"] == "secret-key"
-        assert saved["models"]["cloud"]["base_url"] == "https://api.example.com/v1"
+        assert saved["models"]["cloud-api"]["api_key"] == "secret-key"
+        assert saved["models"]["cloud-api"]["base_url"] == "https://api.example.com/v1"
 
     def test_add_user_model_sets_selected(self, llm_catalog_path):
         """Adding a model selects it in llm_models.json."""
         LLMCatalogService.add_user_model(
             NewLLMModel(
-                model_id="my-work",
                 display_name="Work API",
                 base_url="http://192.168.1.10:11434/v1",
                 model="deepseek-coder-v2:16b",
             )
         )
         saved = json.loads(llm_catalog_path.read_text())
-        assert saved["selected"] == "my-work"
+        assert saved["selected"] == "work-api"
 
-    def test_add_user_model_rejects_duplicate_id(self, llm_catalog_path):
-        """Duplicate model ids are rejected."""
+    def test_add_user_model_generates_unique_id_for_duplicates(self, llm_catalog_path):
+        """Duplicate display names get distinct auto-generated ids."""
         payload = NewLLMModel(
-            model_id="cloud",
             display_name="Cloud",
             base_url="https://api.example.com/v1",
             model="gpt-4",
         )
-        LLMCatalogService.add_user_model(payload)
-        with pytest.raises(ValueError, match="already exists"):
-            LLMCatalogService.add_user_model(payload)
+        first = LLMCatalogService.add_user_model(payload)
+        second = LLMCatalogService.add_user_model(payload)
+        assert first.id == "cloud"
+        assert second.id == "cloud-2"
+        saved = json.loads(llm_catalog_path.read_text())
+        assert set(saved["models"]) == {"cloud", "cloud-2"}
 
     def test_normalize_model_id_rejects_custom(self, llm_catalog_path):
         """Custom sentinel is not a valid catalog selection."""
@@ -126,9 +128,24 @@ class TestLLMCatalog:
 
 
 class TestLLMModelHelpers:
-    """Tests for id validation."""
+    """Tests for id slugification and generation."""
 
-    def test_validate_new_model_id_rejects_custom_sentinel(self):
-        """Reserved custom sentinel cannot become a catalog id."""
-        with pytest.raises(ValueError, match="reserved"):
-            validate_new_model_id(CUSTOM_PRESET_ID)
+    def test_slugify_model_id_normalizes_text(self):
+        """Display names become lowercase hyphenated slugs."""
+        assert slugify_model_id("  Work GPT-4!! ") == "work-gpt-4"
+
+    def test_slugify_model_id_empty_for_symbols_only(self):
+        """Names without usable characters yield an empty slug."""
+        assert slugify_model_id("###") == ""
+
+    def test_generate_model_id_falls_back_when_empty(self):
+        """Empty slugs fall back to the default base id."""
+        assert generate_model_id("###", set()) == "model"
+
+    def test_generate_model_id_avoids_reserved_sentinel(self):
+        """The reserved custom sentinel is never used verbatim."""
+        assert generate_model_id("custom", set()) == f"{CUSTOM_PRESET_ID}-model"
+
+    def test_generate_model_id_appends_suffix_on_collision(self):
+        """Existing ids force a numeric suffix."""
+        assert generate_model_id("Cloud", {"cloud", "cloud-2"}) == "cloud-3"

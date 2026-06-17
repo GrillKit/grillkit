@@ -52,7 +52,7 @@ class CodingTask:
         created_at: When this task row was created.
     """
 
-    TIME_EXPIRED_CODE = "[Time expired]"
+    TIME_EXPIRED_SOURCE_CODE = "[Time expired]"
     TIMEOUT_GRACE_SECONDS = DEFAULT_TIMEOUT_GRACE_SECONDS
     NEW_ID = 0
 
@@ -130,6 +130,19 @@ class CodingTask:
             Non-negative seconds remaining, or None when the timer is off.
         """
         return shared_remaining_seconds(self.started_at, limit_seconds, now)
+
+    def client_timeout_due(
+        self,
+        limit_seconds: int | None,
+        now: datetime | None = None,
+    ) -> bool:
+        """Return whether a client-sent timeout should be accepted."""
+        if limit_seconds is None or self.started_at is None:
+            return False
+        rem = self.remaining_seconds(limit_seconds, now)
+        return self.is_timer_expired(limit_seconds, now, grace_seconds=0) or (
+            rem is not None and rem <= 0
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -363,6 +376,22 @@ class CodingSection:
                 task,
                 submitted_code=source_code,
                 submit_test_summary=summary,
+            )
+            if task.id == task_row_id
+            else task
+            for task in self.tasks
+        )
+        return replace(self, tasks=tasks)
+
+    def with_timed_out_round(self, task_row_id: int, feedback: str) -> CodingSection:
+        """Return aggregate with a coding round marked as timed out."""
+        tasks = tuple(
+            replace(
+                task,
+                submitted_code=CodingTask.TIME_EXPIRED_SOURCE_CODE,
+                submit_test_summary={"status": "timeout"},
+                score=0,
+                feedback=feedback,
             )
             if task.id == task_row_id
             else task

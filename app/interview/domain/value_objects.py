@@ -14,6 +14,8 @@ SessionMode = Literal[
     "coding_then_theory",
 ]
 
+SectionKind = Literal["theory", "coding"]
+
 SESSION_MODE_LABELS: dict[SessionMode, str] = {
     "theory_only": "Theory",
     "coding_only": "Coding",
@@ -110,11 +112,13 @@ class SessionSelection:
         session_mode: How theory and coding sections are ordered and enabled.
         theory: Theory section branch configuration.
         coding: Coding section branch configuration (stub until coding plan).
+        exclude_known: When True, omit known question IDs during planning.
     """
 
     session_mode: SessionMode
     theory: SectionBranchSpec
     coding: SectionBranchSpec
+    exclude_known: bool = True
 
     @classmethod
     def theory_only(
@@ -123,6 +127,7 @@ class SessionSelection:
         sources: tuple[TrackSelection, ...],
         question_count: int = 5,
         task_time_limit_seconds: int | None = None,
+        exclude_known: bool = True,
     ) -> SessionSelection:
         """Build a theory-only session selection.
 
@@ -130,6 +135,7 @@ class SessionSelection:
             sources: Track/level/topic selections for theory.
             question_count: Number of theory questions.
             task_time_limit_seconds: Per-round time limit, or None to disable.
+            exclude_known: Whether to omit known question IDs during planning.
 
         Returns:
             Session selection with coding disabled.
@@ -148,6 +154,7 @@ class SessionSelection:
                 task_time_limit_seconds=None,
                 sources=(),
             ),
+            exclude_known=exclude_known,
         )
 
     @property

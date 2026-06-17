@@ -13,6 +13,7 @@ from app.coding.schemas.review import (
 from app.coding.services.query import CodingQueryService
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.section_review_support import (
+    CompletedInterviewSnapshot,
     load_completed_interview,
     resolved_section_feedback,
     review_score_fields,
@@ -22,6 +23,15 @@ from app.interview.services.section_review_support import (
 
 class CodingReviewService:
     """Build read-only coding review context for completed sessions."""
+
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this review scope.
+        """
+        self._uow = uow
+        self._query = CodingQueryService(uow)
 
     @staticmethod
     def _group_tasks(section: CodingSection) -> list[CodingTaskReviewRead]:
@@ -78,26 +88,25 @@ class CodingReviewService:
 
         return grouped
 
-    @staticmethod
-    def build_context(interview_id: str) -> CodingReviewContext | None:
+    def build_context(
+        self,
+        interview_id: str,
+        snapshot: CompletedInterviewSnapshot,
+    ) -> CodingReviewContext | None:
         """Assemble coding review template context for a completed session.
 
         Args:
             interview_id: Parent session UUID.
+            snapshot: Loaded completed interview snapshot.
 
         Returns:
-            Review context, or None when the session or coding section is missing.
+            Review context, or None when the coding section is missing.
         """
-        snapshot = load_completed_interview(interview_id)
-        if snapshot is None:
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
             return None
 
-        with InterviewUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                return None
-
-        summary = CodingQueryService.get_evaluation_summary(interview_id)
+        summary = self._query.get_evaluation_summary(interview_id)
         if summary is None:
             return None
 
@@ -117,6 +126,20 @@ class CodingReviewService:
                 **shared_review_fields(interview_id, snapshot),
                 **scores,
                 "section_feedback": section_feedback,
-                "tasks": CodingReviewService._group_tasks(section),
+                "tasks": self._group_tasks(section),
             }
         )
+
+    def build_context_for(self, interview_id: str) -> CodingReviewContext | None:
+        """Build coding review context for a completed session.
+
+        Args:
+            interview_id: Parent session UUID.
+
+        Returns:
+            Review context, or None when the session or coding section is missing.
+        """
+        snapshot = load_completed_interview(self._uow, interview_id)
+        if snapshot is None:
+            return None
+        return self.build_context(interview_id, snapshot)

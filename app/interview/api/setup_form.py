@@ -5,7 +5,7 @@
 from collections.abc import Callable
 
 from app.coding.services.availability import is_coding_available
-from app.interview.services.rules.selection import track_label
+from app.interview.services.rules.bank_selection import track_label
 from app.shared import coding as coding_bank
 from app.shared.locales import SUPPORTED_LOCALES, normalize_locale
 from app.shared.questions import list_categories, list_levels, list_tracks

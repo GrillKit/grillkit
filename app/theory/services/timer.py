@@ -4,18 +4,33 @@
 
 from typing import Any
 
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.events import AnswerFeedbackEvent
 from app.interview.services.rules.feedback import timeout_feedback_for_locale
 from app.theory.domain.exceptions import TheorySectionNotFoundError
-from app.theory.repositories.uow import TheoryUnitOfWork
 from app.theory.services.navigation import TheoryNavigationService
 
 
 class TheoryTimerService:
     """Timeout persistence for timed theory task rounds."""
 
-    @staticmethod
+    def __init__(
+        self,
+        uow: InterviewUnitOfWork,
+        *,
+        navigation: TheoryNavigationService | None = None,
+    ) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+            navigation: Optional navigation collaborator sharing the same uow.
+        """
+        self._uow = uow
+        self._navigation = navigation or TheoryNavigationService(uow)
+
     def persist_timed_out_round(
+        self,
         *,
         interview_id: str,
         question_id: str,
@@ -39,22 +54,20 @@ class TheoryTimerService:
         feedback_text = timeout_feedback_for_locale(locale)
         timer_remaining: int | None = None
 
-        with TheoryUnitOfWork(auto_commit=True) as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                raise TheorySectionNotFoundError(interview_id)
-            current = section.find_task(question_id, round_num)
-            updated = section.with_timed_out_round(current.id, feedback_text)
-            uow.theory_sections.save_aggregate(updated)
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
+            raise TheorySectionNotFoundError(interview_id)
+        current = section.find_task(question_id, round_num)
+        updated = section.with_timed_out_round(current.id, feedback_text)
+        self._uow.theory_sections.save_aggregate(updated)
 
-            next_question_data, timer_remaining = (
-                TheoryNavigationService.advance_to_next_unanswered(
-                    uow,
-                    interview_id,
-                    question_id=question_id,
-                    round_num=round_num,
-                )
+        next_question_data, timer_remaining = (
+            self._navigation.advance_to_next_unanswered(
+                interview_id,
+                question_id=question_id,
+                round_num=round_num,
             )
+        )
 
         return AnswerFeedbackEvent(
             question_id=question_id,

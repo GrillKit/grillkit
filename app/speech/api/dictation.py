@@ -69,7 +69,7 @@ async def interview_dictation_ws(
         interview_id: Interview session UUID.
         config_service: Provider configuration service.
     """
-    interview = InterviewQuery.get_interview(interview_id)
+    interview = InterviewQuery.load(interview_id)
     if interview is None:
         await _reject_dictation(websocket, "Interview not found")
         return

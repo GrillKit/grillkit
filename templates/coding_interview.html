@@ -53,9 +53,19 @@
     <div class="coding-session__body">
         <aside class="coding-session__brief">
             <div class="coding-session__brief-card">
-                <h2 class="coding-session__task-label" id="coding-task-title">
-                    Task {{ coding.current_task.order }}{% if coding.current_round > 0 %} · follow-up{% endif %}
-                </h2>
+                <div class="coding-session__brief-header">
+                    <h2 class="coding-session__task-label" id="coding-task-title">
+                        Task {{ coding.current_task.order }}{% if coding.current_round > 0 %} · follow-up{% endif %}
+                    </h2>
+                    <button type="button"
+                            id="coding-known-item-btn"
+                            class="btn btn-outline btn-sm known-question-toggle known-question-toggle--interview"
+                            data-branch="coding"
+                            data-item-id="{{ coding.current_task.task_id }}"
+                            {% if coding.current_round > 0 %}hidden{% endif %}>
+                        I know this
+                    </button>
+                </div>
                 <div class="coding-session__assignment" id="coding-task-prompt">{{ coding.current_task.prompt_text }}</div>
             </div>
             <aside class="coding-session__runs" id="coding-runs-panel" hidden>
@@ -98,6 +108,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/known_questions.js?v={{ static_version('js/known_questions.js') }}"></script>
 {% if session_mode %}
 <script src="/static/js/session_phases.js?v={{ static_version('js/session_phases.js') }}"></script>
 <script>
@@ -232,5 +243,12 @@ window.grillkitCodingBootstrap = {
 <script src="/static/js/coding_editor.js?v={{ static_version('js/coding_editor.js') }}"></script>
 {% if interview.status == "active" and coding.current_task and not coding.complete %}
 <script src="/static/js/coding_session.js?v={{ static_version('js/coding_session.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.KnownQuestions && window.KnownQuestions.initInterviewCoding) {
+        window.KnownQuestions.initInterviewCoding();
+    }
+});
+</script>
 {% endif %}
 {% endblock %}

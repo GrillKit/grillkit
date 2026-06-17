@@ -4,19 +4,16 @@
 
 from app.interview.domain.entities import Interview
 from app.interview.domain.exceptions import (
-    AnswerNotFoundError,
     InterviewDomainError,
     InterviewNotActiveError,
     InterviewNotFoundError,
-    QuestionTimerNotEnabledError,
-    QuestionTimerNotExpiredError,
-    UnansweredAnswerNotFoundError,
 )
 from app.interview.domain.value_objects import (
     InterviewSelection,
     InterviewSelectionHolder,
     PlannedQuestion,
     SectionBranchSpec,
+    SectionKind,
     SessionMode,
     SessionSelection,
     TrackQuestionPools,
@@ -24,7 +21,6 @@ from app.interview.domain.value_objects import (
 )
 
 __all__ = [
-    "AnswerNotFoundError",
     "Interview",
     "InterviewDomainError",
     "InterviewNotActiveError",
@@ -33,11 +29,9 @@ __all__ = [
     "InterviewSelectionHolder",
     "PlannedQuestion",
     "SectionBranchSpec",
+    "SectionKind",
     "SessionMode",
     "SessionSelection",
-    "QuestionTimerNotEnabledError",
-    "QuestionTimerNotExpiredError",
     "TrackQuestionPools",
     "TrackSelection",
-    "UnansweredAnswerNotFoundError",
 ]

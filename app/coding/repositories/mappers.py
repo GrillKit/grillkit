@@ -12,7 +12,7 @@ from app.coding.domain.entities import CodingSection as DomainCodingSection
 from app.coding.domain.entities import CodingSectionStatus
 from app.coding.domain.entities import CodingTask as DomainCodingTask
 from app.coding.domain.value_objects import RunOutcomeStatus
-from app.coding.schemas.coding import CodingSectionRead, CodingTaskRead
+from app.coding.schemas.coding import CodingTaskRead
 from app.interview.domain.serialization import (
     parse_coding_selection_spec,
     parse_overall_feedback,
@@ -327,27 +327,4 @@ def coding_task_read_from_domain(task: DomainCodingTask) -> CodingTaskRead:
         score=task.score,
         feedback=task.feedback,
         started_at=task.started_at,
-    )
-
-
-def coding_section_to_read(section: DomainCodingSection) -> CodingSectionRead:
-    """Map a domain coding section to a read model.
-
-    Args:
-        section: Domain coding section aggregate.
-
-    Returns:
-        Immutable CodingSectionRead for services and API.
-    """
-    return CodingSectionRead(
-        id=section.id,
-        interview_id=section.interview_id,
-        status=section.status,
-        locale=section.locale,
-        selection_spec=selection_to_spec(section.selection),
-        task_count=section.task_count,
-        task_time_limit_seconds=section.task_time_limit_seconds,
-        tasks=[coding_task_read_from_domain(task) for task in section.tasks],
-        section_score=section.section_score,
-        section_feedback=section.section_feedback,
     )

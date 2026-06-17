@@ -29,7 +29,8 @@ def test_coding_review_service_groups_task_rounds(isolated_db) -> None:
         )
         uow.session.add(follow_up)
 
-    context = CodingReviewService.build_context(interview_id)
+    with InterviewUnitOfWork() as uow:
+        context = CodingReviewService(uow).build_context_for(interview_id)
     assert context is not None
     assert len(context.tasks) == 1
     assert len(context.tasks[0].rounds) == 2

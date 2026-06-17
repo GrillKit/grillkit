@@ -91,7 +91,7 @@ def test_websocket_answer_runs_full_processing_pipeline(
     assert feedback["round"] == 0
     assert feedback["timed_out"] is False
     assert feedback["follow_up_question"] is None
-    reloaded = InterviewQuery.get_interview(interview_id)
+    reloaded = InterviewQuery.load(interview_id)
     assert reloaded is not None
     answer2 = next(a for a in reloaded.answers if a.question_id == "q2")
     assert feedback["next_question"] == {
@@ -176,7 +176,7 @@ def test_websocket_timeout_scores_zero(client, isolated_db, override_ws_ai_provi
     assert feedback["timed_out"] is True
     assert feedback["next_question"]["question_id"] == "q2"
 
-    reloaded = InterviewQuery.get_interview(interview_id)
+    reloaded = InterviewQuery.load(interview_id)
     assert reloaded is not None
     q1 = next(a for a in reloaded.answers if a.question_id == "q1")
     assert q1.answer_text == TheoryTask.TIME_EXPIRED_ANSWER_TEXT

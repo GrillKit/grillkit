@@ -8,6 +8,7 @@ from typing import Any
 from app.coding.services.page import CodingPageService
 from app.interview.domain.serialization import parse_session_spec
 from app.interview.domain.value_objects import SESSION_MODE_LABELS
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewPageContext, InterviewRead
 from app.interview.services.dashboard import DashboardBuilder
 from app.interview.services.phases import SessionPhaseOrchestrator
@@ -27,6 +28,7 @@ from app.shared.locales import (
 )
 from app.speech.services.page import SpeechModelPageService
 from app.speech.services.whisper_model import WhisperModelService
+from app.theory.schemas.page import TheoryPageContext
 from app.theory.services.page import TheoryPageService
 
 
@@ -48,8 +50,11 @@ class SessionPageRender:
 class SessionPageService:
     """Compose session shell and section contexts for the interview page."""
 
-    @staticmethod
-    def load_interview(interview_id: str) -> InterviewRead | None:
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work."""
+        self._uow = uow
+
+    def load_interview(self, interview_id: str) -> InterviewRead | None:
         """Load a session and start the active section timer when applicable.
 
         Args:
@@ -58,15 +63,16 @@ class SessionPageService:
         Returns:
             Interview read model, or None when not found.
         """
-        active = SessionPhaseOrchestrator.active_phase(interview_id)
+        orchestrator = SessionPhaseOrchestrator(self._uow)
+        active = orchestrator.active_phase(interview_id)
         if active == "theory":
-            TheoryPageService.activate_timer(interview_id)
+            TheoryPageService(self._uow).activate_timer(interview_id)
         elif active == "coding":
-            CodingPageService.activate_timer(interview_id)
-        return InterviewQuery.get_interview(interview_id)
+            CodingPageService(self._uow).activate_timer(interview_id)
+        return InterviewQuery(self._uow).get_interview(interview_id)
 
-    @staticmethod
     async def prepare_page(
+        self,
         interview_id: str,
         *,
         config: AppConfig | None,
@@ -82,11 +88,11 @@ class SessionPageService:
         Returns:
             Redirect URL or template context for ``interview.html``.
         """
-        interview = SessionPageService.load_interview(interview_id)
+        interview = self.load_interview(interview_id)
         if interview is None:
             return SessionPageRender(redirect_url="/", template_context=None)
 
-        template_context = await SessionPageService.build_full_template_context(
+        template_context = await self.build_full_template_context(
             interview,
             config=config,
             whisper_model_service=whisper_model_service,
@@ -103,6 +109,8 @@ class SessionPageService:
         *,
         config: AppConfig | None,
         question_voice_enabled: bool,
+        theory: TheoryPageContext | None = None,
+        uow: InterviewUnitOfWork | None = None,
     ) -> InterviewPageContext:
         """Assemble shell template context for ``interview.html``.
 
@@ -113,11 +121,14 @@ class SessionPageService:
             interview: Loaded interview read model.
             config: Application config, if configured.
             question_voice_enabled: Whether Piper TTS is enabled in config.
+            theory: Optional pre-built theory page context.
+            uow: Optional active unit of work for coding score fallback.
 
         Returns:
             Frozen page context for the interview template.
         """
-        theory = TheoryPageService.build_context(interview)
+        if theory is None:
+            theory = TheoryPageService.build_context_for(interview)
         current_question = theory.current_question if theory is not None else None
         question_timer_enabled = (
             theory.question_timer_enabled if theory is not None else False
@@ -137,6 +148,7 @@ class SessionPageService:
         max_score = DashboardBuilder.compute_max_score(
             interview,
             score_breakdown if isinstance(score_breakdown, dict) else None,
+            uow=uow,
         )
         session = parse_session_spec(
             interview.selection_spec,
@@ -172,8 +184,8 @@ class SessionPageService:
             interview_model_accepts_audio=interview_model_accepts_audio,
         )
 
-    @staticmethod
     async def build_full_template_context(
+        self,
         interview: InterviewRead,
         *,
         config: AppConfig | None,
@@ -194,12 +206,18 @@ class SessionPageService:
             question_count=interview.question_count,
             task_time_limit_seconds=interview.question_time_limit_seconds,
         )
-        theory = TheoryPageService.build_context(interview)
-        coding = CodingPageService.build_context(interview.id)
+        theory_service = TheoryPageService(self._uow)
+        coding_service = CodingPageService(self._uow)
+        orchestrator = SessionPhaseOrchestrator(self._uow)
+        theory = theory_service.build_context(interview)
+        coding = coding_service.build_context(interview.id)
+        active_phase = orchestrator.active_phase(interview.id)
         base = SessionPageService.build_page_context(
             interview,
             config=config,
             question_voice_enabled=bool(config and config.question_voice_enabled),
+            theory=theory,
+            uow=self._uow,
         ).model_dump()
         speech = SpeechModelPageService.build_page_context(
             config,
@@ -217,5 +235,5 @@ class SessionPageService:
                 session.session_mode, session.session_mode
             ),
             "phase_order": list(phase_order_for_mode(session.session_mode)),
-            "active_phase": SessionPhaseOrchestrator.active_phase(interview.id),
+            "active_phase": active_phase,
         }

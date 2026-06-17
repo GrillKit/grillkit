@@ -7,12 +7,12 @@ from __future__ import annotations
 from app.coding.domain.entities import CodeRunAttempt, CodingTask
 from app.coding.domain.exceptions import CodingSectionNotFoundError
 from app.coding.domain.task_spec import client_task_spec_from_stored
-from app.coding.repositories.uow import CodingUnitOfWork
 from app.coding.schemas.coding import (
     CodeRunAttemptRead,
     CodingSessionStateRead,
     CodingTaskStateRead,
 )
+from app.interview.repositories.uow import InterviewUnitOfWork
 
 
 def _task_state_from_domain(task: CodingTask) -> CodingTaskStateRead:
@@ -65,8 +65,11 @@ def _attempt_state_from_domain(attempt: CodeRunAttempt) -> CodeRunAttemptRead:
 class CodingStateService:
     """Read-only builder for ``GET /coding/state`` responses."""
 
-    @staticmethod
-    def get_state(interview_id: str) -> CodingSessionStateRead:
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work."""
+        self._uow = uow
+
+    def get_state(self, interview_id: str) -> CodingSessionStateRead:
         """Return coding section progress and recent Run attempts.
 
         Args:
@@ -78,34 +81,31 @@ class CodingStateService:
         Raises:
             CodingSectionNotFoundError: If no coding section exists.
         """
-        with CodingUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                raise CodingSectionNotFoundError(interview_id)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            raise CodingSectionNotFoundError(interview_id)
 
-            current_task = section.find_first_unsubmitted()
-            current_task_state = (
-                _task_state_from_domain(current_task)
-                if current_task is not None
-                else None
+        current_task = section.find_first_unsubmitted()
+        current_task_state = (
+            _task_state_from_domain(current_task) if current_task is not None else None
+        )
+        run_attempts: tuple[CodeRunAttemptRead, ...] = ()
+        if current_task is not None:
+            attempts = self._uow.code_run_attempts.list_for_task(current_task.id)
+            run_attempts = tuple(
+                _attempt_state_from_domain(attempt) for attempt in attempts
             )
-            run_attempts: tuple[CodeRunAttemptRead, ...] = ()
-            if current_task is not None:
-                attempts = uow.code_run_attempts.list_for_task(current_task.id)
-                run_attempts = tuple(
-                    _attempt_state_from_domain(attempt) for attempt in attempts
-                )
 
-            completed_tasks = sum(
-                1 for task in section.tasks if task.submitted_code is not None
-            )
-            return CodingSessionStateRead(
-                interview_id=interview_id,
-                section_status=section.status,
-                task_time_limit_seconds=section.task_time_limit_seconds,
-                completed_tasks=completed_tasks,
-                total_tasks=section.task_count,
-                current_task=current_task_state,
-                tasks=[_task_state_from_domain(task) for task in section.tasks],
-                run_attempts=list(run_attempts),
-            )
+        completed_tasks = sum(
+            1 for task in section.tasks if task.submitted_code is not None
+        )
+        return CodingSessionStateRead(
+            interview_id=interview_id,
+            section_status=section.status,
+            task_time_limit_seconds=section.task_time_limit_seconds,
+            completed_tasks=completed_tasks,
+            total_tasks=section.task_count,
+            current_task=current_task_state,
+            tasks=[_task_state_from_domain(task) for task in section.tasks],
+            run_attempts=list(run_attempts),
+        )

@@ -5,11 +5,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
-from app.interview.domain.value_objects import SessionMode
+from app.interview.domain.value_objects import SectionKind, SessionMode
 
-SectionKind = Literal["theory", "coding"]
+if TYPE_CHECKING:
+    from app.interview.repositories.uow import InterviewUnitOfWork
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,34 +54,28 @@ class SectionService(Protocol):
 
     section_kind: ClassVar[SectionKind]
 
-    @staticmethod
-    def is_complete(interview_id: str) -> bool:
+    def is_complete(self, interview_id: str) -> bool:
         """Return whether the section has no remaining user tasks."""
 
-    @staticmethod
-    def is_user_facing(interview_id: str) -> bool:
+    def is_user_facing(self, interview_id: str) -> bool:
         """Return whether the user should interact with this section now."""
 
-    @staticmethod
-    def activate_if_pending(interview_id: str) -> bool:
+    def activate_if_pending(self, interview_id: str) -> bool:
         """Promote a pending section to active when prerequisites are met."""
 
-    @staticmethod
-    def get_page_context(interview_id: str) -> SectionPageContext | None:
+    def get_page_context(self, interview_id: str) -> SectionPageContext | None:
         """Return section page metadata for session composition."""
 
-    @staticmethod
     def get_evaluation_summary(
+        self,
         interview_id: str,
     ) -> SectionEvaluationSummary | None:
         """Return section evaluation data for session completion."""
 
-    @staticmethod
-    def on_phase_complete(interview_id: str) -> None:
+    def on_phase_complete(self, interview_id: str) -> None:
         """Schedule background prefetch when a phase finishes."""
 
-    @staticmethod
-    async def ensure_section_feedback(interview_id: str) -> None:
+    async def ensure_section_feedback(self, interview_id: str) -> None:
         """Synchronously prefetch section feedback before session completion."""
 
 
@@ -118,42 +113,53 @@ def is_first_user_facing_section(
     return bool(order) and order[0] == section
 
 
-def section_services() -> dict[SectionKind, SectionService]:
-    """Return section service classes keyed by section kind.
+def section_services(
+    uow: InterviewUnitOfWork,
+) -> dict[SectionKind, SectionService]:
+    """Return section service instances keyed by section kind.
+
+    Args:
+        uow: Shared application unit of work for the caller scope.
 
     Returns:
-        Mapping from section kind to the corresponding section service class.
+        Mapping from section kind to the corresponding section service instance.
     """
+    from app.coding.services.query import CodingQueryService
     from app.coding.services.section import CodingSectionService
+    from app.theory.services.query import TheoryQueryService
     from app.theory.services.section import TheorySectionService
 
+    theory_query = TheoryQueryService(uow)
+    coding_query = CodingQueryService(uow)
     return cast(
         dict[SectionKind, SectionService],
         {
-            "theory": TheorySectionService,
-            "coding": CodingSectionService,
+            "theory": TheorySectionService(uow, query=theory_query),
+            "coding": CodingSectionService(uow, query=coding_query),
         },
     )
 
 
-def prior_sections_complete_for(interview_id: str, section: SectionKind) -> bool:
+def prior_sections_complete_for(
+    interview_id: str,
+    section: SectionKind,
+    uow: InterviewUnitOfWork,
+) -> bool:
     """Return whether every section before ``section`` in phase order is complete.
 
     Args:
         interview_id: Parent interview UUID.
         section: Target section kind to check prerequisites for.
+        uow: Shared application unit of work for the caller scope.
 
     Returns:
         True when all prior sections are finished or absent from the phase order.
     """
-    from app.interview.repositories.uow import InterviewUnitOfWork
-
-    services = section_services()
-    with InterviewUnitOfWork() as uow:
-        aggregate = uow.interviews.get_aggregate(interview_id)
-        if aggregate is None:
-            return False
-        order = phase_order_for_mode(aggregate.session_mode)
+    services = section_services(uow)
+    aggregate = uow.interviews.get_aggregate(interview_id)
+    if aggregate is None:
+        return False
+    order = phase_order_for_mode(aggregate.session_mode)
     if section not in order:
         return False
     target_index = order.index(section)

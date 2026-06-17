@@ -16,6 +16,29 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Removed
 
+## 2026.6.16
+
+### Added
+
+- **Known questions** — mark theory or coding bank items as known during an interview (**I know this**) or on review pages; optionally exclude them when starting a new session; manage the list from **Known Questions** in the navigation bar
+
+### Changed
+
+- **Add model to catalog** — the catalog model id is generated automatically from the display name; removed the **Model id** field on `/config`
+- **UI** — refreshed dark theme with clearer hierarchy, IDE-style coding editor, terminal-style run output, and updated status badges on the dashboard
+
+### Fixed
+
+- **Theory then coding sessions** — fixed errors when advancing from theory to coding in a combined session
+- **Coding follow-ups** — explanation rounds now submit your typed explanation instead of the code in the editor
+- **Coding timers** — expired rounds score 0 and the session advances automatically
+- **Setup review** — known-questions option shows the correct hint for the checkbox
+- **Early session end** — partial theory/coding scores are kept when you end a session before finishing every task
+- **Theory answers** — more reliable submit flow for text and audio answers during AI evaluation
+- **Dashboard** — faster interview history on the home page
+
+### Removed
+
 ## 2026.6.12
 
 ### Added

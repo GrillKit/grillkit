@@ -69,6 +69,29 @@ def test_build_coding_task_plan_from_bank() -> None:
     assert planned[0].task_spec["language"] == "python"
 
 
+def test_build_coding_task_plan_excludes_known_ids() -> None:
+    """Coding planning omits excluded task IDs from the result."""
+    selection = InterviewSelection(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("basics",),
+            ),
+        )
+    )
+    all_planned = build_coding_task_plan(selection, task_count=1, locale="en")
+    excluded_id = all_planned[0].id
+    planned = build_coding_task_plan(
+        selection,
+        task_count=1,
+        locale="en",
+        excluded_ids=frozenset({excluded_id}),
+    )
+    assert len(planned) == 1
+    assert planned[0].id != excluded_id
+
+
 def test_validate_task_count_requires_one_per_topic() -> None:
     """Task count must cover every selected topic."""
     selection = InterviewSelection(

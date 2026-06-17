@@ -8,14 +8,21 @@ Read-only helpers for loading sessions from the database.
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.theory.repositories.uow import TheoryUnitOfWork
+from app.interview.services.read_model import load_interview_read
 
 
 class InterviewQuery:
     """Read-only queries and view-model helpers for interview sessions."""
 
-    @staticmethod
-    def get_interview(interview_id: str) -> InterviewRead | None:
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this read scope.
+        """
+        self._uow = uow
+
+    def get_interview(self, interview_id: str) -> InterviewRead | None:
         """Retrieve an interview session by ID with theory tasks loaded.
 
         Args:
@@ -24,41 +31,22 @@ class InterviewQuery:
         Returns:
             Interview read model with answers loaded, or None if not found.
         """
-        with InterviewUnitOfWork() as uow:
-            return uow.interviews.get_read_model(interview_id)
+        return load_interview_read(self._uow, interview_id)
 
     @staticmethod
-    def get_interview_or_raise(
-        interview_id: str,
-        *,
-        uow: InterviewUnitOfWork | None = None,
-    ) -> InterviewRead:
-        """Load an interview read model or raise ``InterviewNotFoundError``.
-
-        When ``uow`` is provided, loads from that unit of work (same DB session).
-        Otherwise opens a short-lived read-only ``InterviewUnitOfWork``.
+    def load(interview_id: str) -> InterviewRead | None:
+        """Load an interview read model using a short-lived unit of work.
 
         Args:
             interview_id: The session UUID.
-            uow: Optional active unit of work for transactional loads.
 
         Returns:
-            Interview read model with answers loaded.
-
-        Raises:
-            InterviewNotFoundError: If the interview does not exist.
+            Interview read model with answers loaded, or None if not found.
         """
-        if uow is not None:
-            interview = uow.interviews.get_read_model(interview_id)
-        else:
-            with InterviewUnitOfWork() as read_uow:
-                interview = read_uow.interviews.get_read_model(interview_id)
-        if interview is None:
-            raise InterviewNotFoundError(interview_id)
-        return interview
+        with InterviewUnitOfWork() as uow:
+            return InterviewQuery(uow).get_interview(interview_id)
 
-    @staticmethod
-    def get_active_interview_or_raise(interview_id: str) -> InterviewRead:
+    def get_active_or_raise(self, interview_id: str) -> InterviewRead:
         """Load an active interview read model or raise a domain error.
 
         Args:
@@ -71,34 +59,31 @@ class InterviewQuery:
             InterviewNotFoundError: If the interview does not exist.
             InterviewNotActiveError: If the interview is not active.
         """
-        with InterviewUnitOfWork() as uow:
-            shell = uow.interviews.get_aggregate(interview_id)
-            if shell is None:
-                raise InterviewNotFoundError(interview_id)
-            shell.ensure_active()
-            interview = uow.interviews.get_read_model(interview_id)
-            if interview is None:
-                raise InterviewNotFoundError(interview_id)
-            return interview
+        shell = self._uow.interviews.get_aggregate(interview_id)
+        if shell is None:
+            raise InterviewNotFoundError(interview_id)
+        shell.ensure_active()
+        interview = self.get_interview(interview_id)
+        if interview is None:
+            raise InterviewNotFoundError(interview_id)
+        return interview
 
     @staticmethod
-    def timer_remaining_seconds(interview_id: str) -> int | None:
-        """Return seconds left on the current round timer for templates.
+    def get_active_interview_or_raise(interview_id: str) -> InterviewRead:
+        """Load an active interview using a short-lived unit of work.
 
         Args:
             interview_id: The session UUID.
 
         Returns:
-            Remaining seconds, or None when the timer is disabled or unavailable.
+            Interview read model with answers loaded.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+            InterviewNotActiveError: If the interview is not active.
         """
-        with TheoryUnitOfWork() as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                return None
-            current = section.find_first_unanswered()
-            if current is None:
-                return None
-            return current.remaining_seconds(section.task_time_limit_seconds)
+        with InterviewUnitOfWork() as uow:
+            return InterviewQuery(uow).get_active_or_raise(interview_id)
 
     @staticmethod
     def get_current_unanswered(interview: InterviewRead) -> AnswerRead | None:

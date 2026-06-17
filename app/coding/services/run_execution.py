@@ -14,7 +14,6 @@ from app.coding.domain.exceptions import (
     CodingSectionNotFoundError,
 )
 from app.coding.domain.value_objects import CodingRunResult, TestCaseRunResult
-from app.coding.repositories.uow import CodingUnitOfWork
 from app.coding.services.runner import CodingRunnerService
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
@@ -105,7 +104,7 @@ class CodingRunExecutionService:
     def _load_run_context(
         interview_id: str,
         task_id: str,
-    ) -> tuple[dict[str, Any], int, int, str]:
+    ) -> dict[str, Any]:
         """Validate the active task and return execution context.
 
         Args:
@@ -113,7 +112,7 @@ class CodingRunExecutionService:
             task_id: YAML task ID for the active coding round.
 
         Returns:
-            Tuple of task spec, coding task row ID, next attempt number, language.
+            Task spec used for public test execution.
 
         Raises:
             CodingSectionNotFoundError: If no coding section exists.
@@ -121,7 +120,7 @@ class CodingRunExecutionService:
             CodingTaskNotCurrentError: If ``task_id`` is not the active task.
             CodingRunLimitExceededError: If the per-task Run limit is reached.
         """
-        with CodingUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             section = uow.coding_sections.get_aggregate(interview_id)
             if section is None:
                 raise CodingSectionNotFoundError(interview_id)
@@ -131,13 +130,7 @@ class CodingRunExecutionService:
             attempt_count = uow.code_run_attempts.count_for_task(current_task.id)
             if attempt_count >= limit:
                 raise CodingRunLimitExceededError(task_id, limit)
-            language = str(current_task.task_spec.get("language", "python"))
-            return (
-                dict(current_task.task_spec),
-                current_task.id,
-                attempt_count + 1,
-                language,
-            )
+            return dict(current_task.task_spec)
 
     @staticmethod
     async def run_and_persist(
@@ -165,21 +158,32 @@ class CodingRunExecutionService:
             CodingRunLimitExceededError: If the per-task Run limit is reached.
         """
         _ensure_interview_active(interview_id)
-        task_spec, coding_task_id, attempt_no, language = (
-            CodingRunExecutionService._load_run_context(interview_id, task_id)
-        )
+        task_spec = CodingRunExecutionService._load_run_context(interview_id, task_id)
         run_result = await CodingRunnerService.run_public_tests(
             source_code=source_code,
             task_spec=task_spec,
         )
-        attempt = CodingRunExecutionService._build_attempt(
-            coding_task_id=coding_task_id,
-            attempt_no=attempt_no,
-            source_code=source_code,
-            language=language,
-            run_result=run_result,
-        )
-        with CodingUnitOfWork(auto_commit=True) as uow:
+        with InterviewUnitOfWork(auto_commit=True) as uow:
+            aggregate = uow.interviews.get_aggregate(interview_id)
+            if aggregate is None:
+                raise InterviewNotFoundError(interview_id)
+            aggregate.ensure_active()
+            section = uow.coding_sections.get_aggregate(interview_id)
+            if section is None:
+                raise CodingSectionNotFoundError(interview_id)
+            section.ensure_active()
+            current_task = section.require_current_task(task_id)
+            limit = _max_runs_per_task()
+            attempt_count = uow.code_run_attempts.count_for_task(current_task.id)
+            if attempt_count >= limit:
+                raise CodingRunLimitExceededError(task_id, limit)
+            attempt = CodingRunExecutionService._build_attempt(
+                coding_task_id=current_task.id,
+                attempt_no=attempt_count + 1,
+                source_code=source_code,
+                language=str(current_task.task_spec.get("language", "python")),
+                run_result=run_result,
+            )
             return uow.code_run_attempts.create(attempt)
 
     @staticmethod

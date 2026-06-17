@@ -119,6 +119,97 @@ class TestPlanQuestions:
         assert db_indices
         assert max(py_indices) < min(db_indices)
 
+    def test_excludes_known_ids(self):
+        """Excluded IDs are removed before planning."""
+        selection = InterviewSelection(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            )
+        )
+        pools = [
+            TrackQuestionPools(
+                source=selection.sources[0],
+                full_pool=(
+                    _question("keep-1"),
+                    _question("skip-1"),
+                    _question("keep-2"),
+                ),
+                category_pools={
+                    "basics": (
+                        _question("keep-1"),
+                        _question("skip-1"),
+                        _question("keep-2"),
+                    ),
+                },
+            )
+        ]
+        plan = plan_questions(
+            selection,
+            2,
+            pools,
+            excluded_ids=frozenset({"skip-1"}),
+        )
+        assert len(plan) == 2
+        assert all(question.id != "skip-1" for question in plan)
+
+    def test_raises_when_category_fully_excluded(self):
+        """All-known category raises a descriptive error."""
+        selection = InterviewSelection(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            )
+        )
+        pools = [
+            TrackQuestionPools(
+                source=selection.sources[0],
+                full_pool=(_question("only-1"),),
+                category_pools={"basics": (_question("only-1"),)},
+            )
+        ]
+        with pytest.raises(ValueError, match="marked as known"):
+            plan_questions(
+                selection,
+                1,
+                pools,
+                excluded_ids=frozenset({"only-1"}),
+            )
+
+    def test_raises_when_not_enough_unfamiliar_questions(self):
+        """Planning fails when too few questions remain after exclusion."""
+        selection = InterviewSelection(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            )
+        )
+        pools = [
+            TrackQuestionPools(
+                source=selection.sources[0],
+                full_pool=(_question("keep-1"), _question("skip-1")),
+                category_pools={
+                    "basics": (_question("keep-1"), _question("skip-1")),
+                },
+            )
+        ]
+        with pytest.raises(ValueError, match="Not enough unfamiliar questions"):
+            plan_questions(
+                selection,
+                2,
+                pools,
+                excluded_ids=frozenset({"skip-1"}),
+            )
+
 
 class TestSelectionSpec:
     """Tests for selection_spec JSON round-trip."""
@@ -144,6 +235,23 @@ class TestSelectionSpec:
         assert parsed.theory_selection.sources[0].track == "python"
         assert '"version":2' in raw
         assert '"session_mode":"theory_only"' in raw
+
+    def test_exclude_known_round_trip(self):
+        """session_to_spec preserves exclude_known flag."""
+        session = SessionSelection.theory_only(
+            sources=(
+                TrackSelection(
+                    track="python",
+                    level="junior",
+                    categories=("basics",),
+                ),
+            ),
+            exclude_known=False,
+        )
+        raw = session_to_spec(session)
+        parsed = parse_session_spec(raw)
+        assert parsed.exclude_known is False
+        assert '"exclude_known":false' in raw
 
     def test_v1_theory_sources_compat(self):
         """parse_selection_spec extracts theory sources from legacy v1 JSON."""

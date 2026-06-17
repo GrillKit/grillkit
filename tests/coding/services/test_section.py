@@ -22,17 +22,19 @@ def test_coding_section_service_reports_incomplete_until_submitted(
         selection_spec=minimal_selection_spec(),
         status="active",
     )
-    from app.coding.repositories.uow import CodingUnitOfWork
+    from app.interview.repositories.uow import InterviewUnitOfWork
 
-    with CodingUnitOfWork() as uow:
+    with InterviewUnitOfWork() as uow:
         uow.session.add(interview)
         uow.commit()
         section = create_coding_section_for_interview(uow.session, interview)
         attach_coding_tasks(uow.session, section)
         uow.commit()
 
-    assert CodingSectionService.is_complete(interview_id) is False
-    context = CodingSectionService.get_page_context(interview_id)
+    with InterviewUnitOfWork() as uow:
+        service = CodingSectionService(uow)
+        assert service.is_complete(interview_id) is False
+        context = service.get_page_context(interview_id)
     assert context is not None
     assert context.section == "coding"
     assert context.active is True

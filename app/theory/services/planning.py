@@ -7,7 +7,13 @@ from app.interview.domain.value_objects import (
     PlannedQuestion,
     TrackQuestionPools,
 )
-from app.interview.services.rules.selection import plan_questions, track_label
+from app.interview.services.rules.bank_selection import (
+    BankCatalog,
+    BankSelectionMessages,
+    track_label,
+    validate_bank_selection,
+)
+from app.interview.services.rules.selection import plan_questions
 from app.shared.locales import normalize_locale
 from app.shared.questions import (
     Question,
@@ -18,6 +24,23 @@ from app.shared.questions import (
     load_category,
 )
 from app.theory.domain.value_objects import PlannedTheoryQuestion
+
+_THEORY_BANK_CATALOG = BankCatalog(
+    list_tracks=list_tracks,
+    list_levels=list_levels,
+    list_categories=list_categories,
+)
+_THEORY_BANK_MESSAGES = BankSelectionMessages(
+    empty_sources="Select at least one track and topic",
+    unknown_track=lambda track: f"Unknown track: {track}",
+    unknown_level=lambda level, track: f"Unknown level '{level}' for track '{track}'",
+    empty_categories=lambda track: (
+        f"Select at least one topic for {track_label(track)}"
+    ),
+    unknown_category=lambda category, track, level: (
+        f"Unknown topic '{category}' for {track}/{level}"
+    ),
+)
 
 
 def _theory_questions_only(questions: list[Question]) -> list[Question]:
@@ -58,28 +81,11 @@ def validate_selection(selection: InterviewSelection) -> None:
     Raises:
         ValueError: If selection is empty or references unknown bank paths.
     """
-    if not selection.sources:
-        raise ValueError("Select at least one track and topic")
-
-    tracks = set(list_tracks())
-    for source in selection.sources:
-        if source.track not in tracks:
-            raise ValueError(f"Unknown track: {source.track}")
-        levels = set(list_levels(source.track))
-        if source.level not in levels:
-            raise ValueError(
-                f"Unknown level '{source.level}' for track '{source.track}'"
-            )
-        if not source.categories:
-            raise ValueError(
-                f"Select at least one topic for {track_label(source.track)}"
-            )
-        available = set(list_categories(source.track, source.level))
-        for category in source.categories:
-            if category not in available:
-                raise ValueError(
-                    f"Unknown topic '{category}' for {source.track}/{source.level}"
-                )
+    validate_bank_selection(
+        selection,
+        _THEORY_BANK_CATALOG,
+        _THEORY_BANK_MESSAGES,
+    )
 
 
 def load_track_pools(
@@ -129,6 +135,8 @@ def build_theory_question_plan(
     selection: InterviewSelection,
     question_count: int,
     locale: str = "en",
+    *,
+    excluded_ids: frozenset[str] = frozenset(),
 ) -> tuple[PlannedTheoryQuestion, ...]:
     """Build ordered theory question list for a multi-source section.
 
@@ -136,6 +144,7 @@ def build_theory_question_plan(
         selection: Validated interview selection.
         question_count: Target number of questions (>= topic count).
         locale: Locale for question text.
+        excluded_ids: Question IDs to remove from pools before planning.
 
     Returns:
         Ordered planned theory questions.
@@ -145,7 +154,12 @@ def build_theory_question_plan(
     """
     validate_selection(selection)
     track_pools = load_track_pools(selection, locale)
-    planned = plan_questions(selection, question_count, track_pools)
+    planned = plan_questions(
+        selection,
+        question_count,
+        track_pools,
+        excluded_ids=excluded_ids,
+    )
     return tuple(
         PlannedTheoryQuestion(
             id=question.id,
