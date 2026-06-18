@@ -4,13 +4,16 @@
 
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.interview.schemas.interview import AnswerRead, InterviewRead
 from app.platform.services.config import AppConfig
-from app.question_voice.services.question_audio import _resolve_answer, get_question_audio_path
+from app.question_voice.services.question_audio import (
+    _resolve_answer,
+    get_question_audio_path,
+)
 from app.question_voice.services.tts_exceptions import QuestionVoiceDisabledError
 
 
@@ -62,9 +65,8 @@ class TestGetQuestionAudioPath:
         with patch(
             "app.question_voice.services.question_audio.ConfigService.get_config",
             return_value=None,
-        ):
-            with pytest.raises(QuestionVoiceDisabledError):
-                await get_question_audio_path("interview-id")
+        ), pytest.raises(QuestionVoiceDisabledError):
+            await get_question_audio_path("interview-id")
 
     @pytest.mark.asyncio
     async def test_raises_when_voice_disabled(self):
@@ -78,9 +80,8 @@ class TestGetQuestionAudioPath:
         with patch(
             "app.question_voice.services.question_audio.ConfigService.get_config",
             return_value=config,
-        ):
-            with pytest.raises(QuestionVoiceDisabledError):
-                await get_question_audio_path("interview-id")
+        ), pytest.raises(QuestionVoiceDisabledError):
+            await get_question_audio_path("interview-id")
 
     @pytest.mark.asyncio
     async def test_returns_cached_path_with_answer_id(self):

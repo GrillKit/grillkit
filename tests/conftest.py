@@ -134,8 +134,8 @@ def mock_judge0(monkeypatch):
     from app.coding.services.runner import CodingRunnerService
     from tests.helpers.fake_judge0 import (
         FakeRunConfig,
-        fake_compile_error_result,
         fake_coding_run_result,
+        fake_compile_error_result,
         fake_tests_failed_result,
     )
 

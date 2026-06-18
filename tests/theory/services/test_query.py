@@ -4,7 +4,7 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from app.interview.domain.value_objects import InterviewSelection, TrackSelection
 from app.interview.repositories.uow import InterviewUnitOfWork

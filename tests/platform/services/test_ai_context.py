@@ -46,13 +46,15 @@ class TestAiProviderFromConfig:
         mock_provider = MagicMock()
         mock_provider.close = AsyncMock()
 
-        with patch(
-            "app.platform.services.ai_context.ConfigService.create_provider_from_config",
-            return_value=mock_provider,
+        with (
+            patch(
+                "app.platform.services.ai_context.ConfigService.create_provider_from_config",
+                return_value=mock_provider,
+            ),
+            pytest.raises(ValueError, match="boom"),
         ):
-            with pytest.raises(ValueError, match="boom"):
-                async with ai_provider_from_config():
-                    raise ValueError("boom")
+            async with ai_provider_from_config():
+                raise ValueError("boom")
 
         mock_provider.close.assert_awaited_once()
 
@@ -83,10 +85,12 @@ class TestAiProviderFromConfig:
     @pytest.mark.asyncio
     async def test_raises_when_no_config(self):
         """ValueError propagates when no configuration exists."""
-        with patch(
-            "app.platform.services.ai_context.ConfigService.create_provider_from_config",
-            side_effect=ValueError("No configuration found"),
+        with (
+            patch(
+                "app.platform.services.ai_context.ConfigService.create_provider_from_config",
+                side_effect=ValueError("No configuration found"),
+            ),
+            pytest.raises(ValueError, match="No configuration found"),
         ):
-            with pytest.raises(ValueError, match="No configuration found"):
-                async with ai_provider_from_config():
-                    pass  # pragma: no cover
+            async with ai_provider_from_config():
+                pass  # pragma: no cover

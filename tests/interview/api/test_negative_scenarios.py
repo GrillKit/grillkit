@@ -2,16 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Negative scenarios: 404s, bad UUID, bad WS msg, invalid WAV, active→results 404."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
-from tests.helpers.interview_seed import persist_interview_with_answers
-from tests.helpers.coding_seed import seed_active_coding_interview
-from tests.helpers.selection import minimal_selection_spec
-from app.shared.infrastructure.models import Interview, Answer
+from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json
-from app.ai.audio_probe import minimal_wav_bytes
+from tests.helpers.interview_seed import persist_interview_with_answers
+from tests.helpers.selection import minimal_selection_spec
 
 
 class TestNegativeScenarios:
@@ -116,8 +114,6 @@ class TestNegativeScenarios:
 
     def test_answered_question_is_idempotent(self, client, isolated_db, override_ws_ai_provider):
         """S13.9: Answering a completed question returns no-op or error; session stays valid."""
-        from app.interview.repositories.uow import InterviewUnitOfWork
-        from app.interview.services.query import InterviewQuery
 
         interview_id = persist_interview_with_answers(
             Interview(

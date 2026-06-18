@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Config edge cases: locale change, delete config preserves sessions, invalid URL."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.ai.llm_models import LLMModelEntry
 from app.platform.services.config import AppConfig
@@ -61,8 +61,8 @@ class TestConfigEdgeCases:
 
     def test_config_delete_keeps_sessions(self, client, isolated_db):
         """Deleting config does not affect existing interviews."""
-        from tests.helpers.interview_seed import persist_interview_with_answers
         from app.shared.infrastructure.models import Interview
+        from tests.helpers.interview_seed import persist_interview_with_answers
         from tests.helpers.selection import minimal_selection_spec
 
         interview_id = persist_interview_with_answers(
@@ -83,7 +83,6 @@ class TestConfigEdgeCases:
             mock_delete.assert_called_once()
 
         # Existing session still reachable
-        from app.interview.services.query import InterviewQuery
         from app.interview.repositories.uow import InterviewUnitOfWork
         with InterviewUnitOfWork() as uow:
             interview = uow.interviews.get_aggregate(interview_id)

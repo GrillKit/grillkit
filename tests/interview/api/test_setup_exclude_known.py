@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from app.interview.domain.serialization import session_to_spec
 from app.interview.domain.value_objects import (
-    SectionBranchSpec,
     SessionSelection,
     TrackSelection,
 )

@@ -12,7 +12,7 @@ from app.coding.domain.exceptions import (
     CodingTaskNotCurrentError,
     CodingTaskNotFoundError,
 )
-from app.coding.domain.value_objects import PlannedCodingTask, RunOutcomeStatus
+from app.coding.domain.value_objects import PlannedCodingTask
 from app.interview.domain.value_objects import InterviewSelection, TrackSelection
 
 

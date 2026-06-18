@@ -4,8 +4,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from app.ai.llm_models import LLMModelEntry
 from app.platform.services.config import AppConfig
 

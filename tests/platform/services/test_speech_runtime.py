@@ -2,17 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for SpeechRuntimeCoordinator."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from fastapi import FastAPI
+import pytest
 
 from app.platform.services.config import AppConfig
 from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
-from app.platform.services.speech_settings import (
-    QuestionVoiceSettings,
-    SpeechSettings,
-)
 
 
 @pytest.fixture(autouse=True)

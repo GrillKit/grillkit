@@ -5,9 +5,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
-from app.coding.domain.value_objects import CodingRunResult, TestCaseRunResult
+from app.coding.domain.value_objects import CaseRunResult, CodingRunResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,8 +42,8 @@ def fake_coding_run_result(config: FakeRunConfig | None = None) -> CodingRunResu
         A ``CodingRunResult`` matching the fake Judge0 response shape.
     """
     cfg = config or FakeRunConfig()
-    test_results: tuple[TestCaseRunResult, ...] = (
-        TestCaseRunResult(
+    test_results: tuple[CaseRunResult, ...] = (
+        CaseRunResult(
             name="test_1",
             passed=True,
             expected_stdout="42",
@@ -54,7 +53,7 @@ def fake_coding_run_result(config: FakeRunConfig | None = None) -> CodingRunResu
             judge0_status_id=3,
             judge0_status_description="Accepted",
         ),
-        TestCaseRunResult(
+        CaseRunResult(
             name="test_2",
             passed=True,
             expected_stdout="42\n",
@@ -123,7 +122,7 @@ def fake_tests_failed_result(
         tests_passed=0,
         tests_total=2,
         test_results=(
-            TestCaseRunResult(
+            CaseRunResult(
                 name="test_1",
                 passed=False,
                 expected_stdout=expected,
@@ -133,7 +132,7 @@ def fake_tests_failed_result(
                 judge0_status_id=3,
                 judge0_status_description="Accepted",
             ),
-            TestCaseRunResult(
+            CaseRunResult(
                 name="test_2",
                 passed=True,
                 expected_stdout="42",

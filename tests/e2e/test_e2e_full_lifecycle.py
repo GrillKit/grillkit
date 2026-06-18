@@ -13,10 +13,7 @@ from app.interview.domain.value_objects import (
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.platform.services.config import AppConfig
-from tests.fakes import answer_evaluation_json, follow_up_evaluation_json
-from tests.helpers.interview_seed import persist_interview_with_answers
-from tests.helpers.selection import minimal_selection_spec
-from app.shared.infrastructure.models import Interview, Answer
+from tests.fakes import answer_evaluation_json
 
 
 class TestE2EFullLifecycle:
@@ -59,7 +56,6 @@ class TestE2EFullLifecycle:
 
         # Получаем текущие question_id через query
         from app.interview.repositories.uow import InterviewUnitOfWork
-        from app.interview.services.query import InterviewQuery
         with InterviewUnitOfWork() as uow:
             interview = InterviewQuery(uow).get_interview(interview_id)
             question_ids = [a.question_id for a in interview.answers]
@@ -161,6 +157,7 @@ class TestE2EFullLifecycle:
         }
 
         from unittest.mock import AsyncMock
+
         from app.coding.services.evaluator.models import CodingAnswerEvaluation
         eval_obj = CodingAnswerEvaluation(**evaluation)
 

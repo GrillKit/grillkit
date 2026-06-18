@@ -8,7 +8,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.interview.domain.entities import Interview
-from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.domain.exceptions import (
+    InterviewNotActiveError,
+    InterviewNotFoundError,
+)
 from app.interview.domain.value_objects import (
     SessionSelection,
     TrackSelection,
@@ -153,7 +156,7 @@ class TestGetActiveOrRaise:
         )
         uow.interviews.get_aggregate.return_value = shell
         query = InterviewQuery(uow)
-        with pytest.raises(Exception):
+        with pytest.raises(InterviewNotActiveError):
             query.get_active_or_raise("iv-1")
 
     def test_raises_when_load_returns_none(self) -> None:

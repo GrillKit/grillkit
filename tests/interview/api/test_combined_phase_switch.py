@@ -7,13 +7,20 @@ from unittest.mock import AsyncMock, patch
 from app.coding.domain.value_objects import CodingRunResult
 from app.coding.services.evaluator.models import CodingAnswerEvaluation
 from app.interview.domain.serialization import selection_to_spec
-from app.interview.domain.value_objects import SectionBranchSpec, SessionSelection, TrackSelection
+from app.interview.domain.value_objects import (
+    SectionBranchSpec,
+    SessionSelection,
+    TrackSelection,
+)
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json
+from tests.helpers.coding_seed import (
+    attach_coding_tasks,
+    create_coding_section_for_interview,
+)
 from tests.helpers.interview_seed import persist_interview_with_answers
-from tests.helpers.coding_seed import create_coding_section_for_interview, attach_coding_tasks
 from tests.helpers.selection import minimal_selection_spec
 
 
@@ -126,9 +133,11 @@ class TestCombinedPhaseSwitch:
             ).coding_selection
         )
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            from app.shared.infrastructure.models import Interview as InterviewModel
-            from app.shared.infrastructure.models import TheorySection as TheorySectionModel
             from app.shared.infrastructure.models import Answer as AnswerModel
+            from app.shared.infrastructure.models import Interview as InterviewModel
+            from app.shared.infrastructure.models import (
+                TheorySection as TheorySectionModel,
+            )
             db_interview = InterviewModel(
                 id=interview_id,
                 locale="en",

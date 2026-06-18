@@ -7,9 +7,9 @@ from __future__ import annotations
 from typing import Any
 
 from app.coding.domain.value_objects import (
+    CaseRunResult,
     CodingRunResult,
     RunOutcomeStatus,
-    TestCaseRunResult,
 )
 from app.coding.services.harness import build_python_script
 from app.coding.services.judge0_client import (
@@ -109,7 +109,7 @@ class CodingRunnerService:
                 client=judge0,
             )
 
-        results: list[TestCaseRunResult] = []
+        results: list[CaseRunResult] = []
         total_duration_ms = 0
         last_stdout: str | None = None
         last_stderr: str | None = None
@@ -218,7 +218,7 @@ class CodingRunnerService:
         name: str,
         expected_stdout: str,
         submission: Judge0SubmissionResult,
-    ) -> TestCaseRunResult:
+    ) -> CaseRunResult:
         """Map one Judge0 submission to a public test case result.
 
         Args:
@@ -234,7 +234,7 @@ class CodingRunnerService:
             submission.status_id == JUDGE0_STATUS_ACCEPTED
             and actual_stdout == expected_stdout
         )
-        return TestCaseRunResult(
+        return CaseRunResult(
             name=name,
             passed=passed,
             expected_stdout=expected_stdout,
@@ -272,7 +272,7 @@ class CodingRunnerService:
         return "tests_failed"
 
     @staticmethod
-    def _aggregate_status(results: list[TestCaseRunResult]) -> RunOutcomeStatus:
+    def _aggregate_status(results: list[CaseRunResult]) -> RunOutcomeStatus:
         """Derive the aggregate run status from per-test results.
 
         Args:

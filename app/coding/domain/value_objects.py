@@ -32,7 +32,7 @@ class PlannedCodingTask:
 
 
 @dataclass(frozen=True, slots=True)
-class TestCaseRunResult:
+class CaseRunResult:
     """Outcome of executing one public test case via Judge0.
 
     Attributes:
@@ -77,5 +77,5 @@ class CodingRunResult:
     compile_output: str | None
     tests_passed: int
     tests_total: int
-    test_results: tuple[TestCaseRunResult, ...]
+    test_results: tuple[CaseRunResult, ...]
     duration_ms: int | None

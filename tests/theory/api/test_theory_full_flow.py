@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for full theory flow: submit answers, next questions, finish, end interview."""
 
-from app.interview.api.deps import get_ai_provider
-from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json, follow_up_evaluation_json

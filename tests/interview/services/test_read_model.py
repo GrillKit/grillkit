@@ -5,9 +5,6 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from app.coding.domain.entities import CodingSection
 from app.interview.domain.entities import Interview
 from app.interview.domain.value_objects import (
     InterviewSelection,
@@ -53,15 +50,7 @@ def _theory_section(
     section_score: int | None = None,
     tasks: tuple | None = None,
 ) -> TheorySection:
-    base_tasks = tasks or (
-        TheorySection.start(
-            "iv-1",
-            selection=InterviewSelection(sources=()),
-            locale="en",
-            planned_questions=(),
-            theory_section_id=1,
-        ).tasks,
-    )
+    _ = status, section_score, tasks
     # Rebuild because start validates non-empty planned_questions
     return None  # type: ignore[return-value]
 

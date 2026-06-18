@@ -5,17 +5,12 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from app.interview.domain.entities import Interview
 from app.interview.domain.serialization import session_to_spec
 from app.interview.domain.value_objects import (
-    SectionKind,
     SessionSelection,
     TrackSelection,
 )
 from app.interview.schemas.interview import InterviewRead
-from app.interview.services.read_model import load_interview_read
 from app.interview.services.section_review_support import (
     CompletedInterviewSnapshot,
     item_id_key_for,

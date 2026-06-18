@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for ConfigFormService parsing and connection testing."""
 
-from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,12 +30,11 @@ class TestParseAndTest:
         with patch(
             "app.platform.services.config_form.LLMCatalogService.get_model",
             return_value=entry,
-        ) as mock_get:
-            with patch(
-                "app.platform.services.config_form.LLMCatalogService.load_catalog",
-                return_value=catalog,
-            ):
-                yield mock_get, entry
+        ) as mock_get, patch(
+            "app.platform.services.config_form.LLMCatalogService.load_catalog",
+            return_value=catalog,
+        ):
+            yield mock_get, entry
 
     @pytest.fixture
     def mock_config_service(self):

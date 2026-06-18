@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for TheoryNavigationService and next_task_payload."""
 
-from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -10,7 +9,10 @@ import pytest
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.theory.domain.entities import TheorySection, TheoryTask
-from app.theory.domain.exceptions import TheorySectionNotActiveError, TheorySectionNotFoundError
+from app.theory.domain.exceptions import (
+    TheorySectionNotActiveError,
+    TheorySectionNotFoundError,
+)
 from app.theory.services.navigation import TheoryNavigationService, next_task_payload
 
 

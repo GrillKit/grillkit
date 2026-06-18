@@ -5,14 +5,17 @@
 from datetime import UTC, datetime, timedelta
 
 from app.interview.domain.serialization import selection_to_spec
-from app.interview.domain.value_objects import SectionBranchSpec, SessionSelection, TrackSelection
+from app.interview.domain.value_objects import (
+    SectionBranchSpec,
+    SessionSelection,
+    TrackSelection,
+)
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from app.theory.domain.entities import TheoryTask
 from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
-from tests.helpers.coding_seed import seed_active_coding_interview
 
 
 class TestTheoryTimer:

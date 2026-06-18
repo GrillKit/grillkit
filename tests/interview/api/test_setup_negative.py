@@ -4,9 +4,8 @@
 
 from unittest.mock import patch
 
-from app.interview.domain.serialization import selection_to_spec, session_to_spec
+from app.interview.domain.serialization import session_to_spec
 from app.interview.domain.value_objects import (
-    InterviewSelection,
     SectionBranchSpec,
     SessionSelection,
     TrackSelection,
@@ -136,7 +135,6 @@ class TestSetupNegative:
 
     def test_unknown_category_rejected(self, client, isolated_db):
         """Invalid category in selection returns error."""
-        from app.interview.services.rules.selection import parse_session_json
 
         selection = (
             '{"version":2,"session_mode":"theory_only",'

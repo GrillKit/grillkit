@@ -2,12 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for Whisper on-disk storage helpers."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from app.speech.services.whisper_storage import is_installed, is_valid_model_dir, model_dir
+from app.speech.services.whisper_storage import (
+    is_installed,
+    is_valid_model_dir,
+    model_dir,
+)
 
 
 class TestModelDir:
@@ -27,9 +30,11 @@ class TestModelDir:
 
     def test_invalid_size_raises(self, tmp_path):
         """model_dir raises ValueError for unsupported sizes."""
-        with patch("app.speech.services.whisper_storage.WHISPER_MODELS_ROOT", tmp_path):
-            with pytest.raises(ValueError, match="Unsupported speech model size"):
-                model_dir("huge")
+        with (
+            patch("app.speech.services.whisper_storage.WHISPER_MODELS_ROOT", tmp_path),
+            pytest.raises(ValueError, match="Unsupported speech model size"),
+        ):
+            model_dir("huge")
 
 
 class TestIsValidModelDir:

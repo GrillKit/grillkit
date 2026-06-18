@@ -2,14 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Results & review API tests."""
 
-from app.interview.repositories.uow import InterviewUnitOfWork
+from app.shared.infrastructure.models import Answer, Interview
 from tests.helpers.completed_session_seed import (
-    seed_completed_theory_interview,
     seed_completed_coding_interview,
+    seed_completed_theory_interview,
 )
 from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
-from app.shared.infrastructure.models import Interview, Answer
 
 
 class TestResultsApi:

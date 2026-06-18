@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Review mark-as-known integration tests."""
 
-from unittest.mock import patch
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.known_questions import KnownQuestionsService
@@ -14,7 +13,7 @@ class TestReviewMarkKnown:
 
     def test_mark_known_from_theory_review(self, client, isolated_db):
         """POST adds theory question to known list."""
-        interview_id = seed_completed_theory_interview("mark-theory-1")
+        seed_completed_theory_interview("mark-theory-1")
         response = client.post(
             "/known-questions",
             json={"branch": "theory", "item_id": "q-mark-1"},

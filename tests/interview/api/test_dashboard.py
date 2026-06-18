@@ -5,7 +5,6 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from app.interview.repositories.uow import InterviewUnitOfWork
 from app.platform.services.config import AppConfig
 from app.shared.infrastructure.models import Interview
 from tests.helpers.interview_seed import persist_interview_with_answers

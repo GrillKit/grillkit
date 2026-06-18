@@ -5,8 +5,6 @@
 from datetime import UTC, datetime
 from unittest.mock import patch
 
-import pytest
-
 from app.coding.domain.entities import CodingSection, CodingTask
 from app.interview.domain.entities import Interview
 from app.interview.domain.value_objects import (

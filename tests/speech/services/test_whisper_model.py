@@ -196,9 +196,9 @@ class TestDownloadAndInstall:
                 return_value=False,
             ),
             patch("app.speech.services.whisper_model.cleanup_staging_dir"),
+            pytest.raises(ValueError, match="does not contain a valid Whisper"),
         ):
-            with pytest.raises(ValueError, match="does not contain a valid Whisper"):
-                await WhisperModelService._download_and_install("small")
+            await WhisperModelService._download_and_install("small")
 
     @pytest.mark.asyncio
     async def test_ensures_whisper_root_exists(self, tmp_path):
@@ -278,9 +278,9 @@ class TestDownloadAndInstall:
             patch(
                 "app.speech.services.whisper_model.cleanup_staging_dir"
             ) as mock_cleanup,
+            pytest.raises(Exception, match="network down"),
         ):
-            with pytest.raises(Exception, match="network down"):
-                await WhisperModelService._download_and_install("small")
+            await WhisperModelService._download_and_install("small")
 
         mock_cleanup.assert_called_once()
 

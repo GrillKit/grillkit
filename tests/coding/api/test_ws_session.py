@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for coding WebSocket session service."""
 
-from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest

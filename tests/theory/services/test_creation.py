@@ -11,7 +11,6 @@ from app.interview.repositories.uow import InterviewUnitOfWork
 from app.theory.domain.value_objects import PlannedTheoryQuestion
 from app.theory.services.creation import TheorySectionCreationService
 
-
 _SELECTION = InterviewSelection(
     sources=(
         TrackSelection(

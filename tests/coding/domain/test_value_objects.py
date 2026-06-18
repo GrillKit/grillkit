@@ -7,10 +7,9 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from app.coding.domain.value_objects import (
+    CaseRunResult,
     CodingRunResult,
     PlannedCodingTask,
-    RunOutcomeStatus,
-    TestCaseRunResult,
 )
 
 
@@ -39,12 +38,12 @@ class TestPlannedCodingTask:
             task.id = "cod-002"  # type: ignore[misc]
 
 
-class TestTestCaseRunResult:
-    """Tests for the ``TestCaseRunResult`` frozen dataclass."""
+class TestCaseRunResult:
+    """Tests for the ``CaseRunResult`` frozen dataclass."""
 
     def test_test_case_run_result_creation(self) -> None:
-        """TestCaseRunResult can be constructed with all fields."""
-        result = TestCaseRunResult(
+        """CaseRunResult can be constructed with all fields."""
+        result = CaseRunResult(
             name="normal",
             passed=True,
             expected_stdout="1\n",
@@ -60,8 +59,8 @@ class TestTestCaseRunResult:
         assert result.judge0_status_id == 3
 
     def test_test_case_run_result_is_frozen(self) -> None:
-        """TestCaseRunResult is immutable after creation."""
-        result = TestCaseRunResult(
+        """CaseRunResult is immutable after creation."""
+        result = CaseRunResult(
             name="normal",
             passed=True,
             expected_stdout="",
@@ -80,7 +79,7 @@ class TestCodingRunResult:
 
     def test_coding_run_result_creation(self) -> None:
         """CodingRunResult can be constructed with all fields."""
-        test_result = TestCaseRunResult(
+        test_result = CaseRunResult(
             name="normal",
             passed=True,
             expected_stdout="1\n",

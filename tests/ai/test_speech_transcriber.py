@@ -21,7 +21,7 @@ class TestSpeechTranscriber:
     def test_has_transcribe_method(self):
         """Protocol defines a transcribe method."""
         assert hasattr(SpeechTranscriber, "transcribe")
-        assert inspect.isfunction(getattr(SpeechTranscriber, "transcribe"))
+        assert inspect.isfunction(SpeechTranscriber.transcribe)
 
     def test_transcribe_signature(self):
         """transcribe accepts audio and locale parameters."""
