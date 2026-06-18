@@ -23,6 +23,7 @@ def create_coding_section_for_interview(
     task_count: int = 2,
     task_time_limit_seconds: int | None = None,
     status: str = "active",
+    selection_spec: str | None = None,
 ) -> CodingSection:
     """Insert a coding section row matching an interview shell.
 
@@ -32,13 +33,14 @@ def create_coding_section_for_interview(
         task_count: Number of coding tasks in the section.
         task_time_limit_seconds: Optional per-task timer in seconds.
         status: Section status to persist.
+        selection_spec: Optional coding-specific selection spec; defaults to interview.selection_spec.
 
     Returns:
         Persisted coding section with assigned primary key.
     """
     section = CodingSection(
         interview_id=interview.id,
-        selection_spec=interview.selection_spec,
+        selection_spec=selection_spec if selection_spec is not None else interview.selection_spec,
         task_count=task_count,
         task_time_limit_seconds=task_time_limit_seconds,
         locale=interview.locale or "en",
