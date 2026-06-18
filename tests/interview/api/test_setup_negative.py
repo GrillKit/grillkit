@@ -75,6 +75,7 @@ class TestSetupNegative:
         """question_count=50 is clamped to _MAX_QUESTIONS (20)."""
         from app.interview.domain.serialization import session_to_spec
         from app.interview.domain.value_objects import TrackSelection
+
         extensive = SessionSelection.theory_only(
             sources=(
                 TrackSelection(

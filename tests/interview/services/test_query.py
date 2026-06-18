@@ -33,7 +33,9 @@ def _make_interview_read(
         question_ids='["q1","q2"]',
         question_count=2,
         question_time_limit_seconds=None,
-        answers=answers if answers is not None else [
+        answers=answers
+        if answers is not None
+        else [
             AnswerRead(
                 id=1,
                 question_id="q1",

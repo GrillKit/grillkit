@@ -56,6 +56,7 @@ class TestE2EFullLifecycle:
 
         # Получаем текущие question_id через query
         from app.interview.repositories.uow import InterviewUnitOfWork
+
         with InterviewUnitOfWork() as uow:
             interview = InterviewQuery(uow).get_interview(interview_id)
             question_ids = [a.question_id for a in interview.answers]
@@ -70,21 +71,25 @@ class TestE2EFullLifecycle:
         )
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws:
             # Q1
-            ws.send_json({
-                "type": "answer",
-                "question_id": question_ids[0],
-                "answer_text": "A1",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": question_ids[0],
+                    "answer_text": "A1",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb1 = ws.receive_json()
             assert fb1["type"] == "feedback"
             # Q2
-            ws.send_json({
-                "type": "answer",
-                "question_id": question_ids[1],
-                "answer_text": "A2",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": question_ids[1],
+                    "answer_text": "A2",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb2 = ws.receive_json()
@@ -99,7 +104,9 @@ class TestE2EFullLifecycle:
         assert client.get(f"/interview/{interview_id}/results").status_code == 200
         assert client.get(f"/interview/{interview_id}/theory").status_code == 200
 
-    def test_coding_only_full_cycle(self, client, isolated_db, mock_judge0, override_ws_ai_provider):
+    def test_coding_only_full_cycle(
+        self, client, isolated_db, mock_judge0, override_ws_ai_provider
+    ):
         """E2E-2: full coding cycle."""
         with (
             patch(
@@ -159,6 +166,7 @@ class TestE2EFullLifecycle:
         from unittest.mock import AsyncMock
 
         from app.coding.services.evaluator.models import CodingAnswerEvaluation
+
         eval_obj = CodingAnswerEvaluation(**evaluation)
 
         override_ws_ai_provider(client, [])
@@ -176,7 +184,13 @@ class TestE2EFullLifecycle:
             )
             assert run_resp.status_code == 200
             # Submit
-            ws.send_json({"type": "submit", "task_id": task_id, "source_code": "def solve(): return 42"})
+            ws.send_json(
+                {
+                    "type": "submit",
+                    "task_id": task_id,
+                    "source_code": "def solve(): return 42",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb = ws.receive_json()
@@ -186,7 +200,9 @@ class TestE2EFullLifecycle:
         results = client.get(f"/interview/{interview_id}/results")
         assert results.status_code == 200
 
-    def test_mark_known_then_exclude_known(self, client, isolated_db, override_ws_ai_provider):
+    def test_mark_known_then_exclude_known(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
         """E2E-4: mark known → create new session with exclude_known."""
         # Mark a question as known
         response = client.post(
@@ -211,6 +227,7 @@ class TestE2EFullLifecycle:
                 question_count=3,
             )
             import json
+
             spec = json.loads(session_to_spec(session))
             spec["exclude_known"] = True
             response = client.post(

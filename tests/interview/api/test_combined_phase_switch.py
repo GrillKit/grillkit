@@ -66,18 +66,30 @@ class TestCombinedPhaseSwitch:
         coding_selection_spec = selection_to_spec(
             SessionSelection(
                 session_mode="theory_then_coding",
-                theory=SectionBranchSpec(enabled=True, question_count=1, task_time_limit_seconds=None, sources=()),
+                theory=SectionBranchSpec(
+                    enabled=True,
+                    question_count=1,
+                    task_time_limit_seconds=None,
+                    sources=(),
+                ),
                 coding=SectionBranchSpec(
                     enabled=True,
                     question_count=1,
                     task_time_limit_seconds=None,
-                    sources=(TrackSelection(track="python", level="junior", categories=("basics",)),),
+                    sources=(
+                        TrackSelection(
+                            track="python", level="junior", categories=("basics",)
+                        ),
+                    ),
                 ),
             ).coding_selection
         )
         with InterviewUnitOfWork(auto_commit=True) as uow:
             from app.shared.infrastructure.models import Interview as InterviewModel
-            db_interview = uow.session.query(InterviewModel).filter_by(id=interview_id).one()
+
+            db_interview = (
+                uow.session.query(InterviewModel).filter_by(id=interview_id).one()
+            )
             section = create_coding_section_for_interview(
                 uow.session,
                 db_interview,
@@ -89,17 +101,20 @@ class TestCombinedPhaseSwitch:
 
         # Answer theory question (need two replies: one for answer, one for session completion)
         override_ws_ai_provider(
-            client, [
+            client,
+            [
                 answer_evaluation_json(score=5, follow_up_needed=False),
                 answer_evaluation_json(score=5, follow_up_needed=False),
             ],
         )
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws:
-            ws.send_json({
-                "type": "answer",
-                "question_id": "q1",
-                "answer_text": "Done",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": "q1",
+                    "answer_text": "Done",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb = ws.receive_json()
@@ -123,12 +138,21 @@ class TestCombinedPhaseSwitch:
         coding_selection_spec = selection_to_spec(
             SessionSelection(
                 session_mode="coding_then_theory",
-                theory=SectionBranchSpec(enabled=True, question_count=1, task_time_limit_seconds=None, sources=()),
+                theory=SectionBranchSpec(
+                    enabled=True,
+                    question_count=1,
+                    task_time_limit_seconds=None,
+                    sources=(),
+                ),
                 coding=SectionBranchSpec(
                     enabled=True,
                     question_count=1,
                     task_time_limit_seconds=None,
-                    sources=(TrackSelection(track="python", level="junior", categories=("basics",)),),
+                    sources=(
+                        TrackSelection(
+                            track="python", level="junior", categories=("basics",)
+                        ),
+                    ),
                 ),
             ).coding_selection
         )
@@ -138,6 +162,7 @@ class TestCombinedPhaseSwitch:
             from app.shared.infrastructure.models import (
                 TheorySection as TheorySectionModel,
             )
+
             db_interview = InterviewModel(
                 id=interview_id,
                 locale="en",
@@ -148,7 +173,10 @@ class TestCombinedPhaseSwitch:
             uow.session.add(db_interview)
             uow.flush()
             section = create_coding_section_for_interview(
-                uow.session, db_interview, task_count=1, status="active",
+                uow.session,
+                db_interview,
+                task_count=1,
+                status="active",
                 selection_spec=coding_selection_spec,
             )
             attach_coding_tasks(uow.session, section, task_ids=["cod-001"])
@@ -162,13 +190,15 @@ class TestCombinedPhaseSwitch:
             uow.session.add(theory_section)
             uow.session.flush()
             # Add answer row
-            uow.session.add(AnswerModel(
-                theory_section_id=theory_section.id,
-                question_id="q1",
-                order=1,
-                round=0,
-                question_text="Q?",
-            ))
+            uow.session.add(
+                AnswerModel(
+                    theory_section_id=theory_section.id,
+                    question_id="q1",
+                    order=1,
+                    round=0,
+                    question_text="Q?",
+                )
+            )
 
         mock_judge0()
         evaluation = CodingAnswerEvaluation(
@@ -186,11 +216,13 @@ class TestCombinedPhaseSwitch:
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,
         ):
-            ws.send_json({
-                "type": "submit",
-                "task_id": "cod-001",
-                "source_code": "pass",
-            })
+            ws.send_json(
+                {
+                    "type": "submit",
+                    "task_id": "cod-001",
+                    "source_code": "pass",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb = ws.receive_json()

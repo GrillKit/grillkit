@@ -158,9 +158,7 @@ class TestResolveKnownViews:
         )
 
         assert len(result["coding"]) == 1
-        assert result["coding"][0] == KnownQuestionView(
-            id="cod-001", text="Coding T1"
-        )
+        assert result["coding"][0] == KnownQuestionView(id="cod-001", text="Coding T1")
 
     def test_handles_empty_groups(self, monkeypatch) -> None:
         monkeypatch.setattr(

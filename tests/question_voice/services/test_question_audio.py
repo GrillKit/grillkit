@@ -62,10 +62,13 @@ class TestGetQuestionAudioPath:
     @pytest.mark.asyncio
     async def test_raises_when_no_config(self):
         """Missing config raises QuestionVoiceDisabledError."""
-        with patch(
-            "app.question_voice.services.question_audio.ConfigService.get_config",
-            return_value=None,
-        ), pytest.raises(QuestionVoiceDisabledError):
+        with (
+            patch(
+                "app.question_voice.services.question_audio.ConfigService.get_config",
+                return_value=None,
+            ),
+            pytest.raises(QuestionVoiceDisabledError),
+        ):
             await get_question_audio_path("interview-id")
 
     @pytest.mark.asyncio
@@ -77,10 +80,13 @@ class TestGetQuestionAudioPath:
             model="gpt-4",
             question_voice_enabled=False,
         )
-        with patch(
-            "app.question_voice.services.question_audio.ConfigService.get_config",
-            return_value=config,
-        ), pytest.raises(QuestionVoiceDisabledError):
+        with (
+            patch(
+                "app.question_voice.services.question_audio.ConfigService.get_config",
+                return_value=config,
+            ),
+            pytest.raises(QuestionVoiceDisabledError),
+        ):
             await get_question_audio_path("interview-id")
 
     @pytest.mark.asyncio

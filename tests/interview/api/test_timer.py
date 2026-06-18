@@ -68,7 +68,9 @@ class TestTheoryTimer:
         assert q1.answer_text == TheoryTask.TIME_EXPIRED_ANSWER_TEXT
         assert q1.score == 0
 
-    def test_no_timer_does_not_timeout(self, client, isolated_db, override_ws_ai_provider):
+    def test_no_timer_does_not_timeout(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
         """Without timer enabled, timeout msg is rejected."""
         interview_id = persist_interview_with_answers(
             Interview(
@@ -101,20 +103,31 @@ class TestCodingTimer:
     ):
         """Timer expired coding task → score=0, next task."""
         from app.shared.infrastructure.models import CodingSection, CodingTask
+
         coding_selection_spec = selection_to_spec(
             SessionSelection(
                 session_mode="coding_only",
-                theory=SectionBranchSpec(enabled=False, question_count=0, task_time_limit_seconds=None, sources=()),
+                theory=SectionBranchSpec(
+                    enabled=False,
+                    question_count=0,
+                    task_time_limit_seconds=None,
+                    sources=(),
+                ),
                 coding=SectionBranchSpec(
                     enabled=True,
                     question_count=2,
                     task_time_limit_seconds=60,
-                    sources=(TrackSelection(track="python", level="junior", categories=("basics",)),),
+                    sources=(
+                        TrackSelection(
+                            track="python", level="junior", categories=("basics",)
+                        ),
+                    ),
                 ),
             ).coding_selection
         )
         with InterviewUnitOfWork(auto_commit=True) as uow:
             from app.shared.infrastructure.models import Interview as InterviewModel
+
             db_interview = InterviewModel(
                 id="timer-coding-1",
                 locale="en",
@@ -124,7 +137,11 @@ class TestCodingTimer:
             )
             uow.session.add(db_interview)
             uow.flush()
-            section = uow.session.query(CodingSection).filter_by(interview_id="timer-coding-1").first()
+            section = (
+                uow.session.query(CodingSection)
+                .filter_by(interview_id="timer-coding-1")
+                .first()
+            )
             if not section:
                 section = CodingSection(
                     interview_id="timer-coding-1",
@@ -137,17 +154,24 @@ class TestCodingTimer:
                 uow.session.add(section)
                 uow.flush()
             for i in range(2):
-                uow.session.add(CodingTask(
-                    coding_section_id=section.id,
-                    task_id=f"cod-t{i}",
-                    order=i + 1,
-                    round=0,
-                    prompt_text=f"Task {i}",
-                    task_spec='{"language":"python"}',
-                ))
+                uow.session.add(
+                    CodingTask(
+                        coding_section_id=section.id,
+                        task_id=f"cod-t{i}",
+                        order=i + 1,
+                        round=0,
+                        prompt_text=f"Task {i}",
+                        task_spec='{"language":"python"}',
+                    )
+                )
             uow.session.flush()
             # Set started_at on first task
-            tasks = uow.session.query(CodingTask).filter_by(coding_section_id=section.id).order_by(CodingTask.order).all()
+            tasks = (
+                uow.session.query(CodingTask)
+                .filter_by(coding_section_id=section.id)
+                .order_by(CodingTask.order)
+                .all()
+            )
             tasks[0].started_at = datetime.now(UTC) - timedelta(seconds=120)
             tasks[1].started_at = None
 

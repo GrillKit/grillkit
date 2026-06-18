@@ -236,9 +236,7 @@ def test_load_recent_interview_reads_with_sections() -> None:
     )
     uow = MagicMock()
     uow.interviews.list_recent_aggregates.return_value = [shell]
-    uow.theory_sections.get_aggregates_by_interview_ids.return_value = {
-        "iv-1": theory
-    }
+    uow.theory_sections.get_aggregates_by_interview_ids.return_value = {"iv-1": theory}
     uow.coding_sections.get_aggregates_by_interview_ids.return_value = {}
 
     results = load_recent_interview_reads(uow, limit=10)

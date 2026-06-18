@@ -62,11 +62,13 @@ class TestCodingFullFlow:
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,
         ):
-            ws.send_json({
-                "type": "submit",
-                "task_id": task_id,
-                "source_code": "def solve():\n    return 42",
-            })
+            ws.send_json(
+                {
+                    "type": "submit",
+                    "task_id": task_id,
+                    "source_code": "def solve():\n    return 42",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb = ws.receive_json()
@@ -79,9 +81,7 @@ class TestCodingFullFlow:
         assert state["completed_tasks"] == 1
         assert state["current_task"]["task_id"] == "cod-002"
 
-    def test_run_compile_error_shows_error(
-        self, client, isolated_db, mock_judge0
-    ):
+    def test_run_compile_error_shows_error(self, client, isolated_db, mock_judge0):
         """Run with compile error returns proper error status."""
         interview_id, task_id = seed_active_coding_interview("coding-compile-1")
         mock_judge0(status="compile_error")
@@ -118,11 +118,13 @@ class TestCodingFullFlow:
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,
         ):
-            ws.send_json({
-                "type": "submit",
-                "task_id": task_id,
-                "source_code": "def solve(): return 42",
-            })
+            ws.send_json(
+                {
+                    "type": "submit",
+                    "task_id": task_id,
+                    "source_code": "def solve(): return 42",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb = ws.receive_json()

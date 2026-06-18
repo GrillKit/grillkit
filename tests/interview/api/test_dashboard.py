@@ -31,7 +31,10 @@ class TestDashboardPage:
         ):
             response = client.get("/")
         assert response.status_code == 200
-        assert "Start your first interview" in response.text or "interview" in response.text.lower()
+        assert (
+            "Start your first interview" in response.text
+            or "interview" in response.text.lower()
+        )
 
     def test_shows_recent_sessions(self, client, isolated_db):
         """Dashboard lists up to 20 recent sessions."""

@@ -62,7 +62,11 @@ def _make_section(
         id=1,
         interview_id="iv-001",
         locale="en",
-        selection=InterviewSelection(sources=(TrackSelection(track="python", level="junior", categories=("basics",)),)),
+        selection=InterviewSelection(
+            sources=(
+                TrackSelection(track="python", level="junior", categories=("basics",)),
+            )
+        ),
         task_count=len(tasks),
         task_ids=tuple(t.task_id for t in tasks),
         task_time_limit_seconds=task_time_limit_seconds,
@@ -106,31 +110,70 @@ class TestCodingTask:
         """is_timer_expired returns False when time is within limit."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=30)) is False
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60, now=started_at + timedelta(seconds=30)
+            )
+            is False
+        )
 
     def test_is_timer_expired_returns_true_when_past_limit(self) -> None:
         """is_timer_expired returns True when past the limit."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=70)) is True
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60, now=started_at + timedelta(seconds=70)
+            )
+            is True
+        )
 
     def test_is_timer_expired_uses_grace_seconds(self) -> None:
         """is_timer_expired respects grace seconds before marking expired."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
         # Exactly at limit, with default grace of 2s should still be False
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=60)) is False
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60, now=started_at + timedelta(seconds=60)
+            )
+            is False
+        )
         # Past limit but within grace
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=61)) is False
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60, now=started_at + timedelta(seconds=61)
+            )
+            is False
+        )
         # Past limit + grace
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=63)) is True
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60, now=started_at + timedelta(seconds=63)
+            )
+            is True
+        )
 
     def test_is_timer_expired_with_zero_grace(self) -> None:
         """is_timer_expired with grace_seconds=0 expires exactly at limit."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=60), grace_seconds=0) is True
-        assert task.is_timer_expired(limit_seconds=60, now=started_at + timedelta(seconds=59), grace_seconds=0) is False
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60,
+                now=started_at + timedelta(seconds=60),
+                grace_seconds=0,
+            )
+            is True
+        )
+        assert (
+            task.is_timer_expired(
+                limit_seconds=60,
+                now=started_at + timedelta(seconds=59),
+                grace_seconds=0,
+            )
+            is False
+        )
 
     def test_remaining_seconds_returns_none_when_limit_is_none(self) -> None:
         """remaining_seconds returns None when limit_seconds is None."""
@@ -146,13 +189,23 @@ class TestCodingTask:
         """remaining_seconds returns correct remaining time."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.remaining_seconds(limit_seconds=60, now=started_at + timedelta(seconds=20)) == 40
+        assert (
+            task.remaining_seconds(
+                limit_seconds=60, now=started_at + timedelta(seconds=20)
+            )
+            == 40
+        )
 
     def test_remaining_seconds_is_non_negative(self) -> None:
         """remaining_seconds never returns negative values."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.remaining_seconds(limit_seconds=60, now=started_at + timedelta(seconds=90)) == 0
+        assert (
+            task.remaining_seconds(
+                limit_seconds=60, now=started_at + timedelta(seconds=90)
+            )
+            == 0
+        )
 
     def test_client_timeout_due_returns_false_when_no_limit(self) -> None:
         """client_timeout_due returns False when limit_seconds is None."""
@@ -168,19 +221,34 @@ class TestCodingTask:
         """client_timeout_due returns True when timer is expired."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.client_timeout_due(limit_seconds=60, now=started_at + timedelta(seconds=65)) is True
+        assert (
+            task.client_timeout_due(
+                limit_seconds=60, now=started_at + timedelta(seconds=65)
+            )
+            is True
+        )
 
     def test_client_timeout_due_returns_true_when_zero_remaining(self) -> None:
         """client_timeout_due returns True when exactly zero seconds remain."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.client_timeout_due(limit_seconds=60, now=started_at + timedelta(seconds=60)) is True
+        assert (
+            task.client_timeout_due(
+                limit_seconds=60, now=started_at + timedelta(seconds=60)
+            )
+            is True
+        )
 
     def test_client_timeout_due_returns_false_when_time_remains(self) -> None:
         """client_timeout_due returns False when time still remains."""
         started_at = datetime.now(UTC)
         task = _make_task(started_at=started_at)
-        assert task.client_timeout_due(limit_seconds=60, now=started_at + timedelta(seconds=30)) is False
+        assert (
+            task.client_timeout_due(
+                limit_seconds=60, now=started_at + timedelta(seconds=30)
+            )
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -202,8 +270,12 @@ class TestCodingSection:
     def test_start_creates_tasks_with_correct_order_and_round(self) -> None:
         """start() creates tasks with 1-based order and round=0."""
         planned = (
-            PlannedCodingTask(id="cod-001", text="Task 1", task_spec={"language": "python"}),
-            PlannedCodingTask(id="cod-002", text="Task 2", task_spec={"language": "python"}),
+            PlannedCodingTask(
+                id="cod-001", text="Task 1", task_spec={"language": "python"}
+            ),
+            PlannedCodingTask(
+                id="cod-002", text="Task 2", task_spec={"language": "python"}
+            ),
         )
         section = CodingSection.start(
             interview_id="iv-001",
@@ -377,7 +449,9 @@ class TestCodingSection:
 
     def test_with_cached_section_feedback_skips_when_already_cached(self) -> None:
         """with_cached_section_feedback returns self when feedback already cached."""
-        section = _make_section(section_feedback={"summary": "Already cached"}, section_score=3)
+        section = _make_section(
+            section_feedback={"summary": "Already cached"}, section_score=3
+        )
         updated = section.with_cached_section_feedback(
             feedback={"summary": "New feedback"},
             section_score=5,
@@ -508,7 +582,13 @@ class TestCodingSection:
     def test_with_follow_up_creates_new_round(self) -> None:
         """with_follow_up creates a new follow-up task round."""
         tasks = (
-            _make_task(id=1, task_id="cod-001", order=1, round_num=0, task_spec={"language": "python"}),
+            _make_task(
+                id=1,
+                task_id="cod-001",
+                order=1,
+                round_num=0,
+                task_spec={"language": "python"},
+            ),
         )
         section = _make_section(tasks=tasks)
         updated, follow_up = section.with_follow_up(
@@ -528,7 +608,13 @@ class TestCodingSection:
     def test_with_follow_up_without_starter_code(self) -> None:
         """with_follow_up works without starter_code."""
         tasks = (
-            _make_task(id=1, task_id="cod-001", order=1, round_num=0, task_spec={"language": "python"}),
+            _make_task(
+                id=1,
+                task_id="cod-001",
+                order=1,
+                round_num=0,
+                task_spec={"language": "python"},
+            ),
         )
         section = _make_section(tasks=tasks)
         updated, follow_up = section.with_follow_up(
@@ -582,9 +668,7 @@ class TestCodingSection:
 
     def test_require_current_task_raises_when_all_submitted(self) -> None:
         """require_current_task raises when all tasks are submitted."""
-        tasks = (
-            _make_task(id=1, task_id="cod-001", submitted_code="code1"),
-        )
+        tasks = (_make_task(id=1, task_id="cod-001", submitted_code="code1"),)
         section = _make_section(tasks=tasks)
         with pytest.raises(CodingTaskNotCurrentError):
             section.require_current_task("cod-001")

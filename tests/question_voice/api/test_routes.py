@@ -277,7 +277,9 @@ class TestTtsVoiceDownloadRoute:
         assert payload["voice_id"] == "ru_RU-dmitri-medium"
         start_download.assert_called_once_with("ru_RU-dmitri-medium", "ru")
 
-    def test_voice_download_returns_html_when_no_json_accept(self, client, voice_config):
+    def test_voice_download_returns_html_when_no_json_accept(
+        self, client, voice_config
+    ):
         """Download route returns HTML partial via negotiated_response."""
         downloading = PiperVoiceStatusRead(
             voice_id="en_US-lessac-medium",

@@ -13,6 +13,7 @@ class TestConfigEdgeCases:
 
     def _catalog_entry(self):
         from app.ai.llm_models import LLMModelEntry
+
         return LLMModelEntry(
             id="cloud",
             display_name="Cloud",
@@ -84,6 +85,7 @@ class TestConfigEdgeCases:
 
         # Existing session still reachable
         from app.interview.repositories.uow import InterviewUnitOfWork
+
         with InterviewUnitOfWork() as uow:
             interview = uow.interviews.get_aggregate(interview_id)
             assert interview is not None

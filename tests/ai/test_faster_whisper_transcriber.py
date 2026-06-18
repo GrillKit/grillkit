@@ -99,7 +99,9 @@ class TestFasterWhisperTranscriber:
         model = MagicMock()
         model.transcribe.return_value = ([segment], None)
 
-        with patch("asyncio.to_thread", side_effect=lambda f, *a, **k: f(*a, **k)) as mock_to_thread:  # noqa: E501
+        with patch(
+            "asyncio.to_thread", side_effect=lambda f, *a, **k: f(*a, **k)
+        ) as mock_to_thread:  # noqa: E501
             transcriber = FasterWhisperTranscriber(model)
             audio = np.zeros(8000, dtype=np.float32)
             await transcriber.transcribe(audio, "en")

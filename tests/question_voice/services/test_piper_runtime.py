@@ -105,13 +105,16 @@ class TestPiperRuntimeSynthesize:
         PiperRuntime._loaded_key = "en_US-lessac-medium"
 
         mock_wave_file = MagicMock()
-        with patch("io.BytesIO", return_value=mock_buffer), patch(
-            "wave.open", return_value=mock_wave_file
+        with (
+            patch("io.BytesIO", return_value=mock_buffer),
+            patch("wave.open", return_value=mock_wave_file),
         ):
             result = PiperRuntime.synthesize_wav_bytes_sync("Hello world")
 
         assert result == b"RIFFwavdata"
-        mock_voice.synthesize_wav.assert_called_once_with("Hello world", mock_wave_file.__enter__())
+        mock_voice.synthesize_wav.assert_called_once_with(
+            "Hello world", mock_wave_file.__enter__()
+        )
 
     @pytest.mark.asyncio
     async def test_synthesize_wav_bytes_delegates_to_sync(self):
@@ -131,7 +134,9 @@ class TestPiperRuntimeNormalizeAndInstalled:
 
     def test_normalize_key_returns_normalized_voice_id(self):
         """normalize_key delegates to normalize_tts_voice_id."""
-        assert PiperRuntime.normalize_key("en_US-lessac-medium") == "en_US-lessac-medium"
+        assert (
+            PiperRuntime.normalize_key("en_US-lessac-medium") == "en_US-lessac-medium"
+        )
 
     def test_is_installed_delegates_to_piper_storage(self):
         """is_installed checks voice installation via storage module."""
@@ -161,7 +166,9 @@ class TestPiperRuntimeNormalizeAndInstalled:
         mock_dir = MagicMock()
         mock_model_path = MagicMock()
         mock_config_path = MagicMock()
-        mock_dir.__truediv__ = MagicMock(side_effect=[mock_model_path, mock_config_path])
+        mock_dir.__truediv__ = MagicMock(
+            side_effect=[mock_model_path, mock_config_path]
+        )
 
         with (
             patch(

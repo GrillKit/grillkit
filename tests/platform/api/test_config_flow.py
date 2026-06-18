@@ -94,7 +94,10 @@ class TestFirstTimeConfigFlow:
                 },
             )
         assert response.status_code == 200
-        assert "connection refused" in response.text.lower() or "error" in response.text.lower()
+        assert (
+            "connection refused" in response.text.lower()
+            or "error" in response.text.lower()
+        )
 
     def test_config_test_connection_success(self, client):
         """S1.5: POST /config/test returns success with valid provider."""

@@ -41,9 +41,7 @@ class TestGetStatus:
     def test_ready_when_installed_and_loaded(self):
         """Returns ready state when model is installed and loaded."""
         with (
-            patch(
-                "app.speech.services.whisper_model.is_installed", return_value=True
-            ),
+            patch("app.speech.services.whisper_model.is_installed", return_value=True),
             patch(
                 "app.speech.services.whisper_model.WhisperRuntime.is_loaded",
                 return_value=True,
@@ -60,9 +58,7 @@ class TestGetStatus:
     def test_ready_when_installed_not_loaded(self):
         """Returns ready state when installed but not yet loaded."""
         with (
-            patch(
-                "app.speech.services.whisper_model.is_installed", return_value=True
-            ),
+            patch("app.speech.services.whisper_model.is_installed", return_value=True),
             patch(
                 "app.speech.services.whisper_model.WhisperRuntime.is_loaded",
                 return_value=False,
@@ -109,9 +105,7 @@ class TestStartDownload:
     @pytest.mark.asyncio
     async def test_skips_when_already_installed(self):
         """Returns ready status without scheduling when already installed."""
-        with patch(
-            "app.speech.services.whisper_model.is_installed", return_value=True
-        ):
+        with patch("app.speech.services.whisper_model.is_installed", return_value=True):
             status = await WhisperModelService.start_download("small", "en")
 
         assert status.state in ("ready", "missing")

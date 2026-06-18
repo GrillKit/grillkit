@@ -27,12 +27,15 @@ class TestParseAndTest:
         )
         catalog = MagicMock()
         catalog.models = {"cloud": entry}
-        with patch(
-            "app.platform.services.config_form.LLMCatalogService.get_model",
-            return_value=entry,
-        ) as mock_get, patch(
-            "app.platform.services.config_form.LLMCatalogService.load_catalog",
-            return_value=catalog,
+        with (
+            patch(
+                "app.platform.services.config_form.LLMCatalogService.get_model",
+                return_value=entry,
+            ) as mock_get,
+            patch(
+                "app.platform.services.config_form.LLMCatalogService.load_catalog",
+                return_value=catalog,
+            ),
         ):
             yield mock_get, entry
 
@@ -121,12 +124,15 @@ class TestParseAndTest:
     @pytest.mark.asyncio
     async def test_parse_and_test_rejects_invalid_preset(self, mock_config_service):
         """Invalid llm_preset_id falls back to existing or default config."""
-        with patch(
-            "app.platform.services.config_form.LLMCatalogService.load_catalog",
-            return_value=MagicMock(),
-        ), patch(
-            "app.platform.services.config_form.normalize_model_id",
-            side_effect=ValueError("Unsupported LLM model"),
+        with (
+            patch(
+                "app.platform.services.config_form.LLMCatalogService.load_catalog",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.platform.services.config_form.normalize_model_id",
+                side_effect=ValueError("Unsupported LLM model"),
+            ),
         ):
             config, success, message = await ConfigFormService.parse_and_test(
                 config_service=mock_config_service,
@@ -142,17 +148,23 @@ class TestParseAndTest:
         assert config is not None
 
     @pytest.mark.asyncio
-    async def test_parse_and_test_rejects_missing_model_entry(self, mock_config_service):
+    async def test_parse_and_test_rejects_missing_model_entry(
+        self, mock_config_service
+    ):
         """Catalog entry not found returns failure with fallback config."""
-        with patch(
-            "app.platform.services.config_form.LLMCatalogService.load_catalog",
-            return_value=MagicMock(),
-        ), patch(
-            "app.platform.services.config_form.LLMCatalogService.get_model",
-            return_value=None,
-        ), patch(
-            "app.platform.services.config_form.normalize_model_id",
-            return_value="cloud",
+        with (
+            patch(
+                "app.platform.services.config_form.LLMCatalogService.load_catalog",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.platform.services.config_form.LLMCatalogService.get_model",
+                return_value=None,
+            ),
+            patch(
+                "app.platform.services.config_form.normalize_model_id",
+                return_value="cloud",
+            ),
         ):
             config, success, message = await ConfigFormService.parse_and_test(
                 config_service=mock_config_service,
@@ -167,7 +179,9 @@ class TestParseAndTest:
         assert "Interview model not found" in message
 
     @pytest.mark.asyncio
-    async def test_parse_and_test_connection_failure(self, mock_catalog, mock_config_service):
+    async def test_parse_and_test_connection_failure(
+        self, mock_catalog, mock_config_service
+    ):
         """Connection test failure is returned with config."""
         mock_config_service.test_interview_model = AsyncMock(
             return_value=(False, "Connection refused")
@@ -187,7 +201,9 @@ class TestParseAndTest:
         assert config.provider_type == "openai-compatible"
 
     @pytest.mark.asyncio
-    async def test_parse_and_test_normalizes_inputs(self, mock_catalog, mock_config_service):
+    async def test_parse_and_test_normalizes_inputs(
+        self, mock_catalog, mock_config_service
+    ):
         """Locale and speech_model_size are normalized."""
         _, entry = mock_catalog
         config, success, message = await ConfigFormService.parse_and_test(

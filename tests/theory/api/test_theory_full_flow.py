@@ -50,11 +50,13 @@ class TestTheoryFullFlow:
 
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws:
             # Answer Q1
-            ws.send_json({
-                "type": "answer",
-                "question_id": "q1",
-                "answer_text": "Answer one",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": "q1",
+                    "answer_text": "Answer one",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb1 = ws.receive_json()
@@ -65,11 +67,13 @@ class TestTheoryFullFlow:
             assert fb1["next_question"]["question_id"] == "q2"
 
             # Answer Q2
-            ws.send_json({
-                "type": "answer",
-                "question_id": "q2",
-                "answer_text": "Answer two",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": "q2",
+                    "answer_text": "Answer two",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb2 = ws.receive_json()
@@ -94,9 +98,7 @@ class TestTheoryFullFlow:
         assert q2.answer_text == "Answer two"
         assert q2.score == 4
 
-    def test_follow_up_chain(
-        self, client, isolated_db, override_ws_ai_provider
-    ):
+    def test_follow_up_chain(self, client, isolated_db, override_ws_ai_provider):
         """Answer triggers follow-up; follow-up answer finishes round."""
         interview_id = persist_interview_with_answers(
             Interview(
@@ -141,11 +143,13 @@ class TestTheoryFullFlow:
 
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws:
             # Answer Q1 → triggers follow-up
-            ws.send_json({
-                "type": "answer",
-                "question_id": "q1",
-                "answer_text": "Hint of an answer",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": "q1",
+                    "answer_text": "Hint of an answer",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb1 = ws.receive_json()
@@ -153,11 +157,13 @@ class TestTheoryFullFlow:
             assert fb1["follow_up_question"] == "Explain deeper."
 
             # Answer follow-up
-            ws.send_json({
-                "type": "answer",
-                "question_id": "q1",
-                "answer_text": "Deeper explanation",
-            })
+            ws.send_json(
+                {
+                    "type": "answer",
+                    "question_id": "q1",
+                    "answer_text": "Deeper explanation",
+                }
+            )
             assert ws.receive_json() == {"type": "saved"}
             assert ws.receive_json() == {"type": "evaluating"}
             fb2 = ws.receive_json()

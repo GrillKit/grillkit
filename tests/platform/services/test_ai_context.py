@@ -69,9 +69,7 @@ class TestAiProviderFromConfig:
                 "app.platform.services.ai_context.ConfigService.create_provider_from_config",
                 return_value=mock_provider,
             ),
-            patch(
-                "app.platform.services.ai_context.logger"
-            ) as mock_logger,
+            patch("app.platform.services.ai_context.logger") as mock_logger,
         ):
             async with ai_provider_from_config():
                 pass

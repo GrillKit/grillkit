@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Review mark-as-known integration tests."""
 
-
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.known_questions import KnownQuestionsService
 from tests.helpers.completed_session_seed import seed_completed_theory_interview

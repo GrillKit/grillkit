@@ -40,7 +40,9 @@ class TestResolveSpeechTranscriber:
         return MockConfigService
 
     @pytest.mark.asyncio
-    async def test_returns_app_state_transcriber_when_present(self, app, mock_config_service):
+    async def test_returns_app_state_transcriber_when_present(
+        self, app, mock_config_service
+    ):
         """Returns speech_transcriber from app.state when available."""
         fake = FakeTranscriber()
         app.state.speech_transcriber = fake
@@ -50,7 +52,9 @@ class TestResolveSpeechTranscriber:
         assert result is fake
 
     @pytest.mark.asyncio
-    async def test_loads_from_runtime_when_app_state_none(self, app, mock_config_service):
+    async def test_loads_from_runtime_when_app_state_none(
+        self, app, mock_config_service
+    ):
         """Falls back to WhisperRuntime.load_size when app.state is empty."""
         fake = FakeTranscriber()
         app.state.speech_transcriber = None

@@ -75,6 +75,7 @@ def test_coding_event_to_message_coding_feedback_event_without_follow_up() -> No
 
 def test_coding_event_to_message_raises_type_error_for_unknown_event() -> None:
     """coding_event_to_message raises TypeError for unsupported event types."""
+
     # Use a simple object that is not a known event type
     class UnknownEvent:
         pass

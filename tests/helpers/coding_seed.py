@@ -40,7 +40,9 @@ def create_coding_section_for_interview(
     """
     section = CodingSection(
         interview_id=interview.id,
-        selection_spec=selection_spec if selection_spec is not None else interview.selection_spec,
+        selection_spec=selection_spec
+        if selection_spec is not None
+        else interview.selection_spec,
         task_count=task_count,
         task_time_limit_seconds=task_time_limit_seconds,
         locale=interview.locale or "en",

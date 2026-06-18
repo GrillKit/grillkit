@@ -23,7 +23,9 @@ class TestNegativeScenarios:
 
     def test_missing_interview(self, client, isolated_db):
         """GET /interview/{nonexistent} redirects to home."""
-        response = client.get("/interview/00000000-0000-0000-0000-000000000000", follow_redirects=False)
+        response = client.get(
+            "/interview/00000000-0000-0000-0000-000000000000", follow_redirects=False
+        )
         assert response.status_code == 303
         assert response.headers["location"] == "/"
 
@@ -39,7 +41,9 @@ class TestNegativeScenarios:
             [Answer(question_id="q1", order=1, round=0, question_text="Q?")],
             question_count=1,
         )
-        response = client.get(f"/interview/{interview_id}/results", follow_redirects=False)
+        response = client.get(
+            f"/interview/{interview_id}/results", follow_redirects=False
+        )
         assert response.status_code == 303
         assert response.headers["location"] == f"/interview/{interview_id}"
 
@@ -84,7 +88,9 @@ class TestNegativeScenarios:
         )
         assert response.status_code == 503
 
-    def test_audio_answer_wrong_content_type_returns_error(self, client, isolated_db, monkeypatch):
+    def test_audio_answer_wrong_content_type_returns_error(
+        self, client, isolated_db, monkeypatch
+    ):
         """S13.7: audio-answer with missing file returns 400/422 or 503 depending on deps."""
         monkeypatch.setattr(
             "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
@@ -112,7 +118,9 @@ class TestNegativeScenarios:
         # FastAPI missing file → 422; or if parsing succeeds, service rejects
         assert response.status_code in (400, 422, 503)
 
-    def test_answered_question_is_idempotent(self, client, isolated_db, override_ws_ai_provider):
+    def test_answered_question_is_idempotent(
+        self, client, isolated_db, override_ws_ai_provider
+    ):
         """S13.9: Answering a completed question returns no-op or error; session stays valid."""
 
         interview_id = persist_interview_with_answers(
@@ -126,11 +134,15 @@ class TestNegativeScenarios:
             question_count=1,
         )
 
-        override_ws_ai_provider(client, [answer_evaluation_json(score=5, follow_up_needed=False)])
+        override_ws_ai_provider(
+            client, [answer_evaluation_json(score=5, follow_up_needed=False)]
+        )
 
         # First answer
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws:
-            ws.send_json({"type": "answer", "question_id": "q1", "answer_text": "first"})
+            ws.send_json(
+                {"type": "answer", "question_id": "q1", "answer_text": "first"}
+            )
             for _ in range(5):
                 try:
                     msg = ws.receive_json(timeout=1.0)
@@ -141,7 +153,9 @@ class TestNegativeScenarios:
 
         # Second connection answering same (already-answered) question — should not crash
         with client.websocket_connect(f"/interview/{interview_id}/theory/ws") as ws2:
-            ws2.send_json({"type": "answer", "question_id": "q1", "answer_text": "second"})
+            ws2.send_json(
+                {"type": "answer", "question_id": "q1", "answer_text": "second"}
+            )
             for _ in range(2):
                 try:
                     ws2.receive_json(timeout=0.5)

@@ -56,14 +56,19 @@ class TestResultsApi:
             [Answer(question_id="q1", order=1, round=0, question_text="Q?")],
             question_count=1,
         )
-        response = client.get(f"/interview/{interview_id}/theory", follow_redirects=False)
+        response = client.get(
+            f"/interview/{interview_id}/theory", follow_redirects=False
+        )
         assert response.status_code == 303
         assert response.headers["location"] == f"/interview/{interview_id}/results"
 
     def test_coding_review_active_session_redirects(self, client, isolated_db):
         """Coding review for active sessions redirects to results."""
         from tests.helpers.coding_seed import seed_active_coding_interview
+
         interview_id, _ = seed_active_coding_interview("review-active-c")
-        response = client.get(f"/interview/{interview_id}/coding", follow_redirects=False)
+        response = client.get(
+            f"/interview/{interview_id}/coding", follow_redirects=False
+        )
         assert response.status_code == 303
         assert response.headers["location"] == f"/interview/{interview_id}/results"
