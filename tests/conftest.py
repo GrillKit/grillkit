@@ -3,6 +3,7 @@
 """Pytest configuration and shared fixtures."""
 
 from collections.abc import Callable
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -11,6 +12,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.coding.domain.value_objects import CodingRunResult
+from app.coding.services.judge0_client import Judge0Client, Judge0SubmissionResult
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.main import create_app
 from app.platform.services.config import AppConfig
@@ -84,6 +87,110 @@ def fake_ai_provider() -> Callable[[list[str]], FakeProvider]:
     return _make
 
 
+def fake_judge0_client(return_result: CodingRunResult | None = None) -> Judge0Client:
+    """Build a Judge0Client whose ``submit`` always returns a predetermined result.
+
+    Args:
+        return_result: Result returned by ``submit``; defaults to a fake success run.
+
+    Returns:
+        Stubbed ``Judge0Client`` usable via ``CodingRunnerService.run_public_tests``.
+    """
+    from tests.helpers.fake_judge0 import fake_coding_run_result
+
+    result = return_result or fake_coding_run_result()
+    client = Judge0Client(base_url="http://fake-judge0", timeout_seconds=5.0)
+
+    async def _stub_submit(**_kwargs: Any) -> Judge0SubmissionResult:
+        # Map CodingRunResult back to Judge0SubmissionResult
+        status_id = 3 if result.status == "success" else 6
+        return Judge0SubmissionResult(
+            status_id=status_id,
+            status_description="Accepted" if result.status == "success" else "Error",
+            stdout=result.stdout,
+            stderr=result.stderr,
+            compile_output=result.compile_output,
+            time=str(result.duration_ms / 1000) if result.duration_ms else None,
+            memory=None,
+        )
+
+    client.submit = _stub_submit  # type: ignore[method-assign]
+    return client
+
+
+@pytest.fixture
+def mock_judge0(monkeypatch):
+    """Globally patch ``CodingRunnerService`` to use a fake Judge0.
+
+    The returned helper can be called per-test to set a custom result::
+
+        def test_run(mock_judge0):
+            mock_judge0(status="compile_error")
+            ...
+
+    Yields:
+        Callable ``(status=...) -> None`` that reconfigures the global patch.
+    """
+    from app.coding.services.runner import CodingRunnerService
+    from tests.helpers.fake_judge0 import (
+        FakeRunConfig,
+        fake_coding_run_result,
+        fake_compile_error_result,
+        fake_tests_failed_result,
+    )
+
+    _current_result: CodingRunResult = fake_coding_run_result()
+
+    async def _fake_run_public_tests(
+        *,
+        source_code: str,
+        task_spec: dict[str, Any],
+        client: Judge0Client | None = None,
+    ) -> CodingRunResult:
+        del source_code, task_spec, client
+        return _current_result
+
+    async def _fake_run_hidden_tests(
+        *,
+        source_code: str,
+        task_spec: dict[str, Any],
+        client: Judge0Client | None = None,
+    ) -> CodingRunResult:
+        del source_code, task_spec, client
+        return _current_result
+
+    monkeypatch.setattr(
+        CodingRunnerService,
+        "run_public_tests",
+        staticmethod(_fake_run_public_tests),  # type: ignore[arg-type]
+    )
+    monkeypatch.setattr(
+        CodingRunnerService,
+        "run_hidden_tests",
+        staticmethod(_fake_run_hidden_tests),  # type: ignore[arg-type]
+    )
+
+    def _configure(
+        *,
+        status: str | None = None,
+        config: FakeRunConfig | None = None,
+    ) -> None:
+        nonlocal _current_result
+        if status == "compile_error":
+            _current_result = fake_compile_error_result()
+        elif status == "tests_failed":
+            _current_result = fake_tests_failed_result()
+        elif config is not None:
+            _current_result = fake_coding_run_result(config)
+        else:
+            _current_result = fake_coding_run_result()
+
+    yield _configure
+
+    # Reset to default after each test
+    _current_result = fake_coding_run_result()
+
+
 @pytest.fixture
 def override_ws_ai_provider() -> Callable:
     """Override the interview WebSocket AI provider dependency on a test client.
@@ -115,6 +222,27 @@ def uow(isolated_db):
     del isolated_db
     with InterviewUnitOfWork(auto_commit=True) as work:
         yield work
+
+
+@pytest.fixture
+def minimal_config_saved(client):
+    """Save a minimal provider configuration so routes do not redirect to /config.
+
+    Yields:
+        Response from the POST /config save call.
+    """
+    response = client.post(
+        "/config",
+        data={
+            "llm_preset_id": "preset-fake",
+            "api_key": "",
+            "timeout": "60",
+            "locale": "en",
+            "speech_model_size": "small",
+            "question_voice_enabled": "",
+        },
+    )
+    yield response
 
 
 pytest_plugins = ["tests.shared.test_questions"]

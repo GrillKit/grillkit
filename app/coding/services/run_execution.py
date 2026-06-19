@@ -13,7 +13,7 @@ from app.coding.domain.exceptions import (
     CodingRunLimitExceededError,
     CodingSectionNotFoundError,
 )
-from app.coding.domain.value_objects import CodingRunResult, TestCaseRunResult
+from app.coding.domain.value_objects import CaseRunResult, CodingRunResult
 from app.coding.services.runner import CodingRunnerService
 from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.repositories.uow import InterviewUnitOfWork
@@ -50,7 +50,7 @@ def _ensure_interview_active(interview_id: str) -> None:
         aggregate.ensure_active()
 
 
-def _serialize_test_result(result: TestCaseRunResult) -> dict[str, Any]:
+def _serialize_test_result(result: CaseRunResult) -> dict[str, Any]:
     """Convert a domain test result into an API/persistence payload.
 
     Args:
