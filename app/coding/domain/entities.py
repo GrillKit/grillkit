@@ -357,7 +357,7 @@ class CodingSection:
     def with_submit_test_summary(
         self,
         task_row_id: int,
-        summary: dict[str, Any],
+        summary: dict[str, Any] | None,
         *,
         source_code: str,
     ) -> CodingSection:
