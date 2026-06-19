@@ -121,11 +121,16 @@ class CodingEvaluationPersistenceService:
             raise CodingSectionNotFoundError(interview_id)
         section.ensure_active()
 
+        existing_task = section.find_task(task_id, round_num)
         updated = section.with_evaluation(
             task_id,
             round_num,
             evaluation.score,
             evaluation.feedback,
+        ).with_submit_test_summary(
+            existing_task.id,
+            submit_test_summary,
+            source_code=existing_task.submitted_code or submitted_source_code,
         )
         follow_up_round: int | None = None
         if follow_up_needed:

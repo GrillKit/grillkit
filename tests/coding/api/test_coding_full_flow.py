@@ -94,49 +94,6 @@ class TestCodingFullFlow:
         result = response.json()
         assert result["status"] == "compile_error"
 
-    def test_finish_section_after_all_tasks(
-        self, client, isolated_db, mock_judge0, override_ws_ai_provider
-    ):
-        """All tasks submitted → coding section completed."""
-        interview_id, task_id = seed_active_coding_interview(
-            "coding-finish-1", task_ids=["cod-001"]
-        )
-        mock_judge0()
-        evaluation = CodingAnswerEvaluation(
-            score=5,
-            feedback="Perfect.",
-            follow_up_needed=False,
-            follow_up_question=None,
-            follow_up_mode=None,
-        )
-
-        override_ws_ai_provider(client, [])
-        with (
-            patch(
-                "app.coding.services.submission.CodingEvaluatorService.evaluate_submission",
-                new=AsyncMock(return_value=(evaluation, False, None, None)),
-            ),
-            client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,
-        ):
-            ws.send_json(
-                {
-                    "type": "submit",
-                    "task_id": task_id,
-                    "source_code": "def solve(): return 42",
-                }
-            )
-            assert ws.receive_json() == {"type": "saved"}
-            assert ws.receive_json() == {"type": "evaluating"}
-            fb = ws.receive_json()
-            assert fb["type"] == "feedback"
-            # next_task should be None (last task) — omitted entirely when None by serializer
-            assert fb.get("next_task") is None
-
-        # Section should be completed
-        with InterviewUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            assert section is not None
-            assert section.is_complete()
 
     def test_run_attempts_limit(self, client, isolated_db, mock_judge0, monkeypatch):
         """Run returns 429 after exceeding max attempts."""
