@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Negative scenarios: 404s, bad UUID, bad WS msg, invalid WAV, active→results 404."""
 
-from unittest.mock import AsyncMock
-
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
@@ -46,7 +44,6 @@ class TestNegativeScenarios:
         )
         assert response.status_code == 303
         assert response.headers["location"] == f"/interview/{interview_id}"
-
 
     def test_answered_question_is_idempotent(
         self, client, isolated_db, override_ws_ai_provider

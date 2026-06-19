@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 from app.coding.domain.value_objects import CodingRunResult
 from app.coding.services.evaluator.models import CodingAnswerEvaluation
-from app.interview.repositories.uow import InterviewUnitOfWork
 from tests.helpers.coding_seed import seed_active_coding_interview
 
 
@@ -93,7 +92,6 @@ class TestCodingFullFlow:
         assert response.status_code == 200
         result = response.json()
         assert result["status"] == "compile_error"
-
 
     def test_run_attempts_limit(self, client, isolated_db, mock_judge0, monkeypatch):
         """Run returns 429 after exceeding max attempts."""
