@@ -31,12 +31,8 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 
 **Demo video** — full flow from setup to scored feedback
 
-<p align="center">
-  <video src="./assets/demo-video.mp4" width="900" controls playsinline>
-    Your browser does not support the video tag.
-    <a href="./assets/demo-video.mp4">Download the demo video</a>.
-  </video>
-</p>
+https://github.com/user-attachments/assets/25655f1e-89d3-472f-8c1f-3f154df622b2
+
 
 **Dashboard** — recent sessions and quick start
 
