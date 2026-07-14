@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Known Questions - GrillKit{% endblock %}
+{% block body_class %}page-known-questions{% endblock %}
+
+{% block content %}
+<div class="known-questions-page">
+    <header class="section-review__header">
+        <div>
+            <p class="section-review__eyebrow">Question bank</p>
+            <h1 class="section-review__title">Known questions</h1>
+            <p class="section-review__meta">
+                {{ total_count }} question{{ 's' if total_count != 1 else '' }} marked as known
+            </p>
+        </div>
+        <div class="section-review__actions">
+            <a href="/setup" class="btn btn-outline">Back to Setup</a>
+            <a href="/" class="btn btn-outline">Dashboard</a>
+        </div>
+    </header>
+
+    <p class="form-hint">
+        Known questions are excluded from new sessions when
+        &ldquo;Exclude questions I already know&rdquo; is enabled on setup.
+    </p>
+
+    <section class="known-questions-section">
+        <h2>Theory</h2>
+        {% if theory_items %}
+        <ul class="known-questions-list" data-branch="theory">
+            {% for item in theory_items %}
+            <li class="known-questions-item">
+                <div class="known-questions-body">
+                    <p class="known-questions-text">{{ item.text }}</p>
+                    <code class="known-questions-id">{{ item.id }}</code>
+                </div>
+                <button type="button"
+                        class="btn btn-outline btn-sm known-questions-unmark"
+                        data-branch="theory"
+                        data-item-id="{{ item.id }}">
+                    Unmark
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="known-questions-empty">No theory questions marked as known.</p>
+        {% endif %}
+    </section>
+
+    <section class="known-questions-section">
+        <h2>Coding</h2>
+        {% if coding_items %}
+        <ul class="known-questions-list" data-branch="coding">
+            {% for item in coding_items %}
+            <li class="known-questions-item">
+                <div class="known-questions-body">
+                    <p class="known-questions-text">{{ item.text }}</p>
+                    <code class="known-questions-id">{{ item.id }}</code>
+                </div>
+                <button type="button"
+                        class="btn btn-outline btn-sm known-questions-unmark"
+                        data-branch="coding"
+                        data-item-id="{{ item.id }}">
+                    Unmark
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="known-questions-empty">No coding tasks marked as known.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/known_questions.js?v={{ static_version('js/known_questions.js') }}"></script>
+{% endblock %}

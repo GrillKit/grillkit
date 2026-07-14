@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.interview.services.creation import SessionCreationService
 from app.interview.services.query import InterviewQuery
 from app.platform.services.config import AppConfig
 from app.question_voice.schemas import PiperVoiceStatusRead
+from tests.helpers.session_creation import create_session
 
 
 @pytest.fixture
@@ -208,7 +208,7 @@ class TestQuestionAudioApi:
             TrackSelection,
         )
 
-        interview = SessionCreationService.create_session(
+        interview = create_session(
             SessionSelection.theory_only(
                 sources=(
                     TrackSelection(
@@ -245,7 +245,7 @@ class TestQuestionAudioApi:
             TrackSelection,
         )
 
-        interview = SessionCreationService.create_session(
+        interview = create_session(
             SessionSelection.theory_only(
                 sources=(
                     TrackSelection(
@@ -258,7 +258,7 @@ class TestQuestionAudioApi:
             ),
             locale="en",
         )
-        reloaded = InterviewQuery.get_interview(interview.id)
+        reloaded = InterviewQuery.load(interview.id)
         assert reloaded is not None
         answer = reloaded.answers[0]
         wav_path = tmp_path / "question.wav"

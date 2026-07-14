@@ -5,8 +5,37 @@
 import pytest
 
 from app.ai.audio_probe import minimal_wav_bytes
+from app.theory.services.evaluator.prompts import format_expected_rubric
 from app.theory.services.evaluator.service import TheoryEvaluatorService
 from tests.fakes import FakeProvider, answer_evaluation_json, follow_up_evaluation_json
+
+
+def test_format_expected_rubric_empty() -> None:
+    """Empty rubric renders as (none)."""
+    assert format_expected_rubric(()) == "(none)"
+    assert format_expected_rubric(None) == "(none)"
+
+
+def test_format_expected_rubric_bullets() -> None:
+    """Rubric bullets render as a markdown list."""
+    text = format_expected_rubric(("First point", "Second point"))
+    assert text == "- First point\n- Second point"
+
+
+def test_format_answer_evaluation_user_text_labels_candidate_content() -> None:
+    """Evaluation prompt separates context from candidate answer."""
+    text = TheoryEvaluatorService._format_answer_evaluation_user_text(
+        question_text="What is a list?",
+        question_code="items = []",
+        answer_text="A mutable sequence.",
+        expected_points=("Ordered", "Mutable"),
+    )
+    assert "Question (for context only, NOT part of the answer):" in text
+    assert "Expected rubric points (checklist only, NOT candidate content):" in text
+    assert "Candidate answer (evaluate this only):" in text
+    assert "A mutable sequence." in text
+    assert "- Ordered" in text
+    assert "items = []" in text
 
 
 @pytest.mark.asyncio

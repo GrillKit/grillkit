@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.coding.api import routes as coding_router
 from app.interview.api import dashboard as dashboard_router
+from app.interview.api import known_questions as known_questions_router
 from app.interview.api import results as results_router
 from app.interview.api import routes as interview_router
 from app.interview.api import setup as setup_router
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(dashboard_router.router)
     app.include_router(setup_router.router)
+    app.include_router(known_questions_router.router)
     app.include_router(config_router.router)
     app.include_router(interview_router.router)
     app.include_router(results_router.router)

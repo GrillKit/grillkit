@@ -11,8 +11,16 @@ from app.interview.repositories.uow import InterviewUnitOfWork
 class CodingSectionCreationService:
     """Service for creating coding sections within an interview session."""
 
-    @staticmethod
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+        """
+        self._uow = uow
+
     def create(
+        self,
         interview_id: str,
         *,
         selection: InterviewSelection,
@@ -20,7 +28,6 @@ class CodingSectionCreationService:
         planned_tasks: tuple[PlannedCodingTask, ...],
         task_time_limit_seconds: int | None,
         status: CodingSectionStatus = "active",
-        uow: InterviewUnitOfWork,
     ) -> CodingSection:
         """Persist a coding section with initial task rows.
 
@@ -31,7 +38,6 @@ class CodingSectionCreationService:
             planned_tasks: Ordered tasks for this section.
             task_time_limit_seconds: Per-task time limit, or None to disable.
             status: Initial section status (``pending`` until phase switch).
-            uow: Active interview unit of work sharing the persistence session.
 
         Returns:
             Persisted coding section aggregate with assigned task IDs.
@@ -47,4 +53,4 @@ class CodingSectionCreationService:
             task_time_limit_seconds=task_time_limit_seconds,
             status=status,
         )
-        return uow.coding_sections.create_aggregate(section)
+        return self._uow.coding_sections.create_aggregate(section)

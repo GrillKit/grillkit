@@ -8,13 +8,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.interview.domain.serialization import parse_session_spec
-from app.interview.domain.value_objects import SessionSelection
+from app.interview.domain.value_objects import SectionKind, SessionSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
 from app.interview.services.dashboard import DashboardBuilder
+from app.interview.services.read_model import load_interview_read
 from app.interview.services.rules.selection import session_selection_summary_lines
 from app.interview.services.section_feedback import resolve_section_feedback
-from app.interview.services.sections import SectionEvaluationSummary, SectionKind
+from app.interview.services.sections import SectionEvaluationSummary
 from app.shared.locales import SUPPORTED_LOCALES
 
 
@@ -31,21 +32,24 @@ class CompletedInterviewSnapshot:
     session: SessionSelection
 
 
-def load_completed_interview(interview_id: str) -> CompletedInterviewSnapshot | None:
-    """Load a completed interview read model in one unit-of-work.
+def load_completed_interview(
+    uow: InterviewUnitOfWork,
+    interview_id: str,
+) -> CompletedInterviewSnapshot | None:
+    """Load a completed interview read model within an existing unit of work.
 
     Args:
+        uow: Active application unit of work.
         interview_id: Parent session UUID.
 
     Returns:
         Snapshot for review rendering, or None when missing or still active.
     """
-    with InterviewUnitOfWork() as uow:
-        interview = uow.interviews.get_read_model(interview_id)
-        if interview is None or interview.status != "completed":
-            return None
-        session = parse_session_spec(interview.selection_spec)
-        return CompletedInterviewSnapshot(interview=interview, session=session)
+    interview = load_interview_read(uow, interview_id)
+    if interview is None or interview.status != "completed":
+        return None
+    session = parse_session_spec(interview.selection_spec)
+    return CompletedInterviewSnapshot(interview=interview, session=session)
 
 
 def section_score_bounds(
@@ -64,7 +68,7 @@ def section_score_bounds(
     Returns:
         Tuple of display score and max score.
     """
-    if skipped:
+    if skipped and total_score == 0 and max_score == 0:
         return 0, 0
     return total_score, max_score
 

@@ -5,7 +5,7 @@
 from typing import Any
 
 from app.coding.domain.entities import CodingSection
-from app.coding.repositories.uow import CodingUnitOfWork
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.rules.selection import selection_sources_summary
 from app.interview.services.section_evaluation import build_section_evaluation_summary
 from app.interview.services.sections import SectionEvaluationSummary
@@ -13,6 +13,14 @@ from app.interview.services.sections import SectionEvaluationSummary
 
 class CodingQueryService:
     """Read-only queries for coding section aggregates."""
+
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this read scope.
+        """
+        self._uow = uow
 
     @staticmethod
     def _items_from_section(section: CodingSection) -> tuple[dict[str, Any], ...]:
@@ -37,8 +45,10 @@ class CodingQueryService:
             if task.submitted_code is not None
         )
 
-    @staticmethod
-    def get_evaluation_summary(interview_id: str) -> SectionEvaluationSummary | None:
+    def get_evaluation_summary(
+        self,
+        interview_id: str,
+    ) -> SectionEvaluationSummary | None:
         """Return coding section evaluation data for session completion.
 
         Uses cached ``section_feedback`` when present.
@@ -49,22 +59,20 @@ class CodingQueryService:
         Returns:
             Section summary, or None when no coding section exists.
         """
-        with CodingUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                return None
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            return None
 
-            return build_section_evaluation_summary(
-                "coding",
-                section_status=section.status,
-                items=CodingQueryService._items_from_section(section),
-                total_score=section.total_score(),
-                max_score=section.max_score(),
-                cached_narrative=section.section_feedback,
-            )
+        return build_section_evaluation_summary(
+            "coding",
+            section_status=section.status,
+            items=self._items_from_section(section),
+            total_score=section.total_score(),
+            max_score=section.max_score(),
+            cached_narrative=section.section_feedback,
+        )
 
-    @staticmethod
-    def sources_text_for_section(interview_id: str) -> str:
+    def sources_text_for_section(self, interview_id: str) -> str:
         """Build selection summary text for coding evaluation prompts.
 
         Args:
@@ -73,8 +81,7 @@ class CodingQueryService:
         Returns:
             Human-readable selection summary, or empty string when missing.
         """
-        with CodingUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                return ""
-            return selection_sources_summary(section.selection)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            return ""
+        return selection_sources_summary(section.selection)

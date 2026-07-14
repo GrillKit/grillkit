@@ -5,7 +5,7 @@
 import json
 from typing import Any
 
-from app.ai.llm_models import LLMCatalog, LLMModelEntry
+from app.ai.llm_models import LLMCatalog, LLMModelEntry, generate_model_id
 from app.platform.schemas import NewLLMModel
 from app.shared.paths import LLM_MODELS_PATH
 
@@ -84,21 +84,18 @@ class LLMCatalogService:
     def add_user_model(payload: NewLLMModel) -> LLMModelEntry:
         """Append a model to ``data/llm_models.json``.
 
+        The catalog id is derived from the display name and made unique against
+        existing entries, so adding a model never fails on id collisions.
+
         Args:
             payload: Validated add-model form values.
 
         Returns:
             Persisted catalog entry.
-
-        Raises:
-            ValueError: If the id is invalid or already exists.
         """
-        model_id = payload.model_id
-
         data = _read_catalog_file()
         models = dict(data["models"])
-        if model_id in models:
-            raise ValueError(f"Model id '{model_id}' already exists")
+        model_id = generate_model_id(payload.display_name, models)
 
         api_key = payload.api_key
         api_key_required = payload.api_key_required or bool(api_key)

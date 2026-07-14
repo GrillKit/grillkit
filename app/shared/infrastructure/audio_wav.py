@@ -28,25 +28,6 @@ def pcm16le_to_float32(pcm: bytes) -> npt.NDArray[np.float32]:
     return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
 
 
-def wav_duration_sec(wav_bytes: bytes) -> float:
-    """Return the duration of a WAV payload in seconds.
-
-    Args:
-        wav_bytes: Raw WAV file bytes.
-
-    Returns:
-        Duration in seconds, or ``0.0`` when the header cannot be parsed.
-    """
-    try:
-        with wave.open(io.BytesIO(wav_bytes), "rb") as wav_file:
-            rate = wav_file.getframerate()
-            if rate <= 0:
-                return 0.0
-            return wav_file.getnframes() / float(rate)
-    except (wave.Error, struct.error, EOFError):
-        return 0.0
-
-
 def validate_wav_bytes(wav_bytes: bytes) -> None:
     """Validate canonical WAV format for audio answers and transcription.
 

@@ -17,7 +17,38 @@ from app.shared.infrastructure.models import TheorySection as OrmTheorySection
 from app.theory.domain.entities import TheorySection as DomainTheorySection
 from app.theory.domain.entities import TheorySectionStatus
 from app.theory.domain.entities import TheoryTask as DomainTheoryTask
-from app.theory.schemas.theory import TheorySectionRead, TheoryTaskRead
+from app.theory.schemas.theory import TheoryTaskRead
+
+
+def _expected_points_to_json(points: tuple[str, ...]) -> str | None:
+    """Serialize rubric bullets for ORM storage.
+
+    Args:
+        points: Domain rubric tuple.
+
+    Returns:
+        JSON array string, or None when empty.
+    """
+    if not points:
+        return None
+    return json.dumps(list(points), separators=(",", ":"))
+
+
+def _expected_points_from_json(raw: str | None) -> tuple[str, ...]:
+    """Deserialize rubric bullets from an ORM column.
+
+    Args:
+        raw: JSON array string or None for legacy rows.
+
+    Returns:
+        Tuple of rubric bullet strings.
+    """
+    if raw is None:
+        return ()
+    data = json.loads(raw)
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(point) for point in data)
 
 
 def _question_ids_from_tasks(tasks: tuple[DomainTheoryTask, ...]) -> tuple[str, ...]:
@@ -59,6 +90,7 @@ def theory_task_from_orm(
         round=answer.round,
         question_text=answer.question_text,
         question_code=answer.question_code,
+        expected_points=_expected_points_from_json(answer.expected_points),
         answer_text=answer.answer_text,
         score=answer.score,
         feedback=answer.feedback,
@@ -91,6 +123,7 @@ def domain_theory_task_to_orm(
         round=task.round,
         question_text=task.question_text,
         question_code=task.question_code,
+        expected_points=_expected_points_to_json(task.expected_points),
         answer_text=task.answer_text,
         score=task.score,
         feedback=task.feedback,
@@ -206,27 +239,4 @@ def theory_task_read_from_domain(task: DomainTheoryTask) -> TheoryTaskRead:
         score=task.score,
         feedback=task.feedback,
         started_at=task.started_at,
-    )
-
-
-def theory_section_to_read(section: DomainTheorySection) -> TheorySectionRead:
-    """Map a domain theory section to a read model.
-
-    Args:
-        section: Domain theory section aggregate.
-
-    Returns:
-        Immutable TheorySectionRead for services and API.
-    """
-    return TheorySectionRead(
-        id=section.id,
-        interview_id=section.interview_id,
-        status=section.status,
-        locale=section.locale,
-        selection_spec=selection_to_spec(section.selection),
-        question_count=section.question_count,
-        task_time_limit_seconds=section.task_time_limit_seconds,
-        tasks=[theory_task_read_from_domain(task) for task in section.tasks],
-        section_score=section.section_score,
-        section_feedback=section.section_feedback,
     )

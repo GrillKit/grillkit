@@ -123,6 +123,7 @@ class Answer(Base):
         round: Follow-up round number (0 = initial, 1+ = follow-ups).
         question_text: Snapshot of the question text at time of asking.
         question_code: Snapshot of the optional code snippet.
+        expected_points: JSON array of rubric bullets (None for legacy rows).
         answer_text: User's answer text (None if skipped).
         score: AI-assigned score (1-5, or 0 on timeout), None if not yet evaluated.
         feedback: AI-generated feedback text.
@@ -143,6 +144,7 @@ class Answer(Base):
     round: Mapped[int] = mapped_column(Integer, default=0)
     question_text: Mapped[str] = mapped_column(Text)
     question_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_points: Mapped[str | None] = mapped_column(Text, nullable=True)
     answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -310,4 +312,23 @@ class CodeRunAttempt(Base):
 
     coding_task: Mapped["CodingTask"] = relationship(
         "CodingTask", back_populates="run_attempts"
+    )
+
+
+class KnownQuestion(Base):
+    """Bank item ID marked as known and excluded from future session planning.
+
+    Attributes:
+        branch: Section branch (``theory`` or ``coding``).
+        bank_item_id: ID from the YAML bank for that branch.
+        created_at: Timestamp when the item was marked as known.
+    """
+
+    __tablename__ = "known_questions"
+
+    branch: Mapped[str] = mapped_column(String, primary_key=True)
+    bank_item_id: Mapped[str] = mapped_column(String, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
     )

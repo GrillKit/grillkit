@@ -18,6 +18,7 @@
         : null;
     const llmRequestTimeoutSeconds = Number(panel.dataset.llmTimeout || 60);
     let isSubmitting = false;
+    window.isSubmitting = false;
     let ws = null;
     let reconnectTimer = null;
     let evaluationWatchdogTimer = null;
@@ -104,6 +105,11 @@
         if (prompt) {
             prompt.textContent = task.prompt_text || "";
         }
+        if (window.KnownQuestions && window.KnownQuestions.updateCodingKnownItem) {
+            const itemId = task.task_id || taskId;
+            const round = task.round != null ? Number(task.round) : 0;
+            window.KnownQuestions.updateCodingKnownItem(itemId, round);
+        }
     }
 
     function applyTask(task) {
@@ -184,7 +190,7 @@
             questionId: taskId,
             round: currentRound,
             getWs: function () {
-                return null;
+                return ws;
             },
         });
     }
@@ -213,6 +219,7 @@
             }
             showEvaluating(false);
             isSubmitting = false;
+            window.isSubmitting = false;
             setComposerEnabled(true);
             showError(
                 "AI evaluation is taking too long. Check /config, then try again."
@@ -242,6 +249,7 @@
                 clearEvaluationWatchdog();
                 showEvaluating(false);
                 isSubmitting = false;
+                window.isSubmitting = false;
                 setComposerEnabled(true);
                 showError(
                     "Connection lost during evaluation. Refresh the page to continue."
@@ -266,6 +274,7 @@
         clearEvaluationWatchdog();
         showEvaluating(false);
         isSubmitting = false;
+        window.isSubmitting = false;
         setComposerEnabled(true);
 
         const output = getOutput();
@@ -356,6 +365,7 @@
                 clearEvaluationWatchdog();
                 showEvaluating(false);
                 isSubmitting = false;
+                window.isSubmitting = false;
                 setComposerEnabled(true);
                 showError(data.message || "Coding submit failed.");
                 break;
@@ -439,6 +449,7 @@
             return;
         }
         isSubmitting = true;
+        window.isSubmitting = true;
         setComposerEnabled(false);
         stopTaskTimer();
         ws.send(
@@ -449,6 +460,15 @@
             })
         );
     }
+
+    window.grillkitOnTimerExpired = function () {
+        if (isSubmitting) {
+            return;
+        }
+        isSubmitting = true;
+        window.isSubmitting = true;
+        setComposerEnabled(false);
+    };
 
     function bindActions() {
         const runBtn = getRunBtn();

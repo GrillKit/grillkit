@@ -13,6 +13,8 @@ from app.interview.domain.exceptions import InterviewNotFoundError
 from app.interview.domain.value_objects import SessionMode, SessionSelection
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
+from app.interview.services.known_questions import KnownQuestionsService
+from app.interview.services.read_model import load_interview_read
 from app.interview.services.sections import (
     is_first_user_facing_section,
     phase_order_for_mode,
@@ -39,8 +41,16 @@ def _initial_coding_status(session_mode: SessionMode) -> CodingSectionStatus:
 class SessionCreationService:
     """Orchestrates interview shell and section creation."""
 
-    @staticmethod
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+        """
+        self._uow = uow
+
     def create_session(
+        self,
         session: SessionSelection,
         locale: str = "en",
     ) -> InterviewRead:
@@ -68,37 +78,48 @@ class SessionCreationService:
             locale=locale,
         )
 
-        with InterviewUnitOfWork(auto_commit=True) as uow:
-            uow.interviews.create_shell(shell)
-            if session.theory.enabled:
-                TheorySectionCreationService.create(
-                    interview_id,
-                    selection=session.theory_selection,
-                    locale=locale,
-                    question_count=session.theory.question_count,
-                    task_time_limit_seconds=session.theory.task_time_limit_seconds,
-                    start_first_task_timer=is_first_user_facing_section(
-                        session.session_mode,
-                        "theory",
-                    ),
-                    uow=uow,
-                )
-            if session.coding.enabled:
-                planned_tasks = build_coding_task_plan(
-                    session.coding_selection,
-                    session.coding.question_count,
-                    locale=locale,
-                )
-                CodingSectionCreationService.create(
-                    interview_id,
-                    selection=session.coding_selection,
-                    locale=locale,
-                    planned_tasks=planned_tasks,
-                    task_time_limit_seconds=session.coding.task_time_limit_seconds,
-                    status=_initial_coding_status(session.session_mode),
-                    uow=uow,
-                )
-            read_model = uow.interviews.get_read_model(interview_id)
-            if read_model is None:
-                raise InterviewNotFoundError(interview_id)
-            return read_model
+        known_service = KnownQuestionsService(self._uow)
+        theory_excluded = (
+            known_service.list_ids("theory")
+            if session.exclude_known and session.theory.enabled
+            else frozenset()
+        )
+        coding_excluded = (
+            known_service.list_ids("coding")
+            if session.exclude_known and session.coding.enabled
+            else frozenset()
+        )
+
+        self._uow.interviews.create_shell(shell)
+        if session.theory.enabled:
+            TheorySectionCreationService(self._uow).create(
+                interview_id,
+                selection=session.theory_selection,
+                locale=locale,
+                question_count=session.theory.question_count,
+                task_time_limit_seconds=session.theory.task_time_limit_seconds,
+                start_first_task_timer=is_first_user_facing_section(
+                    session.session_mode,
+                    "theory",
+                ),
+                excluded_ids=theory_excluded,
+            )
+        if session.coding.enabled:
+            planned_tasks = build_coding_task_plan(
+                session.coding_selection,
+                session.coding.question_count,
+                locale=locale,
+                excluded_ids=coding_excluded,
+            )
+            CodingSectionCreationService(self._uow).create(
+                interview_id,
+                selection=session.coding_selection,
+                locale=locale,
+                planned_tasks=planned_tasks,
+                task_time_limit_seconds=session.coding.task_time_limit_seconds,
+                status=_initial_coding_status(session.session_mode),
+            )
+        read_model = load_interview_read(self._uow, interview_id)
+        if read_model is None:
+            raise InterviewNotFoundError(interview_id)
+        return read_model

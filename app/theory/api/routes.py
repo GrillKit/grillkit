@@ -21,6 +21,7 @@ from app.interview.api.deps import (
     InterviewQueryDep,
     SessionCompletionServiceDep,
     SpeechTranscriberDep,
+    TheorySubmissionServiceDep,
 )
 from app.theory.api.audio_answer import TheoryAudioAnswerAdapter
 from app.theory.api.ws_session import TheoryWebSocketService
@@ -52,6 +53,7 @@ async def submit_theory_audio_answer(
     interview_id: str,
     provider: AIProviderDep,
     transcriber: SpeechTranscriberDep,
+    submission_service: TheorySubmissionServiceDep,
     question_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
 ) -> StreamingResponse:
@@ -86,6 +88,7 @@ async def submit_theory_audio_answer(
             wav_bytes=wav_bytes,
             provider=provider,
             transcriber=transcriber,
+            submission_service=submission_service,
         ),
         media_type="application/x-ndjson",
     )
@@ -94,17 +97,16 @@ async def submit_theory_audio_answer(
 async def handle_theory_websocket(
     websocket: WebSocket,
     interview_id: str,
-    interview_query: InterviewQueryDep,
-    session_completion: SessionCompletionServiceDep,
     provider: AIProviderDep,
+    submission_service: TheorySubmissionServiceDep,
+    session_completion: SessionCompletionServiceDep,
+    interview_query: InterviewQueryDep,
 ) -> None:
     """Run the theory WebSocket message loop until disconnect.
 
     Args:
         websocket: The WebSocket connection.
         interview_id: The session UUID.
-        interview_query: Interview read service.
-        session_completion: Session completion service.
         provider: AI provider for answer and session evaluation.
     """
     await websocket.accept()
@@ -120,6 +122,7 @@ async def handle_theory_websocket(
                 raw,
                 interview_id=interview_id,
                 provider=provider,
+                submission_service=submission_service,
                 session_completion=session_completion,
                 interview_query=interview_query,
             ):
@@ -135,23 +138,23 @@ async def handle_theory_websocket(
 async def theory_ws(
     websocket: WebSocket,
     interview_id: str,
-    interview_query: InterviewQueryDep,
-    session_completion: SessionCompletionServiceDep,
     provider: AIProviderDep,
+    submission_service: TheorySubmissionServiceDep,
+    session_completion: SessionCompletionServiceDep,
+    interview_query: InterviewQueryDep,
 ) -> None:
     """WebSocket endpoint for real-time theory task interaction.
 
     Args:
         websocket: The WebSocket connection.
         interview_id: The session UUID.
-        interview_query: Interview read service.
-        session_completion: Session completion service.
         provider: AI provider for answer and session evaluation.
     """
     await handle_theory_websocket(
         websocket,
         interview_id,
-        interview_query,
-        session_completion,
         provider,
+        submission_service,
+        session_completion,
+        interview_query,
     )

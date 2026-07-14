@@ -88,6 +88,7 @@ def session_to_spec(session: SessionSelection) -> str:
     payload = {
         "version": SESSION_SPEC_VERSION,
         "session_mode": session.session_mode,
+        "exclude_known": session.exclude_known,
         "theory": _branch_to_payload(session.theory),
         "coding": _branch_to_payload(session.coding),
     }
@@ -225,6 +226,7 @@ def _normalize_session_selection(session: SessionSelection) -> SessionSelection:
         return session
     return SessionSelection(
         session_mode=session.session_mode,
+        exclude_known=session.exclude_known,
         theory=SectionBranchSpec(
             enabled=theory_enabled,
             question_count=session.theory.question_count,
@@ -267,12 +269,16 @@ def session_from_payload(
         session_mode = data.get("session_mode")
         if not isinstance(session_mode, str) or session_mode not in _SESSION_MODES:
             raise ValueError("Invalid selection_spec: session_mode required")
+        exclude_known = data.get("exclude_known", True)
+        if not isinstance(exclude_known, bool):
+            raise ValueError("Invalid selection_spec: exclude_known must be boolean")
         theory_raw = data.get("theory")
         coding_raw = data.get("coding")
         if not isinstance(theory_raw, dict) or not isinstance(coding_raw, dict):
             raise ValueError("Invalid selection_spec: theory and coding required")
         session = SessionSelection(
             session_mode=session_mode,  # type: ignore[arg-type]
+            exclude_known=exclude_known,
             theory=_parse_branch_payload(
                 theory_raw,
                 branch_name="theory",

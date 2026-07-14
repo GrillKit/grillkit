@@ -6,7 +6,7 @@ GrillKit is an AI-powered technical interview trainer. The stack is **FastAPI** 
 
 **Session orchestration** lives in `interview/`: setup, dashboard, session shell (`Interview`), page composition, phase order, completion, results hub, and `selection_spec` v2 (`session_mode`). **Theory flow** lives in `theory/`: questions, tasks, timer, WebSocket/audio submit, AI evaluation, and post-session review. **Coding flow** lives in `coding/`: YAML task banks, Monaco UI, Judge0 Run attempts, WebSocket submit, AI evaluation, and post-session review. The interview shell does not own section tasks; `InterviewRead` composes theory task rows at read time via `theory_sections` + `answers`, and coding context from `coding_sections` + `coding_tasks`.
 
-Within each feature: transport in `api/`, orchestration in `services/`, Pydantic read models in `schemas/` (where present), persistence in `repositories/`. Domain layers use frozen aggregates and value objects separate from ORM and DTOs. Transactions use `InterviewUnitOfWork` / `TheoryUnitOfWork` extending `shared/infrastructure/uow.py`. APIs do not expose SQLAlchemy models on the wire.
+Transactions use a single app-wide `InterviewUnitOfWork` (interviews, theory/coding sections, code run attempts) extending `shared/infrastructure/uow.py`. Workflow services receive the UoW in their constructor; HTTP/WebSocket handlers create the UoW scope via FastAPI `Depends`. APIs do not expose SQLAlchemy models on the wire.
 
 ## Terminology
 
@@ -34,7 +34,7 @@ grillkit/
 │   │   ├── task_timer.py             # Per-round timer helpers
 │   │   ├── infrastructure/
 │   │   │   ├── database.py     # engine, SessionLocal, DATABASE_URL env, run_migrations()
-│   │   │   ├── models.py       # Interview, TheorySection, Answer, CodingSection, CodingTask, CodeRunAttempt
+│   │   │   ├── models.py       # Interview, TheorySection, Answer, CodingSection, CodingTask, CodeRunAttempt, KnownQuestion
 │   │   │   ├── audio_wav.py    # Canonical mono 16 kHz WAV validation
 │   │   │   ├── hf_hub_runtime.py, hf_download_progress.py, artifact_*
 │   │   │   └── uow.py          # Base UnitOfWork: session, commit, rollback
@@ -45,11 +45,11 @@ grillkit/
 │   │   ├── speech_transcriber.py  # SpeechTranscriber protocol (offline dictation)
 │   │   ├── audio_probe.py      # Minimal WAV bytes for connectivity / audio tests
 │   │   ├── factory.py          # ProviderFactory.from_config()
-│   │   ├── llm_models.py       # Catalog entry types (incl. accepts_audio_input)
+│   │   ├── llm_models.py       # Catalog types; slugify_model_id(), generate_model_id()
 │   │   ├── openai_compatible.py
 │   │   └── faster_whisper_transcriber.py
 │   ├── platform/
-│   │   ├── schemas.py          # Config page read models, NewLLMModel, mappers
+│   │   ├── schemas.py          # Config page read models, NewLLMModel (display_name only), mappers
 │   │   ├── api/
 │   │   │   ├── config.py       # GET/POST /config
 │   │   │   └── deps.py
@@ -61,12 +61,13 @@ grillkit/
 │   │       └── ai_context.py   # ai_provider_from_config() async context manager
 │   ├── interview/              # Session orchestrator (shell, setup, dashboard, completion)
 │   │   ├── domain/             # Interview shell aggregate, SessionSelection, serialization
-│   │   ├── schemas/            # InterviewRead, dashboard/page context
-│   │   ├── services/rules/     # selection_spec v2, display titles
+│   │   ├── schemas/            # InterviewRead, dashboard/page, known_questions
+│   │   ├── services/rules/     # selection_spec v2, display titles, bank_selection
 │   │   ├── repositories/
 │   │   │   ├── interview.py    # shell get/save, list_recent read models
+│   │   │   ├── known_questions.py
 │   │   │   ├── mappers.py      # ORM ↔ shell ↔ InterviewRead (+ theory compose)
-│   │   │   └── uow.py          # InterviewUnitOfWork (interviews + theory_sections)
+│   │   │   └── uow.py          # InterviewUnitOfWork (app-wide repositories)
 │   │   ├── services/
 │   │   │   ├── creation.py     # SessionCreationService
 │   │   │   ├── page.py         # SessionPageService
@@ -74,6 +75,7 @@ grillkit/
 │   │   │   ├── dashboard.py
 │   │   │   ├── query.py
 │   │   │   ├── phases.py       # multi-section phase order + prefetch hooks
+│   │   │   ├── known_questions.py, bank_text.py
 │   │   │   ├── sections.py     # Section registry and shared section DTOs
 │   │   │   ├── evaluation_aggregator.py
 │   │   │   ├── session_evaluator.py
@@ -87,10 +89,11 @@ grillkit/
 │   │       ├── setup_form.py
 │   │       ├── routes.py       # GET /interview/{id}, question-audio
 │   │       ├── results.py      # GET /results, /theory, /coding (completed sessions)
+│   │       ├── known_questions.py  # GET/POST/DELETE /known-questions, GET /manage
 │   │       └── errors.py
 │   ├── coding/                 # Coding section (tasks, Judge0 runner, WS/API, evaluator)
 │   │   ├── domain/             # CodingSection, CodingTask, CodeRunAttempt aggregates
-│   │   ├── repositories/       # coding_section repo, mappers, CodingUnitOfWork
+│   │   ├── repositories/       # coding_section repo, mappers
 │   │   ├── services/
 │   │   │   ├── planning.py     # YAML task plan from data/coding/
 │   │   │   ├── creation.py     # CodingSectionCreationService
@@ -107,7 +110,7 @@ grillkit/
 │   ├── theory/                 # Theory section (tasks, timer, WS, evaluator)
 │   │   ├── domain/             # TheorySection, TheoryTask aggregates
 │   │   ├── schemas/            # TheoryTaskRead, TheoryPageContext, WS messages
-│   │   ├── repositories/       # theory_section repo, mappers, TheoryUnitOfWork
+│   │   ├── repositories/       # theory_section repo, mappers
 │   │   ├── services/
 │   │   │   ├── planning.py     # YAML question plan (excludes type=coding)
 │   │   │   ├── creation.py     # TheorySectionCreationService
@@ -169,6 +172,10 @@ grillkit/
 | GET | `/setup/options` | `interview/api/setup.py` | Cascaded JSON: theory tracks → levels → categories |
 | GET | `/setup/coding-options` | `interview/api/setup.py` | Cascaded JSON: coding tracks → levels → categories |
 | GET | `/setup/coding-available` | `interview/api/setup.py` | JSON: whether coding modes are offered (Judge0 health) |
+| GET | `/known-questions` | `interview/api/known_questions.py` | JSON: known bank item IDs grouped by `theory` / `coding` |
+| POST | `/known-questions` | `interview/api/known_questions.py` | Mark a bank item as known (`{branch, item_id}`) |
+| DELETE | `/known-questions` | `interview/api/known_questions.py` | Unmark a known bank item |
+| GET | `/known-questions/manage` | `interview/api/known_questions.py` | HTML manage page (resolved question text) |
 | GET | `/config` | `platform/api/config.py` | AI provider configuration form |
 | POST | `/config` | `platform/api/config.py` | Test connection (via form dependency), then save |
 | POST | `/config/test` | `platform/api/config.py` | Test connection without saving |
@@ -197,7 +204,7 @@ grillkit/
 | Package / layer | Responsibility |
 |-----------------|----------------|
 | `interview/api/`, `speech/api/`, `platform/api/`, `question_voice/api/` | HTTP/WebSocket transport, forms, template rendering |
-| `*/api/deps.py` | Inject service **classes** via `Depends` (handlers call static methods) |
+| `*/api/deps.py` | Inject request-scoped services and `InterviewUnitOfWork` via FastAPI `Depends` |
 | `interview/domain/` | Interview session shell aggregate, `SessionSelection`, serialization, domain exceptions |
 | `theory/domain/` | `TheorySection` / `TheoryTask` aggregates and theory-specific exceptions |
 | `coding/domain/` | `CodingSection` / `CodingTask` / `CodeRunAttempt` aggregates and coding exceptions |
@@ -214,16 +221,14 @@ grillkit/
 | `shared/locales.py` | Locale normalization and localized UI strings |
 | `interview/repositories/` | Interview persistence: ORM access, `get_aggregate` / `save_aggregate`, mappers |
 | `shared/infrastructure/uow.py` | Base transaction boundary (session lifecycle) |
-| `interview/repositories/uow.py` | `InterviewUnitOfWork`: `uow.interviews`, `uow.theory_sections` |
-| `theory/repositories/uow.py` | `TheoryUnitOfWork`: theory section persistence |
-| `coding/repositories/uow.py` | `CodingUnitOfWork`: coding section + run attempts |
+| `interview/repositories/uow.py` | `InterviewUnitOfWork`: interviews, theory/coding sections, code run attempts |
 | `interview/services/results_page.py` | Completed session hub context (`SessionResultsPageService`) |
 | `theory/services/review.py`, `coding/services/review.py` | Post-session section review page builders |
 | `shared/infrastructure/models.py` | ORM models |
 | `ai/` | Provider adapters (`AIProvider`, `SpeechTranscriber`) |
 | `shared/questions.py` | Read-only YAML question bank access |
 
-Application services are **stateless classes with `@staticmethod`**. FastAPI dependencies in each feature's `deps.py` return the class (e.g. `InterviewQuery`), not instances.
+Workflow services (submit, create, complete, section creation, evaluation persistence, navigation) are **instance classes** constructed with `InterviewUnitOfWork`. FastAPI dependencies in `interview/api/deps.py` and `shared/application/uow_deps.py` yield scoped UoW instances. Read-only helpers may remain static until migrated.
 
 ## Module Dependency Graph
 
@@ -396,10 +401,10 @@ flowchart TB
 | Theory task read DTO | `app.theory.schemas.theory.TheoryTaskRead` |
 | Route / WS path param | `interview_id` (same value as `Interview.id`) |
 | Create flow | `SessionCreationService.create_session()` + section creation services when enabled |
-| Read flow | `InterviewQuery.get_interview()`, `DashboardBuilder.list_rows()` |
+| Read flow | `InterviewQuery.load()` / `InterviewQuery(uow).get_interview()`, `DashboardBuilder.list_rows()` |
 | Complete flow | `SessionCompletionService.complete_session()` |
 | Results hub | `SessionResultsPageService.prepare_page()` |
-| UoW repositories | `uow.interviews`, `uow.theory_sections`, `uow.coding_sections` (per feature UoW) |
+| UoW repositories | `uow.interviews`, `uow.theory_sections`, `uow.coding_sections`, `uow.code_run_attempts`, `uow.known_questions` (single `InterviewUnitOfWork`) |
 | Theory submit | `TheorySubmissionService` (WS + audio + timeouts) |
 | Coding submit | `CodingSubmissionService` (WS submit after Run history) |
 | SQLAlchemy session | `uow.session` |
@@ -412,7 +417,7 @@ flowchart TB
 |-------|------|-------|
 | `id` | `str` | UUID v4 primary key |
 | `locale` | `str` | AI feedback language (`en`, `ru`, …) |
-| `selection_spec` | `str` | JSON v2: `session_mode`, `theory` / `coding` branches |
+| `selection_spec` | `str` | JSON v2: `session_mode`, `exclude_known`, `theory` / `coding` branches |
 | `session_mode` | `str` | `theory_only`, `coding_only`, `theory_then_coding`, `coding_then_theory` |
 | `status` | `str` | `active` or `completed` |
 | `overall_feedback` | `str \| None` | JSON final evaluation with `score_breakdown.{theory,coding}` |
@@ -476,6 +481,16 @@ Initial task rows are created with the theory section; follow-ups append via `Th
 
 `CodeRunAttempt` rows store each **Run** snapshot (code, stderr, public test results) for AI context on submit.
 
+### KnownQuestion (`known_questions`)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `branch` | `str` | `theory` or `coding` (composite PK with `bank_item_id`) |
+| `bank_item_id` | `str` | ID from the YAML bank for that branch |
+| `created_at` | `datetime` | When the item was marked as known |
+
+Instance-wide list (no user accounts). When setup sends `exclude_known: true`, `SessionCreationService` loads IDs per branch and `plan_questions(..., excluded_ids=...)` removes them from pools before selection. Mark/unmark via `POST`/`DELETE /known-questions` with `{branch, item_id}`, **I know this** buttons during active interviews, or `/known-questions/manage`. Display text for the manage page is resolved from YAML banks via `interview/services/bank_text.py` (full-bank `id → text` indexes cached per process with `@lru_cache`).
+
 ## Data Flow: Configure Provider
 
 ```
@@ -484,8 +499,9 @@ User → POST /config/test → test selected catalog model (no save)
 User → POST /config → merge form into config.json + catalog selection
   → ConfigService.test_connection(resolve_effective_config()) → AI provider ping
   → on success: save config.json and llm_models.json
-User → POST /config/llm-models (add catalog entry, optional accepts_audio_input)
-  → LLMCatalogService → data/llm_models.json
+User → POST /config/llm-models (display_name, base_url, model, optional api_key, accepts_audio_input)
+  → NewLLMModel validated (no manual model id — slug generated by generate_model_id())
+  → LLMCatalogService.add_user_model() → data/llm_models.json (sets selected id)
   → when accepts_audio_input: test text + audio capability + Whisper readiness
 ```
 
@@ -512,7 +528,10 @@ User → POST /setup (selection_json v2: session_mode, theory/coding branches, c
 ```
 Client → WS /interview/{id}/theory/ws {"type":"answer",...}
   → TheorySubmissionService (timer, navigation, TheoryEvaluatorService)
-  → On section complete: SessionPhaseOrchestrator.notify_section_complete → prefetch
+  → Commits the saved answer row before long-running AI evaluation (releases SQLite write lock)
+  → On section complete: SessionPhaseOrchestrator(uow).notify_section_complete
+       → on_phase_complete (may schedule background section-feedback prefetch)
+       → activate_if_pending("coding") on the same UoW (no second SQLite connection)
   → Session complete: SessionCompletionService via WS "complete" message
 
 Client → WS {"type":"timeout",...} → TheorySubmissionService timeout path (score 0)
@@ -561,7 +580,7 @@ Separate from answer/evaluation WS. Requires active interview and loaded transcr
 
 ```
 Client → WS connect /interview/{id}/dictation
-  → InterviewQuery.get_interview() + require_active()
+  → InterviewQuery.load() + require_active()
   → reject if model missing (download via /config → /speech/model/download)
 
 Client → {"type":"start"}
@@ -758,6 +777,7 @@ Follow-up rounds use the same pipeline (cache key from localized `question_text`
 |---------|----------|
 | Catalog file | `data/llm_models.json` (gitignored) — models added via **Add model to catalog** on `/config` (`POST /config/llm-models`) |
 | Loader | `app/platform/services/llm_catalog.py` |
+| Model id | Auto-generated slug from **display name** (`slugify_model_id` + `generate_model_id` in `app/ai/llm_models.py`); collisions get `-2`, `-3`, … suffixes |
 | Selection | `selected` id in catalog JSON; `llm_preset_id` on resolved `AppConfig` |
 | Audio flag | `accepts_audio_input` on `LLMModelEntry` — enables interview audio-answer UI and config audio probe |
 | Effective config | `ConfigService.resolve_effective_config()` applies catalog `base_url`, `model`, and `api_key` |
@@ -769,7 +789,7 @@ Pytest discovers modules under `tests/` (`pyproject.toml` → `testpaths = ["tes
 | `app/` package | `tests/` mirror | Typical modules |
 |----------------|-----------------|-----------------|
 | `ai/` | `tests/ai/` | `test_base.py`, `test_factory.py`, `test_openai_compatible.py` |
-| `interview/` | `tests/interview/{api,repositories,services}/` | `test_creation.py`, `test_phases.py`, `test_results.py` |
+| `interview/` | `tests/interview/{api,repositories,services}/` | `test_creation.py`, `test_phases.py`, `test_known_questions.py`, `test_results.py` |
 | `theory/` | `tests/theory/{api,services,repositories,integration}/` | `test_submission.py`, `test_ws_routes.py`, `test_review.py` |
 | `coding/` | `tests/coding/{api,services,repositories}/` | `test_runner.py`, `test_evaluator.py`, `test_review.py` |
 | `speech/`, `question_voice/` | `tests/speech/`, `tests/question_voice/` | API + service tests |
@@ -804,3 +824,21 @@ uv run pytest tests/theory/services/test_submission.py   # single module
 - Question bank localization is partial: many YAML entries still fall back to `en` for non-English locales
 - Question TTS: Piper voice must be downloaded on `/config` before synthesis; first load is per process (not shared across multiple uvicorn workers)
 - Piper synthesis uses CPU ONNX; plan extra RAM on the host when question voice is enabled
+
+## SQLite concurrency
+
+File-backed SQLite databases enable **WAL journal mode** and a **busy timeout** at connection time (`shared/infrastructure/database.py`). Long-running work must not hold a write transaction open across unrelated writers.
+
+| Pattern | Where | Why |
+|---------|-------|-----|
+| Commit answer before AI eval | `TheorySubmissionService._release_submission_write_lock()` | Theory submit persists the task row, then calls the LLM on an uncommitted-free connection |
+| Phase transition on caller UoW | `SessionPhaseOrchestrator(uow).notify_section_complete(…)` | Activating a pending coding section during theory navigation uses the orchestrator's unit of work — avoids `database is locked` from a nested `InterviewUnitOfWork` |
+| Background prefetch | `SectionFeedbackPrefetch._run_in_background` | Section narrative feedback opens a dedicated UoW after the foreground workflow commits |
+| Audio last-round eval | `_evaluate_last_follow_up_in_background` | Score-only persistence for the final follow-up runs in `InterviewUnitOfWork(auto_commit=True)` after navigation events are sent |
+
+## Performance notes
+
+| Area | Approach |
+|------|----------|
+| Known questions manage page | `bank_text._theory_text_index()` and `_coding_text_index()` cache full YAML bank `id → text` maps per process (`@lru_cache`) — banks ship with the image and do not change at runtime |
+| Dashboard history | Batched section lookups when loading recent sessions |

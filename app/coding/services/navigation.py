@@ -7,7 +7,7 @@ from typing import Any
 from app.coding.domain.entities import CodingSection, CodingTask
 from app.coding.domain.exceptions import CodingSectionNotFoundError
 from app.coding.domain.task_spec import client_task_spec_from_stored
-from app.coding.repositories.uow import CodingUnitOfWork
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.phases import SessionPhaseOrchestrator
 
 
@@ -32,9 +32,16 @@ def next_task_payload(task: CodingTask) -> dict[str, Any]:
 class CodingNavigationService:
     """Shared navigation after a coding task round is completed."""
 
-    @staticmethod
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this workflow.
+        """
+        self._uow = uow
+
     def advance_to_next_unsubmitted(
-        uow: CodingUnitOfWork,
+        self,
         interview_id: str,
         *,
         task_id: str,
@@ -43,7 +50,6 @@ class CodingNavigationService:
         """Activate the next unsubmitted task and build client payload.
 
         Args:
-            uow: Active unit of work.
             interview_id: Parent interview UUID.
             task_id: YAML task ID of the completed round.
             round_num: Follow-up round that was just completed.
@@ -55,7 +61,7 @@ class CodingNavigationService:
             CodingSectionNotFoundError: If the coding section does not exist.
             CodingSectionNotActiveError: If the section is not active.
         """
-        section = uow.coding_sections.get_aggregate(interview_id)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
         if section is None:
             raise CodingSectionNotFoundError(interview_id)
 
@@ -67,19 +73,17 @@ class CodingNavigationService:
         )
         next_task = section.find_next_unsubmitted_after(current_index)
         if next_task is None:
-            CodingNavigationService._notify_phase_complete_if_needed(
-                interview_id, section
-            )
+            self._notify_phase_complete_if_needed(interview_id, section)
             return None, None
 
         updated = section.start_timer_for_task(next_task.id)
-        uow.coding_sections.save_aggregate(updated)
+        self._uow.coding_sections.save_aggregate(updated)
         activated = next(task for task in updated.tasks if task.id == next_task.id)
         timer_remaining = activated.remaining_seconds(updated.task_time_limit_seconds)
         return next_task_payload(activated), timer_remaining
 
-    @staticmethod
     def _notify_phase_complete_if_needed(
+        self,
         interview_id: str,
         section: CodingSection,
     ) -> None:
@@ -90,4 +94,7 @@ class CodingNavigationService:
             section: Coding section after the latest navigation update.
         """
         if section.is_complete():
-            SessionPhaseOrchestrator.notify_section_complete(interview_id, "coding")
+            SessionPhaseOrchestrator(self._uow).notify_section_complete(
+                interview_id,
+                "coding",
+            )

@@ -17,10 +17,6 @@ from app.interview.domain.serialization import (
     session_to_spec,
 )
 from app.interview.schemas.interview import InterviewRead
-from app.interview.services.scoring import (
-    completed_score_fallback,
-    score_from_overall_feedback,
-)
 from app.shared.infrastructure.models import Interview as OrmInterview
 from app.theory.domain.entities import TheorySection as DomainTheorySection
 from app.theory.repositories.mappers import (
@@ -41,29 +37,6 @@ def _question_ids_to_json(question_ids: tuple[str, ...]) -> str:
         JSON array string.
     """
     return json.dumps(list(question_ids), separators=(",", ":"))
-
-
-def _resolve_completed_score(
-    shell: DomainInterview,
-    theory: DomainTheorySection | None,
-    coding: DomainCodingSection | None,
-) -> int | None:
-    """Resolve display score for a completed session read model.
-
-    Args:
-        shell: Interview shell aggregate.
-        theory: Theory section aggregate, if present.
-        coding: Coding section aggregate, if present.
-
-    Returns:
-        Display score from feedback or section totals, or None while active.
-    """
-    if shell.status != "completed":
-        return None
-    score = score_from_overall_feedback(shell.overall_feedback)
-    if score is not None:
-        return score
-    return completed_score_fallback(shell, theory, coding)
 
 
 def interview_shell_from_orm(interview: OrmInterview) -> DomainInterview:
@@ -103,10 +76,8 @@ def compose_interview_read(
         coding: Coding section aggregate, used for coding-only score fallback.
 
     Returns:
-        Immutable InterviewRead for services, API, and templates.
+        Immutable InterviewRead without a resolved display score.
     """
-    score = _resolve_completed_score(shell, theory, coding)
-
     if theory is None:
         return InterviewRead(
             id=shell.id,
@@ -117,7 +88,6 @@ def compose_interview_read(
             question_count=0,
             question_time_limit_seconds=None,
             answers=[],
-            score=score,
             overall_feedback=shell.overall_feedback,
             started_at=shell.started_at,
             completed_at=shell.completed_at,
@@ -134,7 +104,6 @@ def compose_interview_read(
         question_count=theory.question_count,
         question_time_limit_seconds=theory.task_time_limit_seconds,
         answers=answers,
-        score=score,
         overall_feedback=shell.overall_feedback,
         started_at=shell.started_at,
         completed_at=shell.completed_at,
@@ -174,20 +143,6 @@ def interview_read_from_orm(
         else None
     )
     return compose_interview_read(shell, theory, coding)
-
-
-def interview_to_read(interview: DomainInterview) -> InterviewRead:
-    """Map a shell aggregate to a minimal read model without theory tasks.
-
-    Prefer ``compose_interview_read`` when section data is available.
-
-    Args:
-        interview: Interview shell aggregate.
-
-    Returns:
-        Interview read model without answers.
-    """
-    return compose_interview_read(interview, None)
 
 
 def interview_shell_to_orm(interview: DomainInterview) -> OrmInterview:

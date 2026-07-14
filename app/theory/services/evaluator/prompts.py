@@ -43,6 +43,20 @@ intended meaning is reasonably clear. Do not criticize typos or naming mistakes 
 feedback, strengths, or weaknesses; focus on whether the candidate grasped the concepts."""
 
 ANSWER_EVALUATION_INSTRUCTIONS = """You are a technical interviewer evaluating a candidate's answer.
+
+Evaluate ONLY the candidate text under "Candidate answer (evaluate this only):".
+Do NOT treat question text, code blocks in the question, expected rubric points,
+or your own knowledge as something the candidate said.
+
+If the answer is empty, off-topic, only asks the interviewer what to do,
+or does not attempt to explain the topic, score 1 and set follow_up_needed true.
+
+In feedback, quote or paraphrase only what appears under the candidate answer.
+Do not praise code or explanations that are not present in the answer.
+
+Use the expected rubric points as a checklist for what a strong answer should cover,
+but score only what the candidate actually stated.
+
 Assess the answer based on:
 - 5: Excellent — complete understanding, examples, edge cases considered
 - 4: Good — solid understanding with minor omissions
@@ -103,6 +117,22 @@ Example response (fill with your own content):
     "q2": {"score": 5, "max": 10}
   }
 }"""
+
+
+def format_expected_rubric(
+    expected_points: tuple[str, ...] | list[str] | None,
+) -> str:
+    """Format rubric bullets for evaluator prompts.
+
+    Args:
+        expected_points: Rubric bullets from the question bank.
+
+    Returns:
+        Bulleted list text, or ``(none)`` when empty.
+    """
+    if not expected_points:
+        return "(none)"
+    return "\n".join(f"- {point}" for point in expected_points)
 
 
 def build_evaluator_instructions(locale: str, task_instructions: str) -> str:

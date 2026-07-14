@@ -136,12 +136,12 @@
         },
 
         getValue: function () {
-            if (editor) {
-                return editor.getValue();
-            }
             const textarea = document.getElementById("coding-explanation-input");
             if (textarea && !textarea.hidden) {
                 return textarea.value;
+            }
+            if (editor) {
+                return editor.getValue();
             }
             return "";
         },

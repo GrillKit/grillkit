@@ -69,3 +69,26 @@ def completed_score_fallback(
         found = True
         total += _section_display_score(section)
     return total if found else None
+
+
+def resolve_completed_read_score(
+    shell: DomainInterview,
+    theory: TheorySection | None,
+    coding: CodingSection | None,
+) -> int | None:
+    """Resolve the display score for a completed session read model.
+
+    Args:
+        shell: Interview shell aggregate.
+        theory: Theory section aggregate, if present.
+        coding: Coding section aggregate, if present.
+
+    Returns:
+        Display score from feedback or section totals, or None while active.
+    """
+    if shell.status != "completed":
+        return None
+    score = score_from_overall_feedback(shell.overall_feedback)
+    if score is not None:
+        return score
+    return completed_score_fallback(shell, theory, coding)

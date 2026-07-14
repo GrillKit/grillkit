@@ -5,14 +5,17 @@
 from fastapi import HTTPException
 import pytest
 
-from app.interview.api.errors import http_exception_from_domain_error, ws_error_payload
+from app.interview.api.errors import http_exception_from_domain_error
 from app.interview.domain.exceptions import (
-    AnswerNotFoundError,
     InterviewNotActiveError,
     InterviewNotFoundError,
-    UnansweredAnswerNotFoundError,
 )
 from app.interview.services.ai_errors import ai_error_message_for_client
+from app.theory.api.ws_protocol import domain_error_to_wire
+from app.theory.domain.exceptions import (
+    TheoryTaskNotFoundError,
+    UnansweredTaskNotFoundError,
+)
 
 
 def test_ai_error_message_model_not_found():
@@ -34,10 +37,10 @@ def test_ai_error_message_timeout():
     assert "/config" in msg
 
 
-def test_ws_error_payload():
-    """ws_error_payload wraps domain errors for WebSocket clients."""
+def test_domain_error_to_wire():
+    """domain_error_to_wire wraps domain errors for WebSocket clients."""
     exc = InterviewNotFoundError("id-1")
-    assert ws_error_payload(exc) == {
+    assert domain_error_to_wire(exc) == {
         "type": "error",
         "message": "Interview not found: id-1",
     }
@@ -47,9 +50,9 @@ def test_ws_error_payload():
     ("exc", "status_code"),
     [
         (InterviewNotFoundError("id-1"), 404),
-        (AnswerNotFoundError("id-1", "q1", 0), 404),
+        (TheoryTaskNotFoundError("id-1", "q1", 0), 404),
         (InterviewNotActiveError("id-1"), 400),
-        (UnansweredAnswerNotFoundError("id-1", "q1"), 400),
+        (UnansweredTaskNotFoundError("id-1", "q1"), 400),
     ],
 )
 def test_http_exception_from_domain_error(exc, status_code):

@@ -7,26 +7,31 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
 from app.ai.base import AIProvider
-from app.coding.domain.exceptions import CodingSectionNotFoundError
-from app.coding.repositories.uow import CodingUnitOfWork
+from app.coding.domain.exceptions import (
+    CodingSectionNotFoundError,
+    CodingTaskNotCurrentError,
+    CodingTaskTimerError,
+)
 from app.coding.services.evaluation_persistence import (
     CodingEvaluationPersistenceService,
 )
 from app.coding.services.evaluator.service import CodingEvaluatorService
 from app.coding.services.events import CodingFeedbackEvent
-from app.coding.services.run_execution import (
-    _ensure_interview_active,
-    coding_run_result_to_summary,
-)
+from app.coding.services.navigation import CodingNavigationService
+from app.coding.services.run_execution import coding_run_result_to_summary
 from app.coding.services.runner import CodingRunnerService
+from app.interview.domain.exceptions import InterviewNotFoundError
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.events import (
     AnswerSavedEvent,
     EvaluatingEvent,
     InterviewEvent,
 )
+from app.interview.services.rules.feedback import timeout_feedback_for_locale
 
 
 @dataclass(frozen=True)
@@ -63,8 +68,50 @@ class CodingSubmissionContext:
 class CodingSubmissionService:
     """Handle coding submit messages and stream server events."""
 
-    @staticmethod
+    def __init__(
+        self,
+        uow: InterviewUnitOfWork,
+        *,
+        persistence: CodingEvaluationPersistenceService | None = None,
+    ) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this submission workflow.
+            persistence: Optional evaluation persistence collaborator.
+        """
+        self._uow = uow
+        navigation = CodingNavigationService(uow)
+        self._navigation = navigation
+        self._persistence = persistence or CodingEvaluationPersistenceService(
+            uow, navigation=navigation
+        )
+
+    def _commit_submission_workflow(self) -> None:
+        """Commit durable submission changes for the current request scope."""
+        self._uow.commit()
+
+    def _rollback_submission_workflow(self) -> None:
+        """Discard uncommitted submission changes after a workflow failure."""
+        self._uow.rollback()
+
+    def _ensure_interview_active(self, interview_id: str) -> None:
+        """Ensure the parent interview session accepts coding actions.
+
+        Args:
+            interview_id: Parent interview UUID.
+
+        Raises:
+            InterviewNotFoundError: If the interview does not exist.
+            InterviewNotActiveError: If the interview is completed.
+        """
+        aggregate = self._uow.interviews.get_aggregate(interview_id)
+        if aggregate is None:
+            raise InterviewNotFoundError(interview_id)
+        aggregate.ensure_active()
+
     async def _prepare_submission(
+        self,
         *,
         interview_id: str,
         task_id: str,
@@ -85,31 +132,30 @@ class CodingSubmissionService:
             CodingSectionNotActiveError: If the coding section is not active.
             CodingTaskNotCurrentError: If ``task_id`` is not the active task.
         """
-        with CodingUnitOfWork() as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                raise CodingSectionNotFoundError(interview_id)
-            section.ensure_active()
-            current_task = section.require_current_task(task_id)
-            run_attempts = CodingSubmissionService._serialize_run_attempts(
-                uow.code_run_attempts.list_for_task(current_task.id)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            raise CodingSectionNotFoundError(interview_id)
+        section.ensure_active()
+        current_task = section.require_current_task(task_id)
+        run_attempts = self._serialize_run_attempts(
+            self._uow.code_run_attempts.list_for_task(current_task.id)
+        )
+        round_num = current_task.round
+        order = current_task.order
+        prompt_text = current_task.prompt_text
+        task_spec = dict(current_task.task_spec)
+        locale = section.locale
+        task_row_id = current_task.id
+        initial_prompt_text = current_task.prompt_text
+        initial_source_code = source_code
+        if current_task.round > 0:
+            initial = next(
+                task
+                for task in section.tasks
+                if task.task_id == task_id and task.round == 0
             )
-            round_num = current_task.round
-            order = current_task.order
-            prompt_text = current_task.prompt_text
-            task_spec = dict(current_task.task_spec)
-            locale = section.locale
-            task_row_id = current_task.id
-            initial_prompt_text = current_task.prompt_text
-            initial_source_code = source_code
-            if current_task.round > 0:
-                initial = next(
-                    task
-                    for task in section.tasks
-                    if task.task_id == task_id and task.round == 0
-                )
-                initial_prompt_text = initial.prompt_text
-                initial_source_code = initial.submitted_code or ""
+            initial_prompt_text = initial.prompt_text
+            initial_source_code = initial.submitted_code or ""
 
         hidden_result = await CodingRunnerService.run_hidden_tests(
             source_code=source_code,
@@ -117,17 +163,17 @@ class CodingSubmissionService:
         )
         submit_test_summary = coding_run_result_to_summary(hidden_result)
 
-        with CodingUnitOfWork(auto_commit=True) as uow:
-            section = uow.coding_sections.get_aggregate(interview_id)
-            if section is None:
-                raise CodingSectionNotFoundError(interview_id)
-            section.ensure_active()
-            updated = section.with_submit_test_summary(
-                task_row_id,
-                submit_test_summary,
-                source_code=source_code,
-            )
-            uow.coding_sections.save_aggregate(updated)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            raise CodingSectionNotFoundError(interview_id)
+        section.ensure_active()
+        updated = section.with_submit_test_summary(
+            task_row_id,
+            submit_test_summary,
+            source_code=source_code,
+        )
+        self._uow.coding_sections.save_aggregate(updated)
+        self._uow.flush()
 
         return CodingSubmissionContext(
             task_row_id=task_row_id,
@@ -169,8 +215,8 @@ class CodingSubmissionService:
             for attempt in attempts
         )
 
-    @staticmethod
     async def stream_submit(
+        self,
         *,
         interview_id: str,
         task_id: str,
@@ -195,8 +241,98 @@ class CodingSubmissionService:
             CodingSectionNotActiveError: If the coding section is not active.
             CodingTaskNotCurrentError: If ``task_id`` is not the active task.
         """
-        _ensure_interview_active(interview_id)
-        ctx = await CodingSubmissionService._prepare_submission(
+        try:
+            async for event in self._iter_submit(
+                interview_id=interview_id,
+                task_id=task_id,
+                source_code=source_code,
+                provider=provider,
+            ):
+                yield event
+            self._commit_submission_workflow()
+        except Exception:
+            self._rollback_submission_workflow()
+            raise
+
+    async def stream_timeout_submission(
+        self,
+        *,
+        interview_id: str,
+        task_id: str,
+        round_num: int,
+    ) -> AsyncIterator[CodingFeedbackEvent]:
+        """Record an expired coding round with zero score and advance."""
+        try:
+            yield self._persist_timed_out_round(
+                interview_id=interview_id,
+                task_id=task_id,
+                round_num=round_num,
+            )
+            self._commit_submission_workflow()
+        except Exception:
+            self._rollback_submission_workflow()
+            raise
+
+    def _persist_timed_out_round(
+        self,
+        *,
+        interview_id: str,
+        task_id: str,
+        round_num: int,
+    ) -> CodingFeedbackEvent:
+        self._ensure_interview_active(interview_id)
+        section = self._uow.coding_sections.get_aggregate(interview_id)
+        if section is None:
+            raise CodingSectionNotFoundError(interview_id)
+        section.ensure_active()
+        limit = section.task_time_limit_seconds
+        if not limit:
+            raise CodingTaskTimerError("Coding task timer is not enabled")
+        current = section.require_current_task(task_id)
+        if current.round != round_num:
+            raise CodingTaskNotCurrentError(interview_id, task_id)
+        if current.submitted_code is not None:
+            return CodingFeedbackEvent(
+                task_id=task_id,
+                order=current.order,
+                round=round_num,
+                follow_up_needed=False,
+                follow_up_text=None,
+                follow_up_mode=None,
+                next_task=None,
+            )
+        if not current.client_timeout_due(limit, datetime.now(UTC)):
+            raise CodingTaskTimerError("Coding task timer has not expired")
+        feedback = timeout_feedback_for_locale(section.locale)
+        updated = section.with_timed_out_round(current.id, feedback)
+        self._uow.coding_sections.save_aggregate(updated)
+        next_task, timer_remaining = self._navigation.advance_to_next_unsubmitted(
+            interview_id,
+            task_id=task_id,
+            round_num=round_num,
+        )
+        return CodingFeedbackEvent(
+            task_id=task_id,
+            order=current.order,
+            round=round_num,
+            follow_up_needed=False,
+            follow_up_text=None,
+            follow_up_mode=None,
+            next_task=next_task,
+            feedback=feedback,
+            timer_remaining_seconds=timer_remaining,
+        )
+
+    async def _iter_submit(
+        self,
+        *,
+        interview_id: str,
+        task_id: str,
+        source_code: str,
+        provider: AIProvider,
+    ) -> AsyncIterator[InterviewEvent | CodingFeedbackEvent]:
+        self._ensure_interview_active(interview_id)
+        ctx = await self._prepare_submission(
             interview_id=interview_id,
             task_id=task_id,
             source_code=source_code,
@@ -225,7 +361,7 @@ class CodingSubmissionService:
             )
         )
 
-        yield CodingEvaluationPersistenceService.persist(
+        yield self._persistence.persist(
             interview_id=interview_id,
             task_id=ctx.task_id,
             round_num=ctx.round_num,

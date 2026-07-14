@@ -23,6 +23,7 @@ from app.theory.services.evaluator.prompts import (
     SECTION_EVALUATION_INSTRUCTIONS,
     SESSION_EVALUATION_INSTRUCTIONS,
     build_evaluator_instructions,
+    format_expected_rubric,
     looks_like_json_schema_fragment,
 )
 
@@ -61,6 +62,39 @@ class TheoryEvaluatorService:
         if question_code:
             return f"{question_text}\n\nCode:\n{question_code}"
         return question_text
+
+    @staticmethod
+    def _format_answer_evaluation_user_text(
+        question_text: str,
+        question_code: str | None,
+        answer_text: str | None = None,
+        expected_points: tuple[str, ...] | None = None,
+    ) -> str:
+        """Build labeled user text for initial answer evaluation prompts.
+
+        Args:
+            question_text: The question text.
+            question_code: Optional code snippet from the question.
+            answer_text: Candidate answer text, or None for audio-only input.
+            expected_points: Rubric bullets from the question bank.
+
+        Returns:
+            Labeled prompt text separating context from candidate content.
+        """
+        question = TheoryEvaluatorService._format_question(question_text, question_code)
+        rubric = format_expected_rubric(expected_points)
+        parts = [
+            f"Question (for context only, NOT part of the answer):\n{question}",
+            (
+                "Expected rubric points (checklist only, NOT candidate content):\n"
+                f"{rubric}"
+            ),
+        ]
+        if answer_text is not None:
+            parts.append(
+                f"Candidate answer (evaluate this only):\n{answer_text}",
+            )
+        return "\n\n".join(parts)
 
     @staticmethod
     async def _evaluate_with_schema(
@@ -106,6 +140,7 @@ class TheoryEvaluatorService:
         question_text: str,
         answer_text: str,
         question_code: str | None = None,
+        expected_points: tuple[str, ...] | None = None,
         locale: str = DEFAULT_LOCALE,
     ) -> AnswerEvaluation:
         """Evaluate a user's initial answer (round=0).
@@ -115,6 +150,7 @@ class TheoryEvaluatorService:
             question_text: The question text.
             answer_text: The user's answer.
             question_code: Optional code snippet from the question.
+            expected_points: Rubric bullets from the question bank.
             locale: Locale for AI feedback and follow-up questions.
 
         Returns:
@@ -123,8 +159,12 @@ class TheoryEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = TheoryEvaluatorService._format_question(question_text, question_code)
-        user_text = f"Question:\n{question}\n\nAnswer:\n{answer_text}"
+        user_text = TheoryEvaluatorService._format_answer_evaluation_user_text(
+            question_text=question_text,
+            question_code=question_code,
+            answer_text=answer_text,
+            expected_points=expected_points,
+        )
         return await TheoryEvaluatorService._evaluate_with_schema(
             provider,
             locale=locale,
@@ -139,6 +179,7 @@ class TheoryEvaluatorService:
         question_text: str,
         audio_wav: bytes,
         question_code: str | None = None,
+        expected_points: tuple[str, ...] | None = None,
         locale: str = DEFAULT_LOCALE,
     ) -> AnswerEvaluation:
         """Evaluate a user's initial spoken answer (round=0).
@@ -148,6 +189,7 @@ class TheoryEvaluatorService:
             question_text: The question text.
             audio_wav: The user's spoken answer as WAV bytes.
             question_code: Optional code snippet from the question.
+            expected_points: Rubric bullets from the question bank.
             locale: Locale for AI feedback and follow-up questions.
 
         Returns:
@@ -156,13 +198,17 @@ class TheoryEvaluatorService:
         Raises:
             ValueError: If AI response is invalid or connection fails.
         """
-        question = TheoryEvaluatorService._format_question(question_text, question_code)
+        user_text = TheoryEvaluatorService._format_answer_evaluation_user_text(
+            question_text=question_text,
+            question_code=question_code,
+            expected_points=expected_points,
+        )
         return await TheoryEvaluatorService._evaluate_with_schema(
             provider,
             locale=locale,
             instructions=ANSWER_EVALUATION_INSTRUCTIONS,
             response_model=AnswerEvaluation,
-            user_text=f"Question:\n{question}",
+            user_text=user_text,
             audio_wav=audio_wav,
         )
 
@@ -290,6 +336,7 @@ class TheoryEvaluatorService:
         question_code: str | None,
         initial_question_text: str,
         initial_answer_text: str,
+        expected_points: tuple[str, ...] | None = None,
         answer_text: str | None = None,
         audio_wav: bytes | None = None,
     ) -> tuple[AnswerEvaluation | FollowUpEvaluation, bool, str | None]:
@@ -303,6 +350,7 @@ class TheoryEvaluatorService:
             question_code: Optional code snippet for the question.
             initial_question_text: Original question text (round 0).
             initial_answer_text: User's initial answer text (round 0).
+            expected_points: Rubric bullets from the question bank.
             answer_text: User answer text for text-mode evaluation.
             audio_wav: Spoken answer WAV for multimodal evaluation.
 
@@ -323,6 +371,7 @@ class TheoryEvaluatorService:
                     question_text=question_text,
                     audio_wav=audio_wav,
                     question_code=question_code,
+                    expected_points=expected_points,
                     locale=locale,
                 )
             else:
@@ -331,6 +380,7 @@ class TheoryEvaluatorService:
                     question_text=question_text,
                     answer_text=answer_text or "",
                     question_code=question_code,
+                    expected_points=expected_points,
                     locale=locale,
                 )
         elif audio_wav is not None:

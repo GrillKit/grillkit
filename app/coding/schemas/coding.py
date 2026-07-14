@@ -44,35 +44,6 @@ class CodingTaskRead:
 
 
 @dataclass(frozen=True, slots=True)
-class CodingSectionRead:
-    """Read model for a coding section aggregate.
-
-    Attributes:
-        id: Section primary key.
-        interview_id: Parent interview UUID.
-        status: Section status.
-        locale: Locale for feedback.
-        selection_spec: JSON selection for this section.
-        task_count: Number of tasks in the section.
-        task_time_limit_seconds: Per-task timer, if enabled.
-        tasks: Coding tasks in display order.
-        section_score: Aggregated section score.
-        section_feedback: Cached section narrative feedback.
-    """
-
-    id: int
-    interview_id: str
-    status: CodingSectionStatus
-    locale: str
-    selection_spec: str
-    task_count: int
-    task_time_limit_seconds: int | None
-    tasks: list[CodingTaskRead]
-    section_score: int | None
-    section_feedback: dict[str, object] | None
-
-
-@dataclass(frozen=True, slots=True)
 class CodeRunAttemptRead:
     """Read model for one persisted Run attempt.
 

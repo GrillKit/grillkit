@@ -32,6 +32,8 @@
     const timerMinutesGroup = document.getElementById("question-timer-minutes-group");
     const codingTimerCheckbox = document.getElementById("enable_coding_timer");
     const codingTimerMinutesGroup = document.getElementById("coding-timer-minutes-group");
+    const excludeKnownCheckbox = document.getElementById("exclude_known");
+    const excludeKnownHint = document.getElementById("exclude-known-hint");
 
     const localeLabel = wizard.dataset.localeLabel || "";
     const initialStep = wizard.dataset.initialStep || "mode";
@@ -196,9 +198,11 @@
             : null;
         const theoryEnabled = branchEnabled(sessionMode, "theory");
         const codingEnabled = branchEnabled(sessionMode, "coding");
+        const excludeKnown = !excludeKnownCheckbox || excludeKnownCheckbox.checked;
         return {
             version: 2,
             session_mode: sessionMode,
+            exclude_known: excludeKnown,
             theory: {
                 enabled: theoryEnabled,
                 question_count: theoryEnabled ? theoryCount : 0,
@@ -359,6 +363,43 @@
             + "</div>";
     }
 
+    function renderKnownExclusionNote() {
+        if (!excludeKnownHint || !excludeKnownCheckbox || !excludeKnownCheckbox.checked) {
+            if (excludeKnownHint) {
+                const link = excludeKnownHint.querySelector("a");
+                const linkHtml = link ? link.outerHTML : "";
+                excludeKnownHint.innerHTML =
+                    "Known questions will be included in this session. "
+                    + linkHtml;
+            }
+            return Promise.resolve();
+        }
+        return fetch("/known-questions")
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error("failed");
+                }
+                return response.json();
+            })
+            .then(function (known) {
+                const count = (known.theory || []).length + (known.coding || []).length;
+                const link = excludeKnownHint.querySelector("a");
+                const linkHtml = link ? link.outerHTML : "";
+                const note = count === 0
+                    ? "No known questions saved yet. "
+                    : count + " known question" + (count === 1 ? "" : "s")
+                        + " will be excluded. ";
+                excludeKnownHint.innerHTML = note + linkHtml;
+            })
+            .catch(function () {
+                const link = excludeKnownHint.querySelector("a");
+                const linkHtml = link ? link.outerHTML : "";
+                excludeKnownHint.innerHTML =
+                    "Known questions are skipped when building a new session. "
+                    + linkHtml;
+            });
+    }
+
     function renderReviewSummary() {
         const selection = buildSelection();
         const mode = selection.session_mode;
@@ -399,7 +440,16 @@
             + "<p class=\"form-hint\">Change in <a href=\"/config\">Configuration</a>.</p>",
             false
         );
+        if (selection.exclude_known) {
+            html += renderReviewCard(
+                "review",
+                "Known questions",
+                "<p>Exclude questions marked as known.</p>",
+                false
+            );
+        }
         reviewSummary.innerHTML = html;
+        renderKnownExclusionNote();
         reviewSummary.querySelectorAll(".setup-review-edit").forEach(function (button) {
             button.addEventListener("click", function () {
                 showStep(button.dataset.editStep);
@@ -758,6 +808,14 @@
         }
         document.getElementById("question_time_minutes").addEventListener("input", onFormChange);
         document.getElementById("coding_time_minutes").addEventListener("input", onFormChange);
+        if (excludeKnownCheckbox) {
+            excludeKnownCheckbox.addEventListener("change", function () {
+                if (currentStepId === "review") {
+                    renderReviewSummary();
+                }
+                onFormChange();
+            });
+        }
 
         nextBtn.addEventListener("click", goNext);
         backBtn.addEventListener("click", goBack);

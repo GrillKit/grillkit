@@ -14,7 +14,6 @@ from app.shared.infrastructure.audio_wav import (
     pcm16le_to_float32,
     validate_wav_bytes,
     wav_bytes_to_float32,
-    wav_duration_sec,
 )
 
 
@@ -100,17 +99,3 @@ class TestWavBytesToFloat32:
         """Invalid payloads fail before decoding."""
         with pytest.raises(ValueError, match="valid WAV"):
             wav_bytes_to_float32(b"not-a-wav")
-
-
-class TestWavDurationSec:
-    """Tests for duration helper."""
-
-    def test_wav_duration_sec_matches_payload(self) -> None:
-        """Duration helper reports the encoded length."""
-        payload = minimal_wav_bytes(duration_sec=0.2)
-        duration = wav_duration_sec(payload)
-        assert 0.15 <= duration <= 0.25
-
-    def test_invalid_payload_returns_zero(self) -> None:
-        """Unparseable payloads report zero duration."""
-        assert wav_duration_sec(b"invalid") == 0.0

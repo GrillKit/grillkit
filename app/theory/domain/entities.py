@@ -44,6 +44,7 @@ class TheoryTask:
         round: Follow-up round number (0 = initial).
         question_text: Question text shown to the user.
         question_code: Optional code snippet for the question.
+        expected_points: Rubric bullets for AI evaluation.
         answer_text: User answer text, or None when unanswered.
         score: AI score for the round, or None when not evaluated.
         feedback: AI-generated feedback text, or None.
@@ -68,6 +69,7 @@ class TheoryTask:
     feedback: str | None
     started_at: datetime | None
     created_at: datetime
+    expected_points: tuple[str, ...] = ()
 
     def timer_deadline(self, limit_seconds: int) -> datetime:
         """Compute the absolute deadline for this timed task round.
@@ -240,6 +242,7 @@ class TheorySection:
                     feedback=None,
                     started_at=timer_start if order == 1 else None,
                     created_at=when,
+                    expected_points=question.expected_points,
                 )
             )
         return cls(
@@ -452,6 +455,7 @@ class TheorySection:
             feedback=None,
             started_at=None,
             created_at=created_at,
+            expected_points=base.expected_points,
         )
         return replace(self, tasks=self.tasks + (follow_up,)), follow_up
 

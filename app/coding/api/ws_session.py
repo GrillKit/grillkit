@@ -31,7 +31,7 @@ class CodingWebSocketService:
         *,
         interview_id: str,
         provider: AIProvider,
-        submission_service: type[CodingSubmissionService] = CodingSubmissionService,
+        submission_service: CodingSubmissionService,
     ) -> AsyncIterator[dict[str, Any]]:
         """Handle one client message and yield JSON payloads for the socket.
 
@@ -39,7 +39,7 @@ class CodingWebSocketService:
             raw: Parsed client JSON message.
             interview_id: Interview session UUID.
             provider: AI provider for coding evaluation.
-            submission_service: Coding submission service class.
+            submission_service: Request-scoped coding submission service.
 
         Yields:
             WebSocket message dicts to send to the client.
@@ -59,6 +59,7 @@ class CodingWebSocketService:
             async for message in CodingWebSocketService._handle_timeout(
                 raw,
                 interview_id=interview_id,
+                submission_service=submission_service,
             ):
                 yield message
             return
@@ -74,7 +75,7 @@ class CodingWebSocketService:
         *,
         interview_id: str,
         provider: AIProvider,
-        submission_service: type[CodingSubmissionService],
+        submission_service: CodingSubmissionService,
     ) -> AsyncIterator[dict[str, Any]]:
         task_id = str(raw.get("task_id", "")).strip()
         source_code = str(raw.get("source_code", ""))
@@ -165,6 +166,21 @@ class CodingWebSocketService:
                     timer_remaining_seconds=timer_remaining,
                 )
             )
+        submission_service: CodingSubmissionService,
+    ) -> AsyncIterator[dict[str, Any]]:
+        task_id = str(raw.get("task_id") or raw.get("question_id") or "").strip()
+        round_num = raw.get("round")
+        if not task_id or round_num is None:
+            yield {"type": "error", "message": "Both task_id and round are required"}
+            return
+
+        try:
+            async for event in submission_service.stream_timeout_submission(
+                interview_id=interview_id,
+                task_id=task_id,
+                round_num=int(round_num),
+            ):
+                yield coding_event_to_message(event)
         except (InterviewDomainError, CodingDomainError) as exc:
             yield coding_ws_error_payload(exc)
         except Exception as exc:

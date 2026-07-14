@@ -6,7 +6,6 @@ import json
 
 import pytest
 
-from app.coding.repositories.uow import CodingUnitOfWork
 from app.interview.domain.value_objects import (
     InterviewSelection,
     SectionBranchSpec,
@@ -14,9 +13,9 @@ from app.interview.domain.value_objects import (
     TrackSelection,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.creation import SessionCreationService
 from app.interview.services.query import InterviewQuery
 from app.interview.services.rules.selection import get_interview_selection
+from tests.helpers.session_creation import create_session
 
 
 def _session_from_selection(
@@ -58,7 +57,7 @@ def test_create_interview_persists_questions(
     del temp_questions_dir
     monkeypatch.setattr("random.shuffle", lambda items: None)
 
-    interview = SessionCreationService.create_session(
+    interview = create_session(
         _session_from_selection(_single_selection(), question_count=1),
         locale="en",
     )
@@ -73,7 +72,7 @@ def test_create_interview_persists_questions(
     assert len(question_ids) == 1
     assert question_ids[0] == "ds-001"
 
-    reloaded = InterviewQuery.get_interview(interview.id)
+    reloaded = InterviewQuery.load(interview.id)
     assert reloaded is not None
     assert len(reloaded.answers) == 1
     answer = reloaded.answers[0]
@@ -93,7 +92,7 @@ def test_create_interview_with_timer_starts_first_round(
     del temp_questions_dir
     monkeypatch.setattr("random.shuffle", lambda items: None)
 
-    interview = SessionCreationService.create_session(
+    interview = create_session(
         _session_from_selection(
             _single_selection(),
             question_count=1,
@@ -104,7 +103,7 @@ def test_create_interview_with_timer_starts_first_round(
 
     assert interview.question_time_limit_seconds == 180
 
-    reloaded = InterviewQuery.get_interview(interview.id)
+    reloaded = InterviewQuery.load(interview.id)
     assert reloaded is not None
     assert len(reloaded.answers) == 1
     assert reloaded.answers[0].started_at is not None
@@ -114,7 +113,7 @@ def test_create_interview_unknown_category_raises(isolated_db, temp_questions_di
     """Missing category in the bank raises ValueError."""
     del temp_questions_dir
     with pytest.raises(ValueError, match="Unknown topic"):
-        SessionCreationService.create_session(
+        create_session(
             _session_from_selection(
                 _single_selection(categories=("nonexistent",)),
                 question_count=1,
@@ -125,7 +124,7 @@ def test_create_interview_unknown_category_raises(isolated_db, temp_questions_di
 def test_create_interview_expunged_instance_is_usable(isolated_db, temp_questions_dir):
     """Returned interview is detached but id and fields remain readable."""
     del temp_questions_dir
-    interview = SessionCreationService.create_session(
+    interview = create_session(
         _session_from_selection(
             _single_selection(categories=("algorithms",)),
             question_count=1,
@@ -157,7 +156,7 @@ def test_create_multi_topic_interview(isolated_db, temp_questions_dir, monkeypat
             ),
         )
     )
-    interview = SessionCreationService.create_session(
+    interview = create_session(
         _session_from_selection(selection, question_count=2),
     )
 
@@ -166,7 +165,7 @@ def test_create_multi_topic_interview(isolated_db, temp_questions_dir, monkeypat
     assert "data-structures" in interview.selection_spec
     assert "algorithms" in interview.selection_spec
 
-    reloaded = InterviewQuery.get_interview(interview.id)
+    reloaded = InterviewQuery.load(interview.id)
     assert reloaded is not None
     parsed = get_interview_selection(reloaded)
     assert len(parsed.sources[0].categories) == 2
@@ -197,13 +196,13 @@ def test_create_coding_only_session(isolated_db, monkeypatch) -> None:
             ),
         ),
     )
-    interview = SessionCreationService.create_session(session, locale="en")
+    interview = create_session(session, locale="en")
 
     assert interview.id
     assert interview.status == "active"
     assert "coding_only" in interview.selection_spec
 
-    with CodingUnitOfWork() as uow:
+    with InterviewUnitOfWork() as uow:
         section = uow.coding_sections.get_aggregate(interview.id)
     assert section is not None
     assert section.status == "active"
@@ -247,9 +246,58 @@ def test_create_theory_then_coding_session_pending_coding(
             ),
         ),
     )
-    interview = SessionCreationService.create_session(session, locale="en")
+    interview = create_session(session, locale="en")
 
-    with CodingUnitOfWork() as uow:
+    with InterviewUnitOfWork() as uow:
         section = uow.coding_sections.get_aggregate(interview.id)
     assert section is not None
     assert section.status == "pending"
+
+
+def test_create_session_excludes_known_questions(
+    isolated_db, temp_questions_dir, monkeypatch
+):
+    """Sessions with exclude_known load marked IDs from the database."""
+    from pathlib import Path
+
+    import yaml
+
+    category_path = (
+        Path(temp_questions_dir) / "python" / "junior" / "data-structures.yaml"
+    )
+    with open(category_path) as handle:
+        content = yaml.safe_load(handle)
+    content["questions"].append(
+        {
+            "id": "ds-002",
+            "type": "knowledge",
+            "difficulty": 1,
+            "question": {"text": "Second question", "code": None},
+        }
+    )
+    with open(category_path, "w") as handle:
+        yaml.dump(content, handle)
+
+    monkeypatch.setattr("random.shuffle", lambda items: None)
+
+    with InterviewUnitOfWork(auto_commit=True) as uow:
+        from app.interview.services.known_questions import KnownQuestionsService
+
+        KnownQuestionsService(uow).mark_known("theory", "ds-001")
+
+    session = SessionSelection.theory_only(
+        sources=(
+            TrackSelection(
+                track="python",
+                level="junior",
+                categories=("data-structures",),
+            ),
+        ),
+        question_count=1,
+        exclude_known=True,
+    )
+    interview = create_session(session, locale="en")
+
+    question_ids = json.loads(interview.question_ids)
+    assert len(question_ids) == 1
+    assert question_ids[0] == "ds-002"

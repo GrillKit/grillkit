@@ -40,8 +40,18 @@
                 {% for answer in answers %}
                 <div class="chat-message question" data-question-id="{{ answer.question_id }}" data-round="{{ answer.round }}">
                     <div class="chat-bubble question-bubble">
-                        <strong>Q{{ answer.order }}:</strong>
-                        {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
+                        <div class="question-bubble-header">
+                            <strong>Q{{ answer.order }}:</strong>
+                            {% if answer.round > 0 %}<em>(follow-up)</em>{% endif %}
+                            {% if answer.round == 0 %}
+                            <button type="button"
+                                    class="btn btn-outline btn-sm known-question-toggle"
+                                    data-branch="theory"
+                                    data-item-id="{{ answer.question_id }}">
+                                Mark as known
+                            </button>
+                            {% endif %}
+                        </div>
                         {{ answer.question_text }}
                         {% if answer.question_code %}
                         <pre class="code-block"><code>{{ answer.question_code }}</code></pre>
@@ -72,4 +82,15 @@
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/known_questions.js?v={{ static_version('js/known_questions.js') }}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (window.KnownQuestions) {
+            window.KnownQuestions.initReviewButtons("theory");
+        }
+    });
+</script>
 {% endblock %}

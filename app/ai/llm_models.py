@@ -2,14 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """LLM model catalog types."""
 
+from collections.abc import Collection
 from dataclasses import dataclass
 import re
 from typing import Final
 
 CUSTOM_PRESET_ID: Final[str] = "custom"
-MODEL_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
-)
+_FALLBACK_MODEL_ID: Final[str] = "model"
 
 
 @dataclass(frozen=True)
@@ -71,25 +70,39 @@ def normalize_model_id(model_id: str, catalog: LLMCatalog) -> str:
     return value
 
 
-def validate_new_model_id(model_id: str) -> str:
-    """Normalize and validate a user-supplied catalog model id.
+def slugify_model_id(text: str) -> str:
+    """Convert arbitrary text into a catalog-safe id slug.
+
+    Lowercases the text and replaces every run of non-alphanumeric characters
+    with a single hyphen, trimming hyphens from both ends.
 
     Args:
-        model_id: Proposed model id from the add-model form.
+        text: Source text, typically a model display name.
 
     Returns:
-        Normalized lowercase id.
-
-    Raises:
-        ValueError: If the id is invalid or reserved.
+        A slug using lowercase letters, digits, and hyphens, or an empty
+        string when no usable characters remain.
     """
-    value = model_id.strip().lower()
-    if not value:
-        raise ValueError("Model id is required")
-    if value == CUSTOM_PRESET_ID:
-        raise ValueError(f"Model id '{CUSTOM_PRESET_ID}' is reserved")
-    if not MODEL_ID_PATTERN.fullmatch(value):
-        raise ValueError(
-            "Model id must use lowercase letters, digits, and hyphens only"
-        )
-    return value
+    return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-")
+
+
+def generate_model_id(display_name: str, existing_ids: Collection[str]) -> str:
+    """Derive a unique catalog id from a model display name.
+
+    Args:
+        display_name: Human-readable model name from the add-model form.
+        existing_ids: Catalog ids already in use.
+
+    Returns:
+        A unique slug; falls back to ``model`` when the name has no usable
+        characters and appends a numeric suffix to avoid collisions.
+    """
+    base = slugify_model_id(display_name) or _FALLBACK_MODEL_ID
+    if base == CUSTOM_PRESET_ID:
+        base = f"{CUSTOM_PRESET_ID}-{_FALLBACK_MODEL_ID}"
+    candidate = base
+    suffix = 2
+    while candidate in existing_ids:
+        candidate = f"{base}-{suffix}"
+        suffix += 1
+    return candidate

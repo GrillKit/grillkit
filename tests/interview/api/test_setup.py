@@ -242,3 +242,23 @@ class TestSetupConfigRedirect:
 
         assert response.status_code == 200
         assert "at least 2" in response.text
+
+
+class TestSetupExcludeKnown:
+    """Tests for exclude_known in setup selection JSON."""
+
+    def test_parse_session_json_reads_exclude_known(self):
+        """selection_json may disable known-question exclusion."""
+        from app.interview.services.rules.selection import parse_session_json
+
+        raw = (
+            '{"version":2,"session_mode":"theory_only","exclude_known":false,'
+            '"theory":{"enabled":true,"question_count":1,'
+            '"task_time_limit_seconds":null,'
+            '"sources":[{"track":"python","level":"junior",'
+            '"categories":["basics"]}]},'
+            '"coding":{"enabled":false,"question_count":0,'
+            '"task_time_limit_seconds":null,"sources":[]}}'
+        )
+        session = parse_session_json(raw)
+        assert session.exclude_known is False

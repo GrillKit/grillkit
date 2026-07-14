@@ -112,16 +112,10 @@
     </div>
     <form method="post" action="/config/llm-models" class="form">
         <div class="form-group">
-            <label for="catalog_model_id" class="form-label form-label-required">Model id</label>
-            <input type="text" name="model_id" id="catalog_model_id" class="form-control"
-                   pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" required
-                   placeholder="my-openai">
-            <p class="form-hint">Lowercase letters, digits, and hyphens. Stored in <code>data/llm_models.json</code>.</p>
-        </div>
-        <div class="form-group">
             <label for="catalog_display_name" class="form-label form-label-required">Display name</label>
             <input type="text" name="display_name" id="catalog_display_name" class="form-control" required
                    placeholder="Work GPT-4">
+            <p class="form-hint">A stable id is generated from this name and stored in <code>data/llm_models.json</code>.</p>
         </div>
         <div class="form-group">
             <label for="catalog_base_url" class="form-label form-label-required">Base URL</label>

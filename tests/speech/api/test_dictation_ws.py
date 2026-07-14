@@ -46,7 +46,7 @@ class TestDictationWebSocket:
         """Connection closes with error when speech_transcriber is absent."""
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.load",
                 return_value=_active_interview(),
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,
@@ -63,7 +63,7 @@ class TestDictationWebSocket:
 
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.load",
                 return_value=_active_interview(),
             ),
             patch(
@@ -87,7 +87,7 @@ class TestDictationWebSocket:
         interview.status = "completed"
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.get_interview",
+                "app.interview.services.query.InterviewQuery.load",
                 return_value=interview,
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,

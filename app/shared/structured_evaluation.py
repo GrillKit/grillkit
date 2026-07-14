@@ -65,7 +65,7 @@ async def generate_and_parse_json_response[T: BaseModel](
     messages: list[Message],
     response_model: type[T],
     max_tokens: int = 2000,
-    temperature: float = 0.3,
+    temperature: float = 0.1,
 ) -> T:
     """Generate JSON from chat messages and parse it with retry on truncation.
 
@@ -167,14 +167,14 @@ async def evaluate_with_schema[T: BaseModel](
                 messages=messages,
                 audio_wav=audio_wav,
                 user_text=user_text,
-                temperature=0.3,
+                temperature=0.0,
                 max_tokens=budget,
             )
         else:
             messages.append(Message(role="user", content=user_text))
             result = await provider.generate(
                 messages=messages,
-                temperature=0.3,
+                temperature=0.0,
                 max_tokens=budget,
             )
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.services.section_review_support import (
+    CompletedInterviewSnapshot,
     load_completed_interview,
     resolved_section_feedback,
     review_score_fields,
@@ -19,26 +20,34 @@ from app.theory.services.query import TheoryQueryService
 class TheoryReviewService:
     """Build read-only theory review context for completed sessions."""
 
-    @staticmethod
-    def build_context(interview_id: str) -> TheoryReviewContext | None:
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this review scope.
+        """
+        self._uow = uow
+        self._query = TheoryQueryService(uow)
+
+    def build_context(
+        self,
+        interview_id: str,
+        snapshot: CompletedInterviewSnapshot,
+    ) -> TheoryReviewContext | None:
         """Assemble theory review template context for a completed session.
 
         Args:
             interview_id: Parent session UUID.
+            snapshot: Loaded completed interview snapshot.
 
         Returns:
-            Review context, or None when the session or theory section is missing.
+            Review context, or None when the theory section is missing.
         """
-        snapshot = load_completed_interview(interview_id)
-        if snapshot is None:
+        section = self._uow.theory_sections.get_aggregate(interview_id)
+        if section is None:
             return None
 
-        with InterviewUnitOfWork() as uow:
-            section = uow.theory_sections.get_aggregate(interview_id)
-            if section is None:
-                return None
-
-        summary = TheoryQueryService.get_evaluation_summary(interview_id)
+        summary = self._query.get_evaluation_summary(interview_id)
         if summary is None:
             return None
 
@@ -66,3 +75,17 @@ class TheoryReviewService:
                 "answers": answers,
             }
         )
+
+    def build_context_for(self, interview_id: str) -> TheoryReviewContext | None:
+        """Build theory review context for a completed session.
+
+        Args:
+            interview_id: Parent session UUID.
+
+        Returns:
+            Review context, or None when the session or theory section is missing.
+        """
+        snapshot = load_completed_interview(self._uow, interview_id)
+        if snapshot is None:
+            return None
+        return self.build_context(interview_id, snapshot)

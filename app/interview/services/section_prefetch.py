@@ -38,7 +38,7 @@ async def prefetch_section_feedback(
 
     try:
         provider = ConfigService.create_provider_from_config()
-    except ValueError:
+    except Exception:
         logger.warning(
             "Skipping %s section prefetch for %s: provider not configured",
             section_name,

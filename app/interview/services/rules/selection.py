@@ -23,24 +23,7 @@ from app.interview.domain.value_objects import (
     TrackQuestionPools,
     TrackSelection,
 )
-
-_TRACK_LABELS: dict[str, str] = {
-    "python": "Python",
-    "database": "Database / SQL",
-    "system-design": "System Design",
-}
-
-
-def track_label(slug: str) -> str:
-    """Return a human-readable label for a question-bank track slug.
-
-    Args:
-        slug: Track directory name under ``data/questions/``.
-
-    Returns:
-        Display label for templates and UI.
-    """
-    return _TRACK_LABELS.get(slug, slug.replace("-", " ").replace("_", " ").title())
+from app.interview.services.rules.bank_selection import track_label
 
 
 def validate_question_count(selection: InterviewSelection, question_count: int) -> None:
@@ -221,19 +204,73 @@ def parse_session_json(raw_json: str) -> SessionSelection:
     return session
 
 
-def parse_selection_json(raw_json: str) -> InterviewSelection:
-    """Parse setup form JSON and return theory sources only.
+def _filter_track_pools(
+    track_pools: list[TrackQuestionPools],
+    excluded_ids: frozenset[str],
+) -> list[TrackQuestionPools]:
+    """Remove excluded question IDs from loaded track pools.
 
     Args:
-        raw_json: JSON string from POST body.
+        track_pools: Loaded pools in selection source order.
+        excluded_ids: Question IDs to exclude from planning.
 
     Returns:
-        Validated theory interview selection.
+        Pools with excluded IDs removed from full and category pools.
+    """
+    if not excluded_ids:
+        return track_pools
+    filtered: list[TrackQuestionPools] = []
+    for pools in track_pools:
+        filtered.append(
+            TrackQuestionPools(
+                source=pools.source,
+                full_pool=tuple(
+                    question
+                    for question in pools.full_pool
+                    if question.id not in excluded_ids
+                ),
+                category_pools={
+                    category: tuple(
+                        question for question in pool if question.id not in excluded_ids
+                    )
+                    for category, pool in pools.category_pools.items()
+                },
+            )
+        )
+    return filtered
+
+
+def _validate_filtered_pools(
+    track_pools: list[TrackQuestionPools],
+    question_count: int,
+) -> None:
+    """Ensure filtered pools can satisfy the requested question count.
+
+    Args:
+        track_pools: Pools after excluded-ID filtering.
+        question_count: Target number of questions for the session.
 
     Raises:
-        ValueError: If JSON is invalid or selection fails validation.
+        ValueError: If a category is empty or too few questions remain.
     """
-    return parse_session_json(raw_json).theory_selection
+    available_ids: set[str] = set()
+    for pools in track_pools:
+        source = pools.source
+        for category in source.categories:
+            category_pool = pools.category_pools.get(category, ())
+            if not category_pool:
+                raise ValueError(
+                    f"All questions in {source.track}/{source.level}/{category} "
+                    "are marked as known"
+                )
+        if not pools.full_pool:
+            raise ValueError(f"No questions found for {source.track}/{source.level}")
+        available_ids.update(question.id for question in pools.full_pool)
+    if len(available_ids) < question_count:
+        raise ValueError(
+            f"Not enough unfamiliar questions: {len(available_ids)} available, "
+            f"{question_count} requested"
+        )
 
 
 def _allocate_proportional(sizes: list[int], total: int) -> list[int]:
@@ -266,6 +303,8 @@ def plan_questions(
     selection: InterviewSelection,
     question_count: int,
     track_pools: list[TrackQuestionPools],
+    *,
+    excluded_ids: frozenset[str] = frozenset(),
 ) -> list[PlannedQuestion]:
     """Build ordered question list from pre-loaded pools.
 
@@ -277,6 +316,7 @@ def plan_questions(
         selection: Validated interview selection.
         question_count: Target number of questions (>= topic count).
         track_pools: Loaded pools in the same order as ``selection.sources``.
+        excluded_ids: Question IDs to remove from pools before planning.
 
     Returns:
         Ordered list of Question instances.
@@ -286,6 +326,10 @@ def plan_questions(
     """
     if len(track_pools) != len(selection.sources):
         raise ValueError("track_pools must match selection.sources")
+
+    filtered_pools = _filter_track_pools(track_pools, excluded_ids)
+    _validate_filtered_pools(filtered_pools, question_count)
+    track_pools = filtered_pools
 
     picked: list[PlannedQuestion] = []
     picked_ids: set[str] = set()

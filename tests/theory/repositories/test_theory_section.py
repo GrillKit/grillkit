@@ -13,13 +13,13 @@ from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from app.interview.domain.value_objects import InterviewSelection, TrackSelection
+from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Interview, TheorySection
 from app.shared.paths import ALEMBIC_INI
 from app.theory.domain.entities import TheorySection as DomainTheorySection
 from app.theory.domain.entities import TheoryTask
 from app.theory.domain.value_objects import PlannedTheoryQuestion
-from app.theory.repositories.uow import TheoryUnitOfWork
 from tests.helpers.legacy_interview import insert_pre_session_mode_interview
 
 
@@ -41,6 +41,7 @@ def _sample_planned() -> tuple[PlannedTheoryQuestion, ...]:
             id="py-001",
             text="What is a list?",
             code=None,
+            expected_points=("Mutable sequence", "Ordered"),
         ),
         PlannedTheoryQuestion(
             id="py-002",
@@ -70,6 +71,7 @@ class TestTheoryTaskTimer:
             feedback=None,
             started_at=started,
             created_at=started,
+            expected_points=(),
         )
         deadline = task.timer_deadline(120)
         assert deadline == started + timedelta(seconds=120)
@@ -107,13 +109,36 @@ class TestTheorySectionDomain:
         )
         assert section.tasks[0].started_at is None
 
+    def test_start_preserves_expected_points_on_tasks(self) -> None:
+        """Planned rubric bullets are copied onto initial task rows."""
+        section = DomainTheorySection.start(
+            "iv-1",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        assert section.tasks[0].expected_points == ("Mutable sequence", "Ordered")
+        assert section.tasks[1].expected_points == ()
+
+    def test_with_follow_up_copies_expected_points(self) -> None:
+        """Follow-up task rows inherit rubric bullets from the base question."""
+        section = DomainTheorySection.start(
+            "iv-1",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        updated, follow_up = section.with_follow_up("py-001", "Give an example.")
+        assert follow_up.expected_points == ("Mutable sequence", "Ordered")
+        assert updated.tasks[-1].expected_points == ("Mutable sequence", "Ordered")
+
 
 class TestTheorySectionRepository:
     """Theory section persistence."""
 
     def test_create_aggregate_persists_tasks(self, isolated_db) -> None:
         """Repository round-trips a theory section with linked answer rows."""
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             uow.session.add(
                 Interview(
                     id="iv-theory",
@@ -129,7 +154,7 @@ class TestTheorySectionRepository:
             planned_questions=_sample_planned(),
             task_time_limit_seconds=120,
         )
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             created = uow.theory_sections.create_aggregate(section)
             uow.commit()
 
@@ -140,7 +165,7 @@ class TestTheorySectionRepository:
         assert created.tasks[0].id != TheoryTask.NEW_ID
         assert created.question_ids == ("py-001", "py-002")
 
-        with TheoryUnitOfWork() as uow:
+        with InterviewUnitOfWork() as uow:
             loaded = uow.theory_sections.get_aggregate("iv-theory")
 
         assert loaded is not None
@@ -148,6 +173,34 @@ class TestTheorySectionRepository:
         assert loaded.question_count == 2
         assert len(loaded.tasks) == 2
         assert loaded.tasks[0].theory_section_id == loaded.id
+
+    def test_create_aggregate_round_trips_expected_points(self, isolated_db) -> None:
+        """Repository persists rubric bullets on answer rows."""
+        with InterviewUnitOfWork() as uow:
+            uow.session.add(
+                Interview(
+                    id="iv-rubric",
+                    selection_spec='{"sources":[{"track":"python","level":"junior","categories":["basics"]}]}',
+                )
+            )
+            uow.commit()
+
+        section = DomainTheorySection.start(
+            "iv-rubric",
+            selection=_sample_selection(),
+            locale="en",
+            planned_questions=_sample_planned(),
+        )
+        with InterviewUnitOfWork() as uow:
+            uow.theory_sections.create_aggregate(section)
+            uow.commit()
+
+        with InterviewUnitOfWork() as uow:
+            loaded = uow.theory_sections.get_aggregate("iv-rubric")
+
+        assert loaded is not None
+        assert loaded.tasks[0].expected_points == ("Mutable sequence", "Ordered")
+        assert loaded.tasks[1].expected_points == ()
 
 
 @pytest.fixture

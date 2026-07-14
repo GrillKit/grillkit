@@ -193,7 +193,6 @@ async def add_llm_model(
     request: Request,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
-    model_id: str = Form(...),
     display_name: str = Form(...),
     base_url: str = Form(...),
     model: str = Form(...),
@@ -207,7 +206,6 @@ async def add_llm_model(
         request: FastAPI request object.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
-        model_id: Stable lowercase catalog id.
         display_name: Label shown in the interview model selector.
         base_url: OpenAI-compatible API base URL.
         model: Provider model name.
@@ -224,7 +222,6 @@ async def add_llm_model(
     error: str | None = None
     try:
         payload = NewLLMModel(
-            model_id=model_id,
             display_name=display_name,
             base_url=base_url,
             model=model,

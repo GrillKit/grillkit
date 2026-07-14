@@ -67,25 +67,26 @@ class TheorySectionRepository(SqlAlchemyRepository[TheorySection]):
             return None
         return theory_section_from_orm(orm_section)
 
-    def create_section(self, section: DomainTheorySection) -> DomainTheorySection:
-        """Insert a new theory section row without tasks.
+    def get_aggregates_by_interview_ids(
+        self, interview_ids: list[str]
+    ) -> dict[str, DomainTheorySection]:
+        """Load theory section aggregates for several interviews at once.
 
         Args:
-            section: Domain section from ``TheorySection.start``.
+            interview_ids: Parent interview UUIDs.
 
         Returns:
-            Reloaded domain aggregate with assigned section ID.
-
-        Raises:
-            TheorySectionNotFoundError: If reload fails after flush.
+            Mapping of interview ID to domain aggregate for sections that exist.
         """
-        orm_section = theory_section_to_orm(section)
-        self._session.add(orm_section)
-        self._session.flush()
-        reloaded = self.get_by_interview_id(section.interview_id)
-        if reloaded is None:
-            raise TheorySectionNotFoundError(section.interview_id)
-        return theory_section_from_orm(reloaded)
+        if not interview_ids:
+            return {}
+        rows = (
+            self._session.query(TheorySection)
+            .options(selectinload(TheorySection.tasks))
+            .filter(TheorySection.interview_id.in_(interview_ids))
+            .all()
+        )
+        return {row.interview_id: theory_section_from_orm(row) for row in rows}
 
     def create_aggregate(self, section: DomainTheorySection) -> DomainTheorySection:
         """Insert a theory section and its task rows.
@@ -111,22 +112,6 @@ class TheorySectionRepository(SqlAlchemyRepository[TheorySection]):
         if reloaded is None:
             raise TheorySectionNotFoundError(section.interview_id)
         return theory_section_from_orm(reloaded)
-
-    def save_section(self, section: DomainTheorySection) -> None:
-        """Persist mutable fields from a domain section onto the ORM row.
-
-        Args:
-            section: Domain section previously loaded from this repository.
-
-        Raises:
-            TheorySectionNotFoundError: If the section row no longer exists.
-        """
-        orm_section = self.get_by_interview_id(section.interview_id)
-        if orm_section is None:
-            raise TheorySectionNotFoundError(section.interview_id)
-
-        for field, value in theory_section_to_orm_fields(section).items():
-            setattr(orm_section, field, value)
 
     def save_aggregate(self, section: DomainTheorySection) -> None:
         """Persist mutable section and task fields from a domain aggregate.

@@ -8,11 +8,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.interview.domain.serialization import parse_session_spec
-from app.interview.domain.value_objects import session_mode_label
+from app.interview.domain.value_objects import SectionKind, session_mode_label
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.interview.schemas.interview import InterviewRead
 from app.interview.schemas.results import SectionResultCard, SessionResultsContext
 from app.interview.services.dashboard import DashboardBuilder
+from app.interview.services.read_model import load_interview_read
 from app.interview.services.rules.selection import session_selection_summary_lines
 from app.interview.services.section_review_support import (
     item_id_key_for,
@@ -20,7 +21,6 @@ from app.interview.services.section_review_support import (
 )
 from app.interview.services.sections import (
     SectionEvaluationSummary,
-    SectionKind,
     phase_order_for_mode,
     section_services,
 )
@@ -47,6 +47,14 @@ class SessionResultsRender:
 
 class SessionResultsPageService:
     """Compose the completed session results hub template context."""
+
+    def __init__(self, uow: InterviewUnitOfWork) -> None:
+        """Initialize with the active unit of work.
+
+        Args:
+            uow: Shared application unit of work for this page scope.
+        """
+        self._uow = uow
 
     @staticmethod
     def _section_summary_text(
@@ -116,8 +124,7 @@ class SessionResultsPageService:
             detail_url=f"/interview/{interview_id}/{kind}",
         )
 
-    @staticmethod
-    def build_context(interview: InterviewRead) -> SessionResultsContext | None:
+    def build_context(self, interview: InterviewRead) -> SessionResultsContext | None:
         """Assemble results hub context for a completed session.
 
         Args:
@@ -134,9 +141,10 @@ class SessionResultsPageService:
         max_score = DashboardBuilder.compute_max_score(
             interview,
             breakdown if isinstance(breakdown, dict) else None,
+            uow=self._uow,
         )
 
-        services = section_services()
+        services = section_services(self._uow)
         section_cards: list[SectionResultCard] = []
         theory_review_url: str | None = None
         coding_review_url: str | None = None
@@ -145,7 +153,7 @@ class SessionResultsPageService:
             summary = services[kind].get_evaluation_summary(interview.id)
             if summary is None:
                 continue
-            card = SessionResultsPageService._section_card(
+            card = self._section_card(
                 interview.id,
                 kind,
                 summary,
@@ -170,8 +178,7 @@ class SessionResultsPageService:
             coding_review_url=coding_review_url,
         )
 
-    @staticmethod
-    def prepare_page(interview_id: str) -> SessionResultsRender:
+    def prepare_page(self, interview_id: str) -> SessionResultsRender:
         """Load a completed session and build the results hub context.
 
         Args:
@@ -180,8 +187,7 @@ class SessionResultsPageService:
         Returns:
             Redirect URL or template context for ``session_results.html``.
         """
-        with InterviewUnitOfWork() as uow:
-            interview = uow.interviews.get_read_model(interview_id)
+        interview = load_interview_read(self._uow, interview_id)
 
         if interview is None:
             return SessionResultsRender(redirect_url="/", template_context=None)
@@ -191,7 +197,7 @@ class SessionResultsPageService:
                 template_context=None,
             )
 
-        context = SessionResultsPageService.build_context(interview)
+        context = self.build_context(interview)
         if context is None:
             return SessionResultsRender(
                 redirect_url=f"/interview/{interview_id}",

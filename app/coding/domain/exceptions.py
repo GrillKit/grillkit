@@ -65,12 +65,12 @@ class CodingRunLimitExceededError(CodingDomainError):
         super().__init__(f"Run limit exceeded for task {task_id} (max {limit})")
 
 
-class CodingEvaluatorNotAvailableError(CodingDomainError):
-    """Raised when AI evaluation is requested before the evaluator is wired."""
+class CodingTaskTimerError(CodingDomainError):
+    """Raised when a coding task timer request is invalid."""
 
-    def __init__(self) -> None:
-        """Initialize with a stable client-facing message."""
-        super().__init__("Coding AI evaluation is not available yet")
+    def __init__(self, message: str) -> None:
+        """Initialize with a client-safe timer error message."""
+        super().__init__(message)
 
 
 class CodingTaskNotFoundError(CodingDomainError):

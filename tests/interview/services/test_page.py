@@ -42,8 +42,9 @@ def _session() -> InterviewRead:
     )
 
 
-def test_build_page_context_sets_audio_flag_from_catalog(monkeypatch):
+def test_build_page_context_sets_audio_flag_from_catalog(monkeypatch, isolated_db):
     """Page context reflects whether the configured LLM accepts audio input."""
+    del isolated_db
     monkeypatch.setattr(
         "app.interview.services.page.LLMCatalogService.get_model",
         lambda preset_id: type(
