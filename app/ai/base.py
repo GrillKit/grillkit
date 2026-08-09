@@ -1,9 +1,10 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Abstract base class for AI providers.
+"""Abstract base class and capability protocols for AI providers.
 
 This module defines the base abstractions and data models for AI providers,
-including message structures, generation results, and the abstract provider interface.
+including message structures, generation results, and capability-based
+provider interfaces (ISP).
 """
 
 from abc import ABC, abstractmethod
@@ -40,14 +41,10 @@ class GenerationResult:
 
 
 class AIProvider(ABC):
-    """Abstract base for all AI providers.
+    """Base text-generation provider interface.
 
-    This class defines the interface that all AI providers must implement,
-    including generation, streaming, validation, and metadata.
-
-    Attributes:
-        model: The model name/identifier to use.
-        config: Additional provider-specific configuration.
+    All providers must implement at least text-based generation and lifecycle
+    methods.  Streaming and audio are opt-in via separate capability protocols.
     """
 
     def __init__(self, model: str, **kwargs: object) -> None:
@@ -64,29 +61,10 @@ class AIProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Provider display name."""
-        pass
-
-    @abstractmethod
-    def supports_streaming(self) -> bool:
-        """Check if provider supports streaming."""
-        pass
 
     @abstractmethod
     async def validate(self) -> bool:
         """Validate API key and connection."""
-        pass
-
-    @abstractmethod
-    async def probe_audio_input(self, audio_wav: bytes) -> bool:
-        """Probe whether the endpoint accepts multimodal audio input.
-
-        Args:
-            audio_wav: Canonical WAV bytes (mono PCM).
-
-        Returns:
-            True when the provider accepts the audio probe request.
-        """
-        pass
 
     @abstractmethod
     async def generate(
@@ -95,20 +73,36 @@ class AIProvider(ABC):
         temperature: float = 0.7,
         max_tokens: int = 2000,
     ) -> GenerationResult:
-        """Generate a single response.
+        """Generate a single response."""
 
-        Args:
-            messages: List of conversation messages.
-            temperature: Sampling temperature (0.0 to 2.0).
-            max_tokens: Maximum tokens to generate.
+    @abstractmethod
+    async def close(self) -> None:
+        """Close the provider and release resources."""
 
-        Returns:
-            The generation result with content and metadata.
 
-        Raises:
-            ValueError: If the request fails or parameters are invalid.
+class StreamingProvider(ABC):
+    """Capability protocol for providers that support token streaming."""
+
+    @abstractmethod
+    def supports_streaming(self) -> bool:
+        """Check if provider supports streaming."""
+
+    @abstractmethod
+    def generate_stream(
+        self,
+        messages: list[Message],
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ) -> AsyncIterator[str]:
+        """Stream response tokens.
+
+        Yields:
+            Chunks of generated text as they become available.
         """
-        pass
+
+
+class AudioCapableProvider(ABC):
+    """Capability protocol for providers that accept multimodal audio input."""
 
     @abstractmethod
     async def generate_with_audio(
@@ -120,46 +114,15 @@ class AIProvider(ABC):
         temperature: float = 0.7,
         max_tokens: int = 2000,
     ) -> GenerationResult:
-        """Generate a response from system messages, user text, and audio.
+        """Generate a response from system messages, user text, and audio."""
+
+    @abstractmethod
+    async def probe_audio_input(self, audio_wav: bytes) -> bool:
+        """Probe whether the endpoint accepts multimodal audio input.
 
         Args:
-            messages: System (and optional assistant) messages without user audio.
-            audio_wav: Canonical WAV bytes representing the user's spoken answer.
-            user_text: Text context for the user turn (question prompt, no answer text).
-            temperature: Sampling temperature (0.0 to 2.0).
-            max_tokens: Maximum tokens to generate.
+            audio_wav: Canonical WAV bytes (mono PCM).
 
         Returns:
-            The generation result with content and metadata.
-
-        Raises:
-            ValueError: If the request fails or parameters are invalid.
+            True when the provider accepts the audio probe request.
         """
-        pass
-
-    @abstractmethod
-    async def close(self) -> None:
-        """Close the provider and release resources."""
-        pass
-
-    @abstractmethod
-    def generate_stream(
-        self,
-        messages: list[Message],
-        temperature: float = 0.7,
-        max_tokens: int = 2000,
-    ) -> AsyncIterator[str]:
-        """Stream response tokens.
-
-        Args:
-            messages: List of conversation messages.
-            temperature: Sampling temperature (0.0 to 2.0).
-            max_tokens: Maximum tokens to generate.
-
-        Yields:
-            Chunks of generated text as they become available.
-
-        Raises:
-            ValueError: If the request fails or parameters are invalid.
-        """
-        pass

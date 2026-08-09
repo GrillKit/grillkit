@@ -10,9 +10,9 @@ from app.interview.domain.value_objects import (
     SessionSelection,
     TrackSelection,
 )
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.query import InterviewQuery
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from tests.fakes import answer_evaluation_json
 
 
@@ -30,7 +30,7 @@ class TestE2EFullLifecycle:
     def test_theory_only_full_cycle(self, client, isolated_db, override_ws_ai_provider):
         """E2E-1: full theory cycle."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=self._config(),
         ):
             session = SessionSelection.theory_only(
@@ -110,11 +110,11 @@ class TestE2EFullLifecycle:
         """E2E-2: full coding cycle."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
-                "app.interview.services.rules.selection.is_coding_available",
+                "app.interview.domain.rules.selection.is_coding_available",
                 return_value=True,
             ),
         ):
@@ -165,14 +165,14 @@ class TestE2EFullLifecycle:
 
         from unittest.mock import AsyncMock
 
-        from app.coding.services.evaluator.models import CodingAnswerEvaluation
+        from app.coding.domain.evaluator_models import CodingAnswerEvaluation
 
         eval_obj = CodingAnswerEvaluation(**evaluation)
 
         override_ws_ai_provider(client, [])
         with (
             patch(
-                "app.coding.services.submission.CodingEvaluatorService.evaluate_submission",
+                "app.coding.use_cases.submit_solution.CodingEvaluator.evaluate_submission",
                 new=AsyncMock(return_value=(eval_obj, False, None, None)),
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,
@@ -213,7 +213,7 @@ class TestE2EFullLifecycle:
 
         # Create session
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=self._config(),
         ):
             session = SessionSelection.theory_only(

@@ -4,8 +4,8 @@
 
 import json
 
+from app.interview.repositories.known_questions import KnownQuestionsRepository
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.known_questions import KnownQuestionsService
 
 
 class TestKnownQuestionsApi:
@@ -57,7 +57,7 @@ class TestKnownQuestionsApi:
         """Manage page returns HTML with marked IDs."""
         del isolated_db
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            KnownQuestionsService(uow).mark_known("coding", "bas-001")
+            KnownQuestionsRepository(uow.session).mark("coding", "bas-001")
         response = client.get("/known-questions/manage")
         assert response.status_code == 200
         assert "bas-001" in response.text

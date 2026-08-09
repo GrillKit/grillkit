@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.ai.base import GenerationResult, Message
 from app.interview.api.deps import get_ai_provider
-from app.interview.services.query import InterviewQuery
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from app.theory.domain.entities import TheoryTask
 from tests.fakes import FakeProvider, answer_evaluation_json

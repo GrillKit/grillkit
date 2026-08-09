@@ -4,7 +4,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 
 
 class TestSetupOptions:
@@ -99,7 +99,7 @@ class TestSetupConfigRedirect:
     def test_setup_get_redirects_without_config(self, client):
         """GET /setup redirects to /config when provider is not configured."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config", return_value=None
+            "app.platform.domain.config.ConfigService.get_config", return_value=None
         ):
             response = client.get("/setup", follow_redirects=False)
         assert response.status_code == 303
@@ -108,7 +108,7 @@ class TestSetupConfigRedirect:
     def test_setup_post_redirects_without_config(self, client):
         """POST /setup redirects to /config when provider is not configured."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config", return_value=None
+            "app.platform.domain.config.ConfigService.get_config", return_value=None
         ):
             response = client.post(
                 "/setup",
@@ -134,7 +134,7 @@ class TestSetupConfigRedirect:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
             patch(
@@ -174,11 +174,11 @@ class TestSetupConfigRedirect:
 
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
             patch(
-                "app.interview.services.creation.SessionCreationService.create_session",
+                "app.interview.use_cases.create_session.CreateInterviewSession.create_session",
                 side_effect=fake_create,
             ),
         ):
@@ -216,7 +216,7 @@ class TestSetupConfigRedirect:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
             patch(
@@ -249,7 +249,7 @@ class TestSetupExcludeKnown:
 
     def test_parse_session_json_reads_exclude_known(self):
         """selection_json may disable known-question exclusion."""
-        from app.interview.services.rules.selection import parse_session_json
+        from app.interview.domain.rules.selection import parse_session_json
 
         raw = (
             '{"version":2,"session_mode":"theory_only","exclude_known":false,'

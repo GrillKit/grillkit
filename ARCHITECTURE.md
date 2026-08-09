@@ -53,8 +53,13 @@ grillkit/
 │   │   ├── api/
 │   │   │   ├── config.py       # GET/POST /config
 │   │   │   └── deps.py
-│   │   └── services/
-│   │       ├── config.py       # AppConfig, ConfigService (data/config.json)
+│   │   ├── use_cases/
+│   │   │   └── config.py       # AppConfig, ConfigService (data/config.json)
+│   │   ├── queries/
+│   │   │   ├── config_form.py  # Config page read model
+│   │   │   ├── llm_page.py     # LLM catalog page context
+│   │   │   └── platform_page.py
+│   │   └── support/
 │   │       ├── llm_catalog.py  # data/llm_models.json load/save/select
 │   │       ├── speech_runtime.py  # SpeechRuntimeCoordinator (Whisper + Piper lifecycle)
 │   │       ├── speech_settings.py
@@ -62,26 +67,27 @@ grillkit/
 │   ├── interview/              # Session orchestrator (shell, setup, dashboard, completion)
 │   │   ├── domain/             # Interview shell aggregate, SessionSelection, serialization
 │   │   ├── schemas/            # InterviewRead, dashboard/page, known_questions
-│   │   ├── services/rules/     # selection_spec v2, display titles, bank_selection
+│   │   ├── domain/rules/       # selection_spec v2, display titles, bank_selection
 │   │   ├── repositories/
 │   │   │   ├── interview.py    # shell get/save, list_recent read models
 │   │   │   ├── known_questions.py
-│   │   │   ├── mappers.py      # ORM ↔ shell ↔ InterviewRead (+ theory compose)
+│   │   │   ├── mappers.py      # ORM ↔ shell ↔ InterviewRead (+ theory/coding compose)
 │   │   │   └── uow.py          # InterviewUnitOfWork (app-wide repositories)
-│   │   ├── services/
-│   │   │   ├── creation.py     # SessionCreationService
-│   │   │   ├── page.py         # SessionPageService
-│   │   │   ├── completion.py   # SessionCompletionService
-│   │   │   ├── dashboard.py
-│   │   │   ├── query.py
-│   │   │   ├── phases.py       # multi-section phase order + prefetch hooks
-│   │   │   ├── known_questions.py, bank_text.py
-│   │   │   ├── sections.py     # Section registry and shared section DTOs
-│   │   │   ├── evaluation_aggregator.py
-│   │   │   ├── session_evaluator.py
-│   │   │   ├── results_page.py # SessionResultsPageService (completed hub)
-│   │   │   ├── section_feedback.py, section_evaluation.py, scoring.py
-│   │   │   └── events.py       # Shared WS/NDJSON event types (theory + coding)
+│   │   ├── use_cases/
+│   │   │   ├── create_session.py   # CreateInterviewSession
+│   │   │   ├── complete_session.py # CompleteInterviewSession
+│   │   │   └── advance_phase.py    # SessionPhaseOrchestrator
+│   │   ├── queries/
+│   │   │   ├── loader.py       # InterviewLoader (was InterviewQuery)
+│   │   │   ├── session_page.py # ActiveSessionPage
+│   │   │   ├── dashboard.py    # InterviewDashboard
+│   │   │   ├── results_page.py # CompletedSessionResults
+│   │   │   ├── review_context.py
+│   │   │   └── projection.py
+│   │   └── support/
+│   │       ├── known_questions.py, bank_text.py
+│   │       ├── feedback_prefetch.py
+│   │       └── ai_errors.py
 │   │   └── api/
 │   │       ├── deps.py
 │   │       ├── dashboard.py    # GET /
@@ -93,41 +99,61 @@ grillkit/
 │   │       └── errors.py
 │   ├── coding/                 # Coding section (tasks, Judge0 runner, WS/API, evaluator)
 │   │   ├── domain/             # CodingSection, CodingTask, CodeRunAttempt aggregates
+│   │   ├── schemas/            # coding read models + WS messages
 │   │   ├── repositories/       # coding_section repo, mappers
-│   │   ├── services/
-│   │   │   ├── planning.py     # YAML task plan from data/coding/
-│   │   │   ├── creation.py     # CodingSectionCreationService
-│   │   │   ├── availability.py # CODING_ENABLED + Judge0 health gate
-│   │   │   ├── runner.py       # CodingRunnerService (public/hidden tests, compile-only)
-│   │   │   ├── run_execution.py, submission.py, navigation.py, state.py, page.py
-│   │   │   ├── judge0_client.py, judge0_config.py, harness.py
-│   │   │   ├── section.py, query.py, review.py
-│   │   │   └── evaluator/      # CodingEvaluatorService
-│   │   ├── api/
-│   │   │   ├── routes.py       # POST /coding/run, GET /coding/state, WS /coding/ws
-│   │   │   └── ws_session.py, ws_protocol.py
-│   │   └── schemas/            # coding read models + WS messages
+│   │   ├── use_cases/
+│   │   │   ├── create_section.py   # CreateCodingSection
+│   │   │   ├── navigate_tasks.py
+│   │   │   ├── run_tests.py        # CodingRunExecutionService
+│   │   │   └── submit_solution.py  # CodingSubmissionService
+│   │   ├── queries/
+│   │   │   ├── loader.py
+│   │   │   ├── task_page.py        # ActiveCodingTaskPage
+│   │   │   ├── section_state.py
+│   │   │   ├── section_summary.py
+│   │   │   └── review_page.py
+│   │   ├── support/
+│   │   │   ├── coding_availability.py
+│   │   │   ├── evaluation_commit.py
+│   │   │   ├── events.py
+│   │   │   └── run_result_mapper.py
+│   │   └── api/
+│   │       ├── routes.py       # POST /coding/run, GET /coding/state, WS /coding/ws
+│   │       ├── ws_session.py, ws_protocol.py
+│   │       └── errors.py
 │   ├── theory/                 # Theory section (tasks, timer, WS, evaluator)
 │   │   ├── domain/             # TheorySection, TheoryTask aggregates
 │   │   ├── schemas/            # TheoryTaskRead, TheoryPageContext, WS messages
 │   │   ├── repositories/       # theory_section repo, mappers
-│   │   ├── services/
-│   │   │   ├── planning.py     # YAML question plan (excludes type=coding)
-│   │   │   ├── creation.py     # TheorySectionCreationService
-│   │   │   ├── submission.py   # answer/timeout/audio orchestration
-│   │   │   ├── navigation.py, timer.py, evaluation_persistence.py
-│   │   │   ├── page.py, query.py, section.py, review.py
-│   │   │   └── evaluator/      # TheoryEvaluatorService
+│   │   ├── use_cases/
+│   │   │   └── create_section.py   # CreateTheorySection
+│   │   ├── queries/
+│   │   │   ├── loader.py
+│   │   │   ├── task_page.py        # ActiveTheoryTaskPage
+│   │   │   ├── section_state.py
+│   │   │   ├── section_summary.py
+│   │   │   └── review_page.py
+│   │   ├── support/
+│   │   │   ├── events.py
+│   │   │   └── feedback_prefetch.py
 │   │   └── api/
 │   │       ├── routes.py       # WS /theory/ws, POST /theory/audio-answer
-│   │       ├── ws_session.py, ws_protocol.py, audio_answer.py
+│   │       ├── ws_session.py, ws_protocol.py
+│   │       └── errors.py
 │   ├── question_voice/
 │   │   ├── api/
 │   │   │   └── routes.py       # GET /speech/tts/status, POST /speech/tts/voice/download
-│   │   └── services/           # piper_*, tts_cache, question_audio, rules (voices)
+│   │   ├── queries/
+│   │   │   ├── voice_page.py
+│   │   │   └── voice_status.py
+│   │   └── use_cases/
+│   │       └── generate_question_audio.py
 │   ├── speech/
 │   │   ├── schemas/            # Pydantic status/page context read models
-│   │   ├── services/           # whisper_*, dictation, transcriber_resolver
+│   │   ├── queries/
+│   │   │   └── speech_page.py
+│   │   ├── use_cases/
+│   │   │   └── (reserved for future speech workflows)
 │   │   └── api/
 │   │       ├── routes.py       # GET/POST /speech/model/*
 │   │       ├── dictation.py    # WS /interview/{id}/dictation
@@ -153,12 +179,12 @@ grillkit/
     ├── conftest.py, fakes.py
     ├── helpers/                # Flat shared seeds (interview_seed, coding_seed, …)
     ├── ai/, app/
-    ├── interview/{api,repositories,services/rules,services}/
-    ├── theory/{api,services,repositories,integration}/
-    ├── coding/{api,services,repositories}/
-    ├── speech/{api,services}/
-    ├── question_voice/{api,services}/
-    ├── platform/{api,services}/
+    ├── interview/{api,repositories,domain/rules,use_cases,queries,support}/
+    ├── theory/{api,use_cases,queries,repositories,integration}/
+    ├── coding/{api,use_cases,queries,repositories}/
+    ├── speech/{api,queries}/
+    ├── question_voice/{api,use_cases}/
+    ├── platform/{api,use_cases,queries}/
     └── shared/{infrastructure}/
 ```
 
@@ -204,31 +230,33 @@ grillkit/
 | Package / layer | Responsibility |
 |-----------------|----------------|
 | `interview/api/`, `speech/api/`, `platform/api/`, `question_voice/api/` | HTTP/WebSocket transport, forms, template rendering |
-| `*/api/deps.py` | Inject request-scoped services and `InterviewUnitOfWork` via FastAPI `Depends` |
+| `*/api/deps.py` | Inject request-scoped use cases and `InterviewUnitOfWork` via FastAPI `Depends` |
 | `interview/domain/` | Interview session shell aggregate, `SessionSelection`, serialization, domain exceptions |
 | `theory/domain/` | `TheorySection` / `TheoryTask` aggregates and theory-specific exceptions |
 | `coding/domain/` | `CodingSection` / `CodingTask` / `CodeRunAttempt` aggregates and coding exceptions |
 | `interview/schemas/` | Session read models (`InterviewRead`, dashboard/page context) |
 | `theory/schemas/` | Theory read models and WebSocket wire message types |
-| `interview/repositories/mappers.py` | Shell ORM ↔ domain; composes `InterviewRead` with theory tasks |
-| `theory/api/ws_protocol.py` | Map service events → theory WebSocket/NDJSON JSON |
-| `theory/api/ws_session.py` | Parse client WebSocket messages, call `TheorySubmissionService` |
+| `interview/repositories/mappers.py` | Shell ORM ↔ domain; composes `InterviewRead` with theory and coding tasks |
+| `theory/api/ws_protocol.py` | Map domain events → theory WebSocket/NDJSON JSON |
+| `theory/api/ws_session.py` | Parse client WebSocket messages, call theory use cases |
 | `theory/api/audio_answer.py` | Validate multipart input and stream NDJSON from theory events |
 | `speech/api/dictation_protocol.py` | Dictation WebSocket message types (`start`, `stop`, `ready`, `final`, `error`) |
 | `interview/api/errors.py` | Map `InterviewDomainError` → error payloads |
-| `*/services/` | Use-case orchestration (static methods on service classes) |
-| `*/services/rules/` | Pure helpers (no I/O) for a feature (selection display, voices, etc.) |
+| `*/use_cases/` | Use-case orchestration (instance classes receiving UoW) |
+| `*/queries/` | Read-only view-model builders and loaders |
+| `*/support/` | Pure helpers, event mappers, and cross-cutting utilities |
+| `*/domain/rules/` | Pure helpers (no I/O) for a feature (selection display, voices, etc.) |
 | `shared/locales.py` | Locale normalization and localized UI strings |
 | `interview/repositories/` | Interview persistence: ORM access, `get_aggregate` / `save_aggregate`, mappers |
 | `shared/infrastructure/uow.py` | Base transaction boundary (session lifecycle) |
 | `interview/repositories/uow.py` | `InterviewUnitOfWork`: interviews, theory/coding sections, code run attempts |
-| `interview/services/results_page.py` | Completed session hub context (`SessionResultsPageService`) |
-| `theory/services/review.py`, `coding/services/review.py` | Post-session section review page builders |
+| `interview/queries/results_page.py` | Completed session hub context (`CompletedSessionResults`) |
+| `theory/queries/review_page.py`, `coding/queries/review_page.py` | Post-session section review page builders |
 | `shared/infrastructure/models.py` | ORM models |
 | `ai/` | Provider adapters (`AIProvider`, `SpeechTranscriber`) |
 | `shared/questions.py` | Read-only YAML question bank access |
 
-Workflow services (submit, create, complete, section creation, evaluation persistence, navigation) are **instance classes** constructed with `InterviewUnitOfWork`. FastAPI dependencies in `interview/api/deps.py` and `shared/application/uow_deps.py` yield scoped UoW instances. Read-only helpers may remain static until migrated.
+Workflow use cases (submit, create, complete, section creation, evaluation persistence, navigation) are **instance classes** constructed with `InterviewUnitOfWork`. FastAPI dependencies in `interview/api/deps.py` yield scoped UoW instances. Read-only helpers live in `*/queries/` and may remain static until migrated.
 
 ## Module Dependency Graph
 
@@ -238,49 +266,60 @@ Dependencies flow **downward** (caller → callee). Plain-text diagram for edito
 main.py ──► lifespan: init_db(), SpeechRuntimeCoordinator.startup() (Whisper + Piper when configured)
   ├── interview/api/  (dashboard, setup, routes)
   │     ├── routes.py ──► ws_protocol, errors, page (full template context)
-  │     └── deps.py ──► interview/services/*
-  ├── platform/api/config.py ──► platform/services/config, platform/services/page
-  ├── question_voice/api/routes.py ──► piper_voice, tts_cache
+  │     └── deps.py ──► interview/use_cases/*, interview/queries/*
+  ├── platform/api/config.py ──► platform/use_cases/config, platform/queries/*
+  ├── question_voice/api/routes.py ──► question_voice/use_cases/*
   └── speech/api/  (routes, dictation)
         ├── dictation.py ──► dictation_protocol, transcriber_resolver, dictation session
-        └── routes.py ──► speech/services/whisper_model
+        └── routes.py ──► speech/queries/speech_page
 
-interview/api/routes.py ──► question_voice/services/question_audio, interview/api/deps (AIProvider)
-interview/services/query.py ──► cross-feature read helpers (`get_active_interview_or_raise`)
+interview/api/routes.py ──► question_voice/use_cases/generate_question_audio, interview/api/deps (AIProvider)
+interview/queries/loader.py ──► cross-feature read helpers (`get_active_interview_or_raise`)
 
-question_voice/services/
-  ├── question_audio.py ──► interview/services/query, speech_settings, tts_cache
-  ├── piper_voice.py ──► Hugging Face download into data/piper-voices/
-  ├── piper_runtime.py ──► in-process PiperVoice load and synthesis
-  └── tts_cache.py ──► data/tts-cache/v2/{locale}/
+question_voice/use_cases/
+  └── generate_question_audio.py ──► interview/queries/loader, speech_settings, tts_cache
 
-interview/services/
-  ├── creation.py ──► SessionCreationService + section creation services
-  ├── page.py ──► SessionPageService, TheoryPageService, CodingPageService
-  ├── completion.py ──► SessionCompletionService, SessionEvaluationAggregator
-  ├── results_page.py ──► completed hub; review links via section registry
-  ├── query.py, dashboard.py, phases.py, sections.py
-  └── session_evaluator.py ──► session-level narrative (theory + coding sections)
+interview/use_cases/
+  ├── create_session.py ──► CreateInterviewSession + section creation use cases
+  ├── complete_session.py ──► CompleteInterviewSession, SessionEvaluationAggregator
+  └── advance_phase.py ──► SessionPhaseOrchestrator
 
-theory/services/
-  ├── planning.py ──► app/shared/questions.py (filters type=coding)
-  ├── creation.py, submission.py, navigation.py, timer.py, review.py
-  ├── section.py ──► section registry hooks + prefetch
-  └── evaluator/ ──► TheoryEvaluatorService (per-task + section narrative)
+interview/queries/
+  ├── session_page.py ──► ActiveSessionPage, TheoryPageService, CodingPageService
+  ├── results_page.py ──► CompletedSessionResults; review links via section registry
+  ├── loader.py ──► InterviewLoader (was InterviewQuery)
+  ├── dashboard.py ──► InterviewDashboard
+  └── review_context.py
 
-coding/services/
-  ├── planning.py ──► app/shared/coding.py
-  ├── runner.py, submission.py, section.py, review.py
-  └── evaluator/ ──► CodingEvaluatorService (per-task + section narrative)
+theory/use_cases/
+  └── create_section.py ──► CreateTheorySection
 
-interview/api/deps.py ──► platform/services/ai_context (yields AIProvider for WS/routes)
+theory/queries/
+  ├── task_page.py ──► ActiveTheoryTaskPage
+  ├── section_state.py, section_summary.py
+  └── review_page.py ──► theory review context builder
 
-platform/services/config.py ──► ai/factory, speech/schemas, data/config.json
-speech/services/
-  ├── whisper_model.py ──► whisper_runtime, whisper_storage, Hugging Face hub
-  ├── whisper_runtime.py ──► ai/faster_whisper_transcriber, whisper_storage
-  ├── transcriber_resolver.py ──► whisper_runtime, ConfigService
-  └── dictation.py ──► ai/speech_transcriber
+coding/use_cases/
+  ├── create_section.py ──► CreateCodingSection
+  ├── navigate_tasks.py
+  ├── run_tests.py ──► CodingRunExecutionService
+  └── submit_solution.py ──► CodingSubmissionService
+
+coding/queries/
+  ├── task_page.py ──► ActiveCodingTaskPage
+  ├── section_state.py, section_summary.py
+  └── review_page.py ──► coding review context builder
+
+interview/api/deps.py ──► platform/support/ai_context (yields AIProvider for WS/routes)
+
+platform/use_cases/config.py ──► ai/factory, speech/schemas, data/config.json
+platform/support/
+  ├── llm_catalog.py ──► data/llm_models.json
+  ├── speech_runtime.py ──► whisper_runtime, piper_runtime
+  └── speech_settings.py
+
+speech/queries/
+  └── speech_page.py ──► speech status page context
 
 shared/infrastructure/uow.py
   └── interview/, theory/, coding/ repositories ──► shared/repositories/base, models
@@ -320,48 +359,60 @@ flowchart TB
   dictation_svc --> speech_transcriber_proto[speech_transcriber]
   speech_router --> whisper_model
   whisper_runtime --> faster_whisper_transcriber
-  subgraph interview_svc [interview/services]
-    interview_creation[creation]
-    interview_query[query]
-    interview_completion[completion]
-    interview_phases[phases]
-    session_evaluator[session_evaluator]
-    results_page[results_page]
+  subgraph interview_uc [interview/use_cases]
+    interview_creation[create_session]
+    interview_completion[complete_session]
+    interview_phases[advance_phase]
   end
-  subgraph theory_svc [theory/services]
-    theory_submission[submission]
-    theory_evaluator[evaluator]
-    theory_review[review]
+  subgraph interview_q [interview/queries]
+    interview_query[loader]
+    interview_session_page[session_page]
+    interview_results_page[results_page]
+    interview_dashboard[dashboard]
   end
-  subgraph coding_svc [coding/services]
-    coding_submission[submission]
-    coding_runner[runner]
-    coding_evaluator[evaluator]
-    coding_review[review]
+  subgraph theory_uc [theory/use_cases]
+    theory_creation[create_section]
   end
-  subgraph platform_svc [platform/services]
+  subgraph theory_q [theory/queries]
+    theory_task_page[task_page]
+    theory_review[review_page]
+  end
+  subgraph coding_uc [coding/use_cases]
+    coding_creation[create_section]
+    coding_navigate[navigate_tasks]
+    coding_run[run_tests]
+    coding_submit[submit_solution]
+  end
+  subgraph coding_q [coding/queries]
+    coding_task_page[task_page]
+    coding_review[review_page]
+  end
+  subgraph platform_uc [platform/use_cases]
     config_service[config]
-    ai_context
   end
-  subgraph speech_svc [speech/services]
-    whisper_model
-    dictation_svc
+  subgraph platform_sup [platform/support]
+    ai_context
+    llm_catalog
+    speech_runtime
+  end
+  subgraph speech_q [speech/queries]
+    speech_page[speech_page]
   end
   faster_whisper_transcriber --> speech_transcriber_proto
   whisper_model --> whisper_runtime
   whisper_model --> whisper_storage
   whisper_runtime --> whisper_storage
-  interview_svc --> interview_domain[domain]
-  interview_svc --> interview_rules[services/rules]
-  interview_svc --> uow
-  interview_svc --> questions_mod[questions]
-  interview_creation --> questions_mod
+  interview_uc --> interview_domain[domain]
+  interview_uc --> interview_rules[domain/rules]
+  interview_uc --> uow
+  interview_q --> interview_domain[domain]
+  interview_q --> uow
+  interview_creation --> questions_mod[questions]
   interview_completion --> session_evaluator
-  theory_submission --> theory_evaluator
-  coding_submission --> coding_runner
-  coding_submission --> coding_evaluator
-  results_page --> theory_review
-  results_page --> coding_review
+  coding_submit --> coding_runner
+  coding_submit --> coding_evaluator
+  interview_results_page --> theory_review
+  interview_results_page --> coding_review
   ai_context --> config_service
   ai_context --> ai_layer
   subgraph ai_layer [ai]
@@ -397,16 +448,17 @@ flowchart TB
 | Theory task ORM | `shared.infrastructure.models.Answer` (table `answers`, FK `theory_section_id`) |
 | Coding task ORM | `shared.infrastructure.models.CodingTask` (table `coding_tasks`) |
 | Coding run snapshot ORM | `shared.infrastructure.models.CodeRunAttempt` |
-| Session read DTO | `app.interview.schemas.interview.InterviewRead` (composes theory tasks) |
+| Session read DTO | `app.interview.schemas.interview.InterviewRead` (composes theory and coding tasks) |
 | Theory task read DTO | `app.theory.schemas.theory.TheoryTaskRead` |
+| Coding task read DTO | `app.coding.schemas.coding.CodingTaskRead` |
 | Route / WS path param | `interview_id` (same value as `Interview.id`) |
-| Create flow | `SessionCreationService.create_session()` + section creation services when enabled |
-| Read flow | `InterviewQuery.load()` / `InterviewQuery(uow).get_interview()`, `DashboardBuilder.list_rows()` |
-| Complete flow | `SessionCompletionService.complete_session()` |
-| Results hub | `SessionResultsPageService.prepare_page()` |
+| Create flow | `CreateInterviewSession.create_session()` + section creation use cases when enabled |
+| Read flow | `InterviewLoader.load()` / `InterviewLoader(uow).get_interview()`, `InterviewDashboard.list_rows()` |
+| Complete flow | `CompleteInterviewSession.complete_session()` |
+| Results hub | `CompletedSessionResults.prepare_page()` |
 | UoW repositories | `uow.interviews`, `uow.theory_sections`, `uow.coding_sections`, `uow.code_run_attempts`, `uow.known_questions` (single `InterviewUnitOfWork`) |
-| Theory submit | `TheorySubmissionService` (WS + audio + timeouts) |
-| Coding submit | `CodingSubmissionService` (WS submit after Run history) |
+| Theory submit | Theory use cases in `theory/api/routes.py` + `theory/api/ws_session.py` (WS + audio + timeouts) |
+| Coding submit | `CodingSubmissionService` via `coding/use_cases/submit_solution.py` (WS submit after Run history) |
 | SQLAlchemy session | `uow.session` |
 
 ## Key Models
@@ -489,7 +541,7 @@ Initial task rows are created with the theory section; follow-ups append via `Th
 | `bank_item_id` | `str` | ID from the YAML bank for that branch |
 | `created_at` | `datetime` | When the item was marked as known |
 
-Instance-wide list (no user accounts). When setup sends `exclude_known: true`, `SessionCreationService` loads IDs per branch and `plan_questions(..., excluded_ids=...)` removes them from pools before selection. Mark/unmark via `POST`/`DELETE /known-questions` with `{branch, item_id}`, **I know this** buttons during active interviews, or `/known-questions/manage`. Display text for the manage page is resolved from YAML banks via `interview/services/bank_text.py` (full-bank `id → text` indexes cached per process with `@lru_cache`).
+Instance-wide list (no user accounts). When setup sends `exclude_known: true`, `CreateInterviewSession` loads IDs per branch and `plan_questions(..., excluded_ids=...)` removes them from pools before selection. Mark/unmark via `POST`/`DELETE /known-questions` with `{branch, item_id}`, **I know this** buttons during active interviews, or `/known-questions/manage`. Display text for the manage page is resolved from YAML banks via `interview/support/bank_text.py` (full-bank `id → text` indexes cached per process with `@lru_cache`).
 
 ## Data Flow: Configure Provider
 
@@ -513,10 +565,10 @@ User → POST /config/llm-models (display_name, base_url, model, optional api_ke
 User → POST /setup (selection_json v2: session_mode, theory/coding branches, counts, timers)
   → parse SessionSelection; gate coding modes on CODING_ENABLED + Judge0 health
   → locale from ConfigService.get_config()
-  → SessionCreationService.create_session(selection, locale)
+  → CreateInterviewSession.create_session(selection, locale)
        → Interview.start_shell()
-       → TheorySectionCreationService.create() when theory.enabled
-       → CodingSectionCreationService.create() when coding.enabled
+       → CreateTheorySection.create() when theory.enabled
+       → CreateCodingSection.create() when coding.enabled
        → build_theory_question_plan() (excludes YAML type=coding)
        → build_coding_task_plan() from data/coding/
        → InterviewUnitOfWork(auto_commit=True): shell + section rows + tasks
@@ -527,14 +579,14 @@ User → POST /setup (selection_json v2: session_mode, theory/coding branches, c
 
 ```
 Client → WS /interview/{id}/theory/ws {"type":"answer",...}
-  → TheorySubmissionService (timer, navigation, TheoryEvaluatorService)
+  → theory/api/ws_session.py (timer, navigation, theory evaluation)
   → Commits the saved answer row before long-running AI evaluation (releases SQLite write lock)
   → On section complete: SessionPhaseOrchestrator(uow).notify_section_complete
        → on_phase_complete (may schedule background section-feedback prefetch)
        → activate_if_pending("coding") on the same UoW (no second SQLite connection)
-  → Session complete: SessionCompletionService via WS "complete" message
+  → Session complete: CompleteInterviewSession via WS "complete" message
 
-Client → WS {"type":"timeout",...} → TheorySubmissionService timeout path (score 0)
+Client → WS {"type":"timeout",...} → theory timeout path (score 0)
 Client → WS {"type":"ping"} → pong with session status
 ```
 
@@ -548,7 +600,7 @@ Client → POST /interview/{id}/theory/audio-answer (multipart: question_id, fil
   → Client: static/js/interview_audio_answer.js
 ```
 
-Gated on the interview page when dictation is available **and** `interview_model_accepts_audio` (`InterviewPageService` + catalog `accepts_audio_input`). Configuration save / add-model tests audio capability with `app/ai/audio_probe.py` when the flag is enabled.
+Gated on the interview page when dictation is available **and** `interview_model_accepts_audio` (`ActiveSessionPage` + catalog `accepts_audio_input`). Configuration save / add-model tests audio capability with `app/ai/audio_probe.py` when the flag is enabled.
 
 ## Data Flow: Coding Run and Submit
 
@@ -556,12 +608,12 @@ Interview page shows a separate **coding panel** (Monaco via CDN) when `session_
 
 ```
 Client → POST /interview/{id}/coding/run {"task_id","source_code"}
-  → CodingRunExecutionService → CodingRunnerService (public tests via Judge0)
+  → coding/use_cases/run_tests.py → CodingRunnerService (public tests via Judge0)
   → persist CodeRunAttempt (snapshot: code, stderr, test_results, attempt_no)
   → JSON mirror of the attempt
 
 Client → WS /interview/{id}/coding/ws {"type":"submit","task_id","source_code"}
-  → CodingSubmissionService
+  → coding/use_cases/submit_solution.py
        → hidden tests (Judge0) → submit_test_summary on CodingTask
        → load code_run_attempts for the task
        → CodingEvaluatorService (run history + tests + code in prompt)
@@ -580,7 +632,7 @@ Separate from answer/evaluation WS. Requires active interview and loaded transcr
 
 ```
 Client → WS connect /interview/{id}/dictation
-  → InterviewQuery.load() + require_active()
+  → InterviewLoader.load() + require_active()
   → reject if model missing (download via /config → /speech/model/download)
 
 Client → {"type":"start"}
@@ -613,9 +665,9 @@ Configured size and locale live in `data/config.json` (`AppConfig`). Transcripti
 
 ```
 Client → WS /interview/{id}/theory/ws {"type":"complete"}
-  → SessionCompletionService.complete_session(interview_id)
-       → TheoryQueryService.get_evaluation_summary()
-       → CodingQueryService.get_evaluation_summary()
+  → CompleteInterviewSession.complete_session(interview_id)
+       → TheorySectionLoader.get_evaluation_summary()
+       → CodingSectionSummary.get_evaluation_summary()
        → SessionEvaluationAggregator.merge() → nested score_breakdown
        → SessionEvaluatorService (cached section narratives or one LLM call)
        → UnitOfWork: save overall_feedback, mark completed
@@ -629,20 +681,20 @@ Display score sums `score_breakdown.theory.score` and `score_breakdown.coding.sc
 
 ```
 GET /interview/{id} on completed session
-  → SessionPageService redirects 303 → /interview/{id}/results
+  → ActiveSessionPage redirects 303 → /interview/{id}/results
 
 GET /interview/{id}/results
-  → SessionResultsPageService.prepare_page()
+  → CompletedSessionResults.prepare_page()
        → load completed InterviewRead + overall_feedback JSON
        → section registry builds cards (theory/coding) with review URLs
   → session_results.html
 
 GET /interview/{id}/theory
-  → TheoryReviewService.build_context() — answered rounds + section_feedback
+  → theory/queries/review_page.py build_context() — answered rounds + section_feedback
   → theory_review.html (redirect to /results if section missing)
 
 GET /interview/{id}/coding
-  → CodingReviewService.build_context() — tasks grouped by task_id with rounds
+  → coding/queries/review_page.py build_context() — tasks grouped by task_id with rounds
   → coding_review.html
 ```
 
@@ -671,7 +723,7 @@ with InterviewUnitOfWork(auto_commit=True) as uow:
     uow.interviews.save_aggregate(updated)
 ```
 
-`InterviewRepository.get()` eagerly loads `answers` via `selectinload`. Prefer `InterviewUnitOfWork` in interview services for all transactional work.
+`InterviewRepository.get()` eagerly loads `answers` via `selectinload`. Prefer `InterviewUnitOfWork` in interview use cases for all transactional work.
 
 ## Scoring
 
@@ -776,7 +828,7 @@ Follow-up rounds use the same pipeline (cache key from localized `question_text`
 | Concern | Location |
 |---------|----------|
 | Catalog file | `data/llm_models.json` (gitignored) — models added via **Add model to catalog** on `/config` (`POST /config/llm-models`) |
-| Loader | `app/platform/services/llm_catalog.py` |
+| Loader | `app/platform/support/llm_catalog.py` |
 | Model id | Auto-generated slug from **display name** (`slugify_model_id` + `generate_model_id` in `app/ai/llm_models.py`); collisions get `-2`, `-3`, … suffixes |
 | Selection | `selected` id in catalog JSON; `llm_preset_id` on resolved `AppConfig` |
 | Audio flag | `accepts_audio_input` on `LLMModelEntry` — enables interview audio-answer UI and config audio probe |
@@ -789,11 +841,11 @@ Pytest discovers modules under `tests/` (`pyproject.toml` → `testpaths = ["tes
 | `app/` package | `tests/` mirror | Typical modules |
 |----------------|-----------------|-----------------|
 | `ai/` | `tests/ai/` | `test_base.py`, `test_factory.py`, `test_openai_compatible.py` |
-| `interview/` | `tests/interview/{api,repositories,services}/` | `test_creation.py`, `test_phases.py`, `test_known_questions.py`, `test_results.py` |
-| `theory/` | `tests/theory/{api,services,repositories,integration}/` | `test_submission.py`, `test_ws_routes.py`, `test_review.py` |
-| `coding/` | `tests/coding/{api,services,repositories}/` | `test_runner.py`, `test_evaluator.py`, `test_review.py` |
-| `speech/`, `question_voice/` | `tests/speech/`, `tests/question_voice/` | API + service tests |
-| `platform/` | `tests/platform/{api,services}/` | `test_config.py`, `test_llm_catalog.py` |
+| `interview/` | `tests/interview/{api,repositories,use_cases,queries,support}/` | `test_creation.py`, `test_phases.py`, `test_known_questions.py`, `test_results.py` |
+| `theory/` | `tests/theory/{api,use_cases,queries,repositories,integration}/` | `test_submission.py`, `test_ws_routes.py`, `test_review.py` |
+| `coding/` | `tests/coding/{api,use_cases,queries,repositories}/` | `test_runner.py`, `test_evaluator.py`, `test_review.py` |
+| `speech/`, `question_voice/` | `tests/speech/`, `tests/question_voice/` | API + query tests |
+| `platform/` | `tests/platform/{api,use_cases,queries}/` | `test_config.py`, `test_llm_catalog.py` |
 | `shared/` | `tests/shared/` (+ `infrastructure/`) | `test_questions.py`, `test_coding.py`, `test_uow.py` |
 | `main.py` | `tests/app/` | `test_main.py` |
 
@@ -805,7 +857,7 @@ Run the suite:
 
 ```bash
 uv run pytest
-uv run pytest tests/theory/services/test_submission.py   # single module
+uv run pytest tests/theory/use_cases/test_submission.py   # single module
 ```
 
 ## Current Limitations

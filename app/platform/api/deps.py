@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.platform.services.config import ConfigService
+from app.platform.domain.config import ConfigService
 
 
 def get_config_service() -> type[ConfigService]:

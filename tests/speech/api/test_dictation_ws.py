@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import create_app
-from app.speech.services.dictation import DictationSession
+from app.speech.use_cases.dictation import DictationSession
 
 
 @pytest.fixture
@@ -17,11 +17,11 @@ def client():
     with (
         patch("app.main.run_migrations"),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),
         ),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
         ),
     ):
         app = create_app()
@@ -46,7 +46,7 @@ class TestDictationWebSocket:
         """Connection closes with error when speech_transcriber is absent."""
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.load",
+                "app.interview.queries.loader.InterviewQuery.load",
                 return_value=_active_interview(),
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,
@@ -63,7 +63,7 @@ class TestDictationWebSocket:
 
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.load",
+                "app.interview.queries.loader.InterviewQuery.load",
                 return_value=_active_interview(),
             ),
             patch(
@@ -87,7 +87,7 @@ class TestDictationWebSocket:
         interview.status = "completed"
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.load",
+                "app.interview.queries.loader.InterviewQuery.load",
                 return_value=interview,
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,

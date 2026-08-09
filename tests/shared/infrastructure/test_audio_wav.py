@@ -93,7 +93,10 @@ class TestWavBytesToFloat32:
         samples = wav_bytes_to_float32(minimal_wav_bytes(duration_sec=0.1))
         assert samples.dtype == np.float32
         assert samples.size > 0
-        assert float(np.max(np.abs(samples))) == 0.0
+        # The probe is a 0.2-amplitude tone (silence is rejected by
+        # multimodal audio models), so decoded samples must be audible.
+        max_amplitude = float(np.max(np.abs(samples)))
+        assert 0.1 < max_amplitude <= 0.21
 
     def test_invalid_wav_raises(self) -> None:
         """Invalid payloads fail before decoding."""

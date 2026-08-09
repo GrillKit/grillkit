@@ -51,11 +51,11 @@ class TestLifespan:
         with (
             patch("app.main.run_migrations") as mock_run_migrations,
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
                 new=AsyncMock(),
             ),
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
             ),
         ):
             mock_app = MagicMock()
@@ -71,11 +71,11 @@ class TestLifespan:
         with (
             patch("app.main.run_migrations"),
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
                 new=AsyncMock(),
             ),
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
             ),
         ):
             mock_app = MagicMock()
@@ -99,11 +99,11 @@ class TestAppIntegration:
         with (
             patch("app.main.run_migrations"),
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
                 new=AsyncMock(),
             ),
             patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
             ),
         ):
             app = create_app()
@@ -113,7 +113,7 @@ class TestAppIntegration:
     def test_dashboard_endpoint(self, client):
         """Test that the home page returns the dashboard HTML."""
         with patch(
-            "app.interview.services.dashboard.DashboardBuilder.list_rows",
+            "app.interview.queries.dashboard.DashboardBuilder.list_rows",
             return_value=[],
         ):
             response = client.get("/")

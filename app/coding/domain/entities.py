@@ -15,24 +15,14 @@ from app.coding.domain.exceptions import (
 )
 from app.coding.domain.value_objects import PlannedCodingTask, RunOutcomeStatus
 from app.interview.domain.value_objects import InterviewSelection
-from app.shared.task_timer import (
-    DEFAULT_TIMEOUT_GRACE_SECONDS,
-)
-from app.shared.task_timer import (
-    is_timer_expired as shared_is_timer_expired,
-)
-from app.shared.task_timer import (
-    remaining_seconds as shared_remaining_seconds,
-)
-from app.shared.task_timer import (
-    timer_deadline as shared_timer_deadline,
-)
+from app.shared.section import Section
+from app.shared.timed_task import TimedTask
 
 CodingSectionStatus = Literal["pending", "active", "completed", "skipped"]
 
 
 @dataclass(frozen=True, slots=True)
-class CodingTask:
+class CodingTask(TimedTask):
     """One coding task round within a coding section.
 
     Attributes:
@@ -53,7 +43,6 @@ class CodingTask:
     """
 
     TIME_EXPIRED_SOURCE_CODE = "[Time expired]"
-    TIMEOUT_GRACE_SECONDS = DEFAULT_TIMEOUT_GRACE_SECONDS
     NEW_ID = 0
 
     id: int
@@ -71,82 +60,9 @@ class CodingTask:
     started_at: datetime | None
     created_at: datetime
 
-    def timer_deadline(self, limit_seconds: int) -> datetime:
-        """Compute the absolute deadline for this timed task round.
-
-        Args:
-            limit_seconds: Allowed duration in seconds.
-
-        Returns:
-            Timezone-aware deadline timestamp.
-
-        Raises:
-            ValueError: If the round has no ``started_at`` timestamp.
-        """
-        if self.started_at is None:
-            raise ValueError("Coding task round has no started_at")
-        return shared_timer_deadline(
-            self.started_at,
-            limit_seconds,
-            label="Coding task",
-        )
-
-    def is_timer_expired(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-        *,
-        grace_seconds: int = TIMEOUT_GRACE_SECONDS,
-    ) -> bool:
-        """Return whether the per-task timer has elapsed.
-
-        Args:
-            limit_seconds: Configured limit for the section (None disables timer).
-            now: Current time (defaults to UTC now).
-            grace_seconds: Extra seconds allowed for network delay on timeout submit.
-
-        Returns:
-            True if the timer is enabled and the deadline plus grace has passed.
-        """
-        return shared_is_timer_expired(
-            self.started_at,
-            limit_seconds,
-            now,
-            grace_seconds=grace_seconds,
-        )
-
-    def remaining_seconds(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-    ) -> int | None:
-        """Return whole seconds left on the timer, or None if disabled.
-
-        Args:
-            limit_seconds: Configured limit for the section.
-            now: Current time (defaults to UTC now).
-
-        Returns:
-            Non-negative seconds remaining, or None when the timer is off.
-        """
-        return shared_remaining_seconds(self.started_at, limit_seconds, now)
-
-    def client_timeout_due(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-    ) -> bool:
-        """Return whether a client-sent timeout should be accepted."""
-        if limit_seconds is None or self.started_at is None:
-            return False
-        rem = self.remaining_seconds(limit_seconds, now)
-        return self.is_timer_expired(limit_seconds, now, grace_seconds=0) or (
-            rem is not None and rem <= 0
-        )
-
 
 @dataclass(frozen=True, slots=True)
-class CodingSection:
+class CodingSection(Section[CodingTask]):
     """Coding section aggregate root.
 
     Attributes:
@@ -163,7 +79,7 @@ class CodingSection:
         tasks: Coding tasks in display order (order, then round).
     """
 
-    MAX_SCORE_PER_ROUND = 5
+    MAX_SCORE_PER_ROUND = 5  # pyright: ignore
     NEW_ID = 0
 
     id: int
@@ -178,6 +94,62 @@ class CodingSection:
     section_feedback: dict[str, object] | None
     tasks: tuple[CodingTask, ...]
 
+    # ------------------------------------------------------------------
+    # Section abstract hooks
+    # ------------------------------------------------------------------
+    @property
+    def _completion_field_name(self) -> str:
+        return "submitted_code"
+
+    @property
+    def _task_id_field(self) -> str:
+        return "task_id"
+
+    def _task_not_found_error(self, task_id: str, round_num: int) -> Exception:
+        return CodingTaskNotFoundError(self.interview_id, task_id, round_num)
+
+    def _timeout_replacement_fields(
+        self, task: CodingTask, feedback: str
+    ) -> dict[str, Any]:
+        return {
+            "submitted_code": CodingTask.TIME_EXPIRED_SOURCE_CODE,
+            "submit_test_summary": {"status": "timeout"},
+            "score": 0,
+            "feedback": feedback,
+        }
+
+    def _create_follow_up(
+        self,
+        base: CodingTask,
+        next_round: int,
+        prompt_text: str,
+        *,
+        starter_code: str | None = None,
+        **kwargs: Any,
+    ) -> CodingTask:
+        follow_up_spec = dict(base.task_spec)
+        if starter_code is not None:
+            follow_up_spec["starter_code"] = starter_code
+        return CodingTask(
+            id=CodingTask.NEW_ID,
+            coding_section_id=self.id,
+            interview_id=self.interview_id,
+            task_id=base.task_id,
+            order=base.order,
+            round=next_round,
+            prompt_text=prompt_text,
+            task_spec=follow_up_spec,
+            submitted_code=None,
+            submit_test_summary=None,
+            score=None,
+            feedback=None,
+            started_at=None,
+            created_at=datetime.now(UTC),
+        )
+
+    # ------------------------------------------------------------------
+    # Factory
+    # ------------------------------------------------------------------
     @classmethod
     def start(
         cls,
@@ -249,16 +221,9 @@ class CodingSection:
             tasks=tuple(tasks),
         )
 
-    def with_activated(self) -> CodingSection:
-        """Return aggregate with ``pending`` status promoted to ``active``.
-
-        Returns:
-            Updated aggregate when status was ``pending``, otherwise ``self``.
-        """
-        if self.status != "pending":
-            return self
-        return replace(self, status="active")
-
+    # ------------------------------------------------------------------
+    # Domain-specific behaviour
+    # ------------------------------------------------------------------
     def ensure_active(self) -> None:
         """Ensure this coding section accepts submissions.
 
@@ -274,85 +239,7 @@ class CodingSection:
         Returns:
             The first task with ``submitted_code`` unset, or None when all are done.
         """
-        for task in self.tasks:
-            if task.submitted_code is None:
-                return task
-        return None
-
-    def is_complete(self) -> bool:
-        """Return whether every task in this section has been submitted.
-
-        Returns:
-            True when there is at least one task and none remain unsubmitted.
-        """
-        return bool(self.tasks) and self.find_first_unsubmitted() is None
-
-    def total_score(self) -> int:
-        """Sum scores from all submitted task rounds in this section.
-
-        Returns:
-            Total earned points across submitted rounds.
-        """
-        return sum(
-            (task.score or 0) for task in self.tasks if task.submitted_code is not None
-        )
-
-    def max_score(self) -> int:
-        """Compute maximum achievable score for submitted rounds.
-
-        Returns:
-            Maximum possible points for rounds with submissions.
-        """
-        submitted_rounds = sum(
-            1 for task in self.tasks if task.submitted_code is not None
-        )
-        return self.MAX_SCORE_PER_ROUND * submitted_rounds
-
-    def with_cached_section_feedback(
-        self,
-        feedback: dict[str, object],
-        *,
-        section_score: int,
-    ) -> CodingSection:
-        """Return aggregate with prefetched section feedback when not cached.
-
-        Args:
-            feedback: Parsed section evaluation payload.
-            section_score: Aggregated section score.
-
-        Returns:
-            Updated aggregate, or ``self`` when feedback is already cached.
-        """
-        if self.section_feedback is not None:
-            return self
-        return replace(
-            self,
-            section_feedback=feedback,
-            section_score=section_score,
-        )
-
-    def start_timer_for_task(
-        self, task_row_id: int, when: datetime | None = None
-    ) -> CodingSection:
-        """Start the per-task timer on a coding task when the section has a limit.
-
-        Args:
-            task_row_id: Primary key of the task row to activate.
-            when: Timestamp to set (defaults to UTC now).
-
-        Returns:
-            A new aggregate with ``started_at`` set on the target task when applicable.
-        """
-        if self.task_time_limit_seconds is None:
-            return self
-        started_at = when or datetime.now(UTC)
-        tasks = tuple(
-            replace(task, started_at=started_at)
-            if task.id == task_row_id and task.started_at is None
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
+        return self.find_first_pending()
 
     def with_submit_test_summary(
         self,
@@ -383,116 +270,6 @@ class CodingSection:
         )
         return replace(self, tasks=tasks)
 
-    def with_timed_out_round(self, task_row_id: int, feedback: str) -> CodingSection:
-        """Return aggregate with a coding round marked as timed out."""
-        tasks = tuple(
-            replace(
-                task,
-                submitted_code=CodingTask.TIME_EXPIRED_SOURCE_CODE,
-                submit_test_summary={"status": "timeout"},
-                score=0,
-                feedback=feedback,
-            )
-            if task.id == task_row_id
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
-
-    def with_evaluation(
-        self,
-        task_id: str,
-        round_num: int,
-        score: int,
-        feedback: str,
-    ) -> CodingSection:
-        """Return aggregate with AI score and feedback on one task round.
-
-        Args:
-            task_id: YAML task ID.
-            round_num: Follow-up round (0 = initial).
-            score: AI score for the round.
-            feedback: AI feedback text.
-
-        Returns:
-            A new aggregate with evaluation fields set on the target task.
-        """
-        target = self.find_task(task_id, round_num)
-        tasks = tuple(
-            replace(task, score=score, feedback=feedback)
-            if task.id == target.id
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
-
-    def max_round_for_task(self, task_id: str) -> int:
-        """Return the highest follow-up round number for a bank task ID.
-
-        Args:
-            task_id: YAML task ID.
-
-        Returns:
-            Maximum ``round`` value among rows for the task, or 0 when none exist.
-        """
-        rounds = [task.round for task in self.tasks if task.task_id == task_id]
-        return max(rounds) if rounds else 0
-
-    def with_follow_up(
-        self,
-        task_id: str,
-        prompt_text: str,
-        *,
-        starter_code: str | None,
-    ) -> tuple[CodingSection, CodingTask]:
-        """Return aggregate with a new unsubmitted follow-up task row.
-
-        Args:
-            task_id: YAML task ID for the follow-up chain.
-            prompt_text: Follow-up prompt shown to the candidate.
-            starter_code: Monaco starter code for code-mode follow-ups.
-
-        Returns:
-            Tuple of updated aggregate and the pending follow-up task.
-        """
-        base = self.find_task(task_id, 0)
-        next_round = self.max_round_for_task(task_id) + 1
-        follow_up_spec = dict(base.task_spec)
-        if starter_code is not None:
-            follow_up_spec["starter_code"] = starter_code
-        created_at = datetime.now(UTC)
-        follow_up = CodingTask(
-            id=CodingTask.NEW_ID,
-            coding_section_id=self.id,
-            interview_id=self.interview_id,
-            task_id=task_id,
-            order=base.order,
-            round=next_round,
-            prompt_text=prompt_text,
-            task_spec=follow_up_spec,
-            submitted_code=None,
-            submit_test_summary=None,
-            score=None,
-            feedback=None,
-            started_at=None,
-            created_at=created_at,
-        )
-        return replace(self, tasks=self.tasks + (follow_up,)), follow_up
-
-    def find_next_unsubmitted_after(self, current_index: int) -> CodingTask | None:
-        """Return the next unsubmitted task after a position in the task list.
-
-        Args:
-            current_index: Index of the current task in ``tasks``.
-
-        Returns:
-            The next unsubmitted task, or None if none remain.
-        """
-        for task in self.tasks[current_index + 1 :]:
-            if task.submitted_code is None:
-                return task
-        return None
-
     def require_current_task(self, task_id: str) -> CodingTask:
         """Return the active unsubmitted task when it matches ``task_id``.
 
@@ -510,23 +287,16 @@ class CodingSection:
             raise CodingTaskNotCurrentError(self.interview_id, task_id)
         return current
 
-    def find_task(self, task_id: str, round_num: int) -> CodingTask:
-        """Return the task row for a bank task and follow-up round.
+    def find_next_unsubmitted_after(self, current_index: int) -> CodingTask | None:
+        """Return the next unsubmitted task after a position in the task list.
 
         Args:
-            task_id: YAML task ID.
-            round_num: Follow-up round (0 = initial).
+            current_index: Index of the current task in ``tasks``.
 
         Returns:
-            The matching task row.
-
-        Raises:
-            CodingTaskNotFoundError: If no row matches the keys.
+            The next unsubmitted task, or None if none remain.
         """
-        for task in self.tasks:
-            if task.task_id == task_id and task.round == round_num:
-                return task
-        raise CodingTaskNotFoundError(self.interview_id, task_id, round_num)
+        return self.find_next_pending_after(current_index)
 
 
 @dataclass(frozen=True, slots=True)

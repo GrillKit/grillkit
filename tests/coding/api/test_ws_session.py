@@ -8,8 +8,8 @@ import pytest
 
 from app.coding.api.ws_session import CodingWebSocketService
 from app.coding.domain.exceptions import CodingTaskNotCurrentError
-from app.coding.services.events import CodingFeedbackEvent
-from app.interview.services.events import AnswerSavedEvent, EvaluatingEvent
+from app.coding.support.events import CodingFeedbackEvent
+from app.interview.domain.events import AnswerSavedEvent, EvaluatingEvent
 from tests.fakes import FakeProvider
 
 

@@ -27,7 +27,7 @@ class TestDashboardRouter:
             )(),
         ]
         with patch(
-            "app.interview.services.dashboard.DashboardBuilder.list_rows",
+            "app.interview.queries.dashboard.DashboardBuilder.list_rows",
             return_value=mock_rows,
         ):
             response = client.get("/")
@@ -38,7 +38,7 @@ class TestDashboardRouter:
     def test_dashboard_returns_html(self, client):
         """Dashboard always returns HTML, even without provider config."""
         with patch(
-            "app.interview.services.dashboard.DashboardBuilder.list_rows",
+            "app.interview.queries.dashboard.DashboardBuilder.list_rows",
             return_value=[],
         ):
             response = client.get("/")

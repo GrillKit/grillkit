@@ -9,6 +9,7 @@ own repository accessors (for example ``InterviewUnitOfWork``).
 
 from __future__ import annotations
 
+from types import TracebackType
 from typing import Self
 
 from sqlalchemy.orm import Session
@@ -18,6 +19,8 @@ from app.shared.infrastructure import database
 
 class UnitOfWork:
     """Base unit of work — session and transaction lifecycle only.
+
+    Subclasses expose lazy repository accessors bound to ``self.session``.
 
     Usage::
 
@@ -72,7 +75,7 @@ class UnitOfWork:
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: object,
+        exc_tb: TracebackType | None,
     ) -> None:
         try:
             if exc_type is None and self._auto_commit:

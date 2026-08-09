@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pydantic models and mappers for the platform feature."""
 
-from typing import TYPE_CHECKING
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.question_voice.schemas import PiperVoiceStatusRead
@@ -12,9 +10,6 @@ from app.shared.speech_models import (
     SpeechModelSpec,
 )
 from app.speech.schemas.status import WhisperModelStatusRead
-
-if TYPE_CHECKING:
-    from app.platform.services.config import AppConfig
 
 
 class AppConfigRead(BaseModel):
@@ -184,35 +179,6 @@ class NewLLMModel(BaseModel):
             stripped = value.strip()
             return stripped or None
         return str(value).strip() or None
-
-
-def app_config_read_from(
-    config: "AppConfig",
-    *,
-    mask_secret: bool = False,
-) -> AppConfigRead:
-    """Map a ``AppConfig`` service entity to a template read model.
-
-    Args:
-        config: Loaded or submitted provider configuration.
-        mask_secret: Whether to mask the API key for display.
-
-    Returns:
-        Immutable read model for templates.
-    """
-    data = config.to_dict(mask_secret=mask_secret)
-    return AppConfigRead(
-        provider_type=str(data["provider_type"]),
-        base_url=str(data["base_url"]),
-        model=str(data["model"]),
-        api_key=data.get("api_key"),
-        timeout=float(data["timeout"]),
-        locale=str(data["locale"]),
-        speech_model_size=str(data["speech_model_size"]),
-        question_voice_enabled=bool(data["question_voice_enabled"]),
-        tts_voice_id=str(data["tts_voice_id"]),
-        llm_preset_id=data.get("llm_preset_id"),
-    )
 
 
 def speech_model_specs_for_config() -> dict[str, SpeechModelSpecRead]:

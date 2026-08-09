@@ -10,7 +10,7 @@ from app.interview.domain.exceptions import (
     InterviewNotActiveError,
     InterviewNotFoundError,
 )
-from app.interview.services.ai_errors import ai_error_message_for_client
+from app.interview.support.ai_errors import ai_error_message_for_client
 from app.theory.api.ws_protocol import domain_error_to_wire
 from app.theory.domain.exceptions import (
     TheoryTaskNotFoundError,

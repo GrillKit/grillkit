@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for WebSocket protocol mapping."""
 
-from app.interview.services.events import (
+from app.interview.domain.events import (
     AnswerFeedbackEvent,
     AnswerSavedEvent,
     EvaluatingEvent,

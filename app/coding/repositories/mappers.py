@@ -264,7 +264,7 @@ def code_run_attempt_from_orm(row: OrmCodeRunAttempt) -> DomainCodeRunAttempt:
     return DomainCodeRunAttempt(
         id=row.id,
         coding_task_id=row.coding_task_id,
-        attempt_no=row.attempt_no or 0,
+        attempt_no=row.attempt_no,
         source_code=row.source_code,
         language=row.language,
         status=status,

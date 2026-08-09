@@ -5,7 +5,7 @@
 from unittest.mock import patch
 
 from app.ai.llm_models import LLMModelEntry
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 
 
 class TestFirstTimeConfigFlow:
@@ -26,11 +26,11 @@ class TestFirstTimeConfigFlow:
         """S1.1: GET / renders dashboard even without provider config."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
             patch(
-                "app.interview.services.dashboard.DashboardBuilder.list_rows",
+                "app.interview.queries.dashboard.DashboardBuilder.list_rows",
                 return_value=[],
             ),
         ):
@@ -41,7 +41,7 @@ class TestFirstTimeConfigFlow:
     def test_setup_redirects_without_config(self, client):
         """S1.2: GET /setup redirects to /config when no provider config."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=None,
         ):
             response = client.get("/setup", follow_redirects=False)
@@ -51,7 +51,7 @@ class TestFirstTimeConfigFlow:
     def test_config_save_empty_fields_returns_422(self, client):
         """S1.3: POST /config with empty required fields returns 422 validation error."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=None,
         ):
             response = client.post(
@@ -70,7 +70,7 @@ class TestFirstTimeConfigFlow:
         """S1.4: Save with unreachable Ollama shows connection error."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="local",
             ),
             patch(
@@ -78,7 +78,7 @@ class TestFirstTimeConfigFlow:
                 return_value=None,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(False, "Connection refused"),
             ),
         ):
@@ -103,7 +103,7 @@ class TestFirstTimeConfigFlow:
         """S1.5: POST /config/test returns success with valid provider."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -111,7 +111,7 @@ class TestFirstTimeConfigFlow:
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "Connection successful"),
             ),
         ):
@@ -131,7 +131,7 @@ class TestFirstTimeConfigFlow:
         """S1.5: POST /config/test returns error with invalid provider."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -139,7 +139,7 @@ class TestFirstTimeConfigFlow:
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(False, "Invalid API key"),
             ),
         ):
@@ -159,15 +159,15 @@ class TestFirstTimeConfigFlow:
         """S1.6: Add a new model to catalog via POST /config/llm-models."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.test_catalog_model",
+                "app.platform.domain.config.ConfigService.test_catalog_model",
                 return_value=(True, "OK"),
             ),
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
             patch(
-                "app.platform.services.llm_catalog.LLMCatalogService.add_user_model",
+                "app.platform.domain.llm_catalog.LLMCatalogService.add_user_model",
                 return_value=self._catalog_entry(),
             ) as mock_add,
         ):
@@ -189,11 +189,11 @@ class TestFirstTimeConfigFlow:
         """S1.6: Adding model with invalid URL fails validation."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.test_catalog_model",
+                "app.platform.domain.config.ConfigService.test_catalog_model",
                 return_value=(False, "Connection refused"),
             ),
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
         ):
@@ -214,7 +214,7 @@ class TestFirstTimeConfigFlow:
         """S1.7: Save valid config and verify success response."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -222,14 +222,12 @@ class TestFirstTimeConfigFlow:
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
             patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
-            patch(
-                "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save"
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save"
             ),
         ):
             response = client.post(
@@ -255,7 +253,7 @@ class TestFirstTimeConfigFlow:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
             patch(
@@ -279,7 +277,7 @@ class TestFirstTimeConfigFlow:
         """S1.9: DELETE /config then GET /setup redirects to /config."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.delete_config"
+                "app.platform.domain.config.ConfigService.delete_config"
             ) as mock_delete,
         ):
             response = client.delete("/config")
@@ -288,7 +286,7 @@ class TestFirstTimeConfigFlow:
 
         # After deletion, setup should redirect
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=None,
         ):
             response = client.get("/setup", follow_redirects=False)

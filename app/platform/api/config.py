@@ -9,16 +9,16 @@ from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
 from app.platform.api.deps import ConfigServiceDep
+from app.platform.domain.config import AppConfig, ConfigService
+from app.platform.domain.llm_catalog import LLMCatalogService
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
+from app.platform.queries.config_form import ConfigFormService
+from app.platform.queries.platform_page import ConfigPageService
 from app.platform.schemas import NewLLMModel
-from app.platform.services.config import AppConfig, ConfigService
-from app.platform.services.config_form import ConfigFormService
-from app.platform.services.llm_catalog import LLMCatalogService
-from app.platform.services.page import ConfigPageService
-from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
+from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
 from app.shared.locales import DEFAULT_LOCALE
 from app.shared.speech_models import DEFAULT_SPEECH_MODEL_SIZE
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.services.whisper_model import WhisperModelService
 from app.templating import templates
 
 router = APIRouter(prefix="/config", tags=["config"])

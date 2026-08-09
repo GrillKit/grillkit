@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.coding.schemas.coding import CodingTaskRead
 from app.theory.schemas.theory import TheoryTaskRead
 
 AnswerRead = TheoryTaskRead
@@ -24,7 +25,8 @@ class InterviewRead(BaseModel):
         question_ids: JSON list of question IDs in display order.
         question_count: Number of questions in this interview.
         question_time_limit_seconds: Per-round time limit, or None when disabled.
-        answers: Answer rounds in display order.
+        answers: Theory answer rounds in display order.
+        coding_tasks: Coding task rounds in display order.
         score: Final session score when completed.
         overall_feedback: Parsed overall evaluation payload when completed.
         started_at: When the session began.
@@ -41,6 +43,7 @@ class InterviewRead(BaseModel):
     question_count: int
     question_time_limit_seconds: int | None
     answers: list[AnswerRead]
+    coding_tasks: list[CodingTaskRead] = []
     score: int | None = None
     overall_feedback: dict[str, Any] | None = None
     started_at: datetime | None = None

@@ -11,12 +11,12 @@ from dataclasses import replace
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.coding.services.availability import (
+from app.coding.support.coding_availability import (
     is_coding_available_async,
 )
-from app.interview.api.deps import SessionCreationServiceDep
+from app.interview.api.deps import CreateSessionDep
 from app.interview.api.setup_form import setup_form_context
-from app.interview.services.rules.selection import (
+from app.interview.domain.rules.selection import (
     parse_session_json,
     validate_session_selection,
 )
@@ -24,7 +24,7 @@ from app.platform.api.deps import ConfigServiceDep
 from app.shared import coding as coding_bank
 from app.shared.questions import list_categories, list_levels, list_tracks
 from app.speech.api.deps import WhisperModelServiceDep
-from app.speech.services.page import SpeechModelPageService
+from app.speech.queries.speech_page import SpeechModelPageService
 from app.templating import templates
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -165,7 +165,7 @@ async def setup_coding_available() -> JSONResponse:
 async def create_interview(
     request: Request,
     config_service: ConfigServiceDep,
-    session_creation: SessionCreationServiceDep,
+    session_creation: CreateSessionDep,
     whisper_model_service: WhisperModelServiceDep,
     selection_json: str = Form(...),
     question_count: int = Form(5),

@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
-from app.platform.services.config import AppConfig
-from app.speech.services.whisper_model import WhisperModelService
-from app.speech.services.whisper_runtime import WhisperRuntime
+from app.platform.domain.config import AppConfig
+from app.shared.infrastructure.gateways.whisper import WhisperGateway as WhisperRuntime
+from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
 
 
 @pytest.fixture(autouse=True)
@@ -26,10 +26,13 @@ class TestSpeechModelApi:
         """Status endpoint falls back to default size when config is unset."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
         ):
             response = client.get(
                 "/speech/model/status",
@@ -44,10 +47,13 @@ class TestSpeechModelApi:
         """Status endpoint honors size query param before config is saved."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
         ):
             response = client.get(
                 "/speech/model/status?size=medium",
@@ -67,10 +73,13 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
         ):
             response = client.get(
                 "/speech/model/status?size=medium&locale=ru",
@@ -92,10 +101,13 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
         ):
             response = client.get(
                 "/speech/model/status",
@@ -110,10 +122,13 @@ class TestSpeechModelApi:
         """Download endpoint schedules work before provider config is saved."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
             patch.object(
                 WhisperModelService,
                 "_run_download",
@@ -138,10 +153,13 @@ class TestSpeechModelApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
-            patch("app.speech.services.whisper_model.is_installed", return_value=False),
+            patch(
+                "app.shared.infrastructure.gateways.whisper_storage.is_installed",
+                return_value=False,
+            ),
             patch.object(
                 WhisperModelService,
                 "_run_download",

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from app.interview.domain.value_objects import (
     InterviewSelection,
@@ -269,6 +269,7 @@ def session_from_payload(
         session_mode = data.get("session_mode")
         if not isinstance(session_mode, str) or session_mode not in _SESSION_MODES:
             raise ValueError("Invalid selection_spec: session_mode required")
+        validated_mode: SessionMode = cast(SessionMode, session_mode)
         exclude_known = data.get("exclude_known", True)
         if not isinstance(exclude_known, bool):
             raise ValueError("Invalid selection_spec: exclude_known must be boolean")
@@ -277,17 +278,17 @@ def session_from_payload(
         if not isinstance(theory_raw, dict) or not isinstance(coding_raw, dict):
             raise ValueError("Invalid selection_spec: theory and coding required")
         session = SessionSelection(
-            session_mode=session_mode,  # type: ignore[arg-type]
+            session_mode=validated_mode,
             exclude_known=exclude_known,
             theory=_parse_branch_payload(
                 theory_raw,
                 branch_name="theory",
-                default_enabled=_branch_enabled_for_mode(session_mode, "theory"),  # type: ignore[arg-type]
+                default_enabled=_branch_enabled_for_mode(validated_mode, "theory"),
             ),
             coding=_parse_branch_payload(
                 coding_raw,
                 branch_name="coding",
-                default_enabled=_branch_enabled_for_mode(session_mode, "coding"),  # type: ignore[arg-type]
+                default_enabled=_branch_enabled_for_mode(validated_mode, "coding"),
             ),
         )
         return _normalize_session_selection(session)

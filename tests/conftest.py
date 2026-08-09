@@ -13,12 +13,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.coding.domain.value_objects import CodingRunResult
-from app.coding.services.judge0_client import Judge0Client, Judge0SubmissionResult
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.main import create_app
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.shared.infrastructure import models  # noqa: F401 - registers all ORM models
 from app.shared.infrastructure.database import Base
+from app.shared.infrastructure.gateways.judge0 import (
+    Judge0Gateway,
+    Judge0SubmissionResult,
+)
 from tests.fakes import FakeProvider
 
 
@@ -28,11 +31,11 @@ def client():
     with (
         patch("app.main.run_migrations"),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),
         ),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
         ),
     ):
         app = create_app()
@@ -87,19 +90,19 @@ def fake_ai_provider() -> Callable[[list[str]], FakeProvider]:
     return _make
 
 
-def fake_judge0_client(return_result: CodingRunResult | None = None) -> Judge0Client:
-    """Build a Judge0Client whose ``submit`` always returns a predetermined result.
+def fake_judge0_client(return_result: CodingRunResult | None = None) -> Judge0Gateway:
+    """Build a Judge0Gateway whose ``submit`` always returns a predetermined result.
 
     Args:
         return_result: Result returned by ``submit``; defaults to a fake success run.
 
     Returns:
-        Stubbed ``Judge0Client`` usable via ``CodingRunnerService.run_public_tests``.
+        Stubbed ``Judge0Gateway`` usable via ``CodingRunnerService.run_public_tests``.
     """
     from tests.helpers.fake_judge0 import fake_coding_run_result
 
     result = return_result or fake_coding_run_result()
-    client = Judge0Client(base_url="http://fake-judge0", timeout_seconds=5.0)
+    client = Judge0Gateway(base_url="http://fake-judge0", timeout_seconds=5.0)
 
     async def _stub_submit(**_kwargs: Any) -> Judge0SubmissionResult:
         # Map CodingRunResult back to Judge0SubmissionResult
@@ -131,7 +134,7 @@ def mock_judge0(monkeypatch):
     Yields:
         Callable ``(status=...) -> None`` that reconfigures the global patch.
     """
-    from app.coding.services.runner import CodingRunnerService
+    from app.coding.use_cases.run_tests import CodingRunnerService
     from tests.helpers.fake_judge0 import (
         FakeRunConfig,
         fake_coding_run_result,
@@ -145,7 +148,7 @@ def mock_judge0(monkeypatch):
         *,
         source_code: str,
         task_spec: dict[str, Any],
-        client: Judge0Client | None = None,
+        client: Judge0Gateway | None = None,
     ) -> CodingRunResult:
         del source_code, task_spec, client
         return _current_result
@@ -154,7 +157,7 @@ def mock_judge0(monkeypatch):
         *,
         source_code: str,
         task_spec: dict[str, Any],
-        client: Judge0Client | None = None,
+        client: Judge0Gateway | None = None,
     ) -> CodingRunResult:
         del source_code, task_spec, client
         return _current_result
@@ -192,7 +195,7 @@ def mock_judge0(monkeypatch):
 
 
 @pytest.fixture
-def override_ws_ai_provider() -> Callable:
+def override_ws_ai_provider() -> Callable[[TestClient, list[str]], FakeProvider]:
     """Override the interview WebSocket AI provider dependency on a test client.
 
     Returns:
@@ -200,13 +203,13 @@ def override_ws_ai_provider() -> Callable:
     """
     from app.interview.api.deps import get_ai_provider
 
-    def _apply(test_client, replies: list[str]) -> FakeProvider:
+    def _apply(test_client: TestClient, replies: list[str]) -> FakeProvider:
         provider = FakeProvider(replies)
 
         async def _dep():
             yield provider
 
-        test_client.app.dependency_overrides[get_ai_provider] = _dep
+        test_client.app.dependency_overrides[get_ai_provider] = _dep  # type: ignore[attr-defined]  # pyright: ignore
         return provider
 
     return _apply

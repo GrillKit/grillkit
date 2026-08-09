@@ -7,7 +7,9 @@ from fastapi.responses import Response
 
 from app.platform.api.deps import ConfigServiceDep
 from app.question_voice.api.deps import PiperVoiceServiceDep
-from app.question_voice.services.status import QuestionVoiceStatusService
+from app.question_voice.queries.voice_status import (
+    VoiceStatus as QuestionVoiceStatusService,
+)
 from app.shared.api.negotiated_response import negotiated_response
 
 router = APIRouter(prefix="/speech", tags=["question-voice"])

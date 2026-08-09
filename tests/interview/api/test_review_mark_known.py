@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Review mark-as-known integration tests."""
 
+from app.interview.repositories.known_questions import KnownQuestionsRepository
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.known_questions import KnownQuestionsService
 from tests.helpers.completed_session_seed import seed_completed_theory_interview
 
 
@@ -46,7 +46,7 @@ class TestReviewMarkKnown:
     def test_known_questions_manage_page(self, client, isolated_db):
         """GET /manage renders HTML table with known questions."""
         with InterviewUnitOfWork(auto_commit=True) as uow:
-            KnownQuestionsService(uow).mark_known("theory", "q-manage-1")
+            KnownQuestionsRepository(uow.session).mark("theory", "q-manage-1")
         response = client.get("/known-questions/manage")
         assert response.status_code == 200
         assert "q-manage-1" in response.text

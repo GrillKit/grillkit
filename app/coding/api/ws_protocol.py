@@ -10,8 +10,8 @@ from app.coding.schemas.ws import (
     EvaluatingMessage,
     coding_server_message_to_dict,
 )
-from app.coding.services.events import CodingFeedbackEvent
-from app.interview.services.events import (
+from app.coding.support.events import CodingFeedbackEvent
+from app.interview.domain.events import (
     AnswerSavedEvent,
     EvaluatingEvent,
     InterviewEvent,

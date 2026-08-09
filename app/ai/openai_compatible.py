@@ -7,15 +7,21 @@ OpenAI, Grok, Ollama, vLLM, and other OpenAI-compatible endpoints.
 """
 
 import base64
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Coroutine
 
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError, RateLimitError
 from openai.types.chat import ChatCompletionMessageParam
 
-from app.ai.base import AIProvider, GenerationResult, Message
+from app.ai.base import (
+    AIProvider,
+    AudioCapableProvider,
+    GenerationResult,
+    Message,
+    StreamingProvider,
+)
 
 
-class OpenAICompatibleProvider(AIProvider):
+class OpenAICompatibleProvider(AIProvider, StreamingProvider, AudioCapableProvider):
     """Provider for any OpenAI-compatible API.
 
     Covers: OpenAI, Grok, Ollama, vLLM, and other OpenAI-compatible endpoints.
@@ -59,6 +65,30 @@ class OpenAICompatibleProvider(AIProvider):
         """Check if provider supports streaming."""
         return True
 
+    async def _call_api[T](
+        self,
+        operation: Callable[[], Coroutine[None, None, T]],
+    ) -> T:
+        """Execute an OpenAI call and map SDK errors to ``ValueError``.
+
+        Args:
+            operation: Coroutine factory performing the SDK call.
+
+        Returns:
+            The SDK call result.
+
+        Raises:
+            ValueError: On auth failure, rate limit, or other API errors.
+        """
+        try:
+            return await operation()
+        except AuthenticationError as e:
+            raise ValueError("Invalid API key") from e
+        except RateLimitError as e:
+            raise ValueError("Rate limit exceeded") from e
+        except OpenAIError as e:
+            raise ValueError(f"API error: {e}") from e
+
     def _format_messages(
         self, messages: list[Message]
     ) -> list[ChatCompletionMessageParam]:
@@ -91,20 +121,15 @@ class OpenAICompatibleProvider(AIProvider):
         Raises:
             ValueError: If authentication fails, rate limit exceeded, or API error occurs.
         """
-        try:
-            response = await self.client.chat.completions.create(
+        response = await self._call_api(
+            lambda: self.client.chat.completions.create(
                 model=self.model,
                 messages=self._format_messages(messages),
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=False,
             )
-        except AuthenticationError as e:
-            raise ValueError("Invalid API key") from e
-        except RateLimitError as e:
-            raise ValueError("Rate limit exceeded") from e
-        except OpenAIError as e:
-            raise ValueError(f"API error: {e}") from e
+        )
 
         choice = response.choices[0]
         content = choice.message.content or ""
@@ -158,20 +183,16 @@ class OpenAICompatibleProvider(AIProvider):
                 ],
             }
         )
-        try:
-            response = await self.client.chat.completions.create(
+
+        response = await self._call_api(
+            lambda: self.client.chat.completions.create(
                 model=self.model,
                 messages=api_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=False,
             )
-        except AuthenticationError as e:
-            raise ValueError("Invalid API key") from e
-        except RateLimitError as e:
-            raise ValueError("Rate limit exceeded") from e
-        except OpenAIError as e:
-            raise ValueError(f"API error: {e}") from e
+        )
 
         choice = response.choices[0]
         content = choice.message.content or ""
@@ -203,20 +224,15 @@ class OpenAICompatibleProvider(AIProvider):
         Raises:
             ValueError: If authentication fails, rate limit exceeded, or API error occurs.
         """
-        try:
-            stream = await self.client.chat.completions.create(
+        stream = await self._call_api(
+            lambda: self.client.chat.completions.create(
                 model=self.model,
                 messages=self._format_messages(messages),
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
             )
-        except AuthenticationError as e:
-            raise ValueError("Invalid API key") from e
-        except RateLimitError as e:
-            raise ValueError("Rate limit exceeded") from e
-        except OpenAIError as e:
-            raise ValueError(f"API error: {e}") from e
+        )
 
         async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:

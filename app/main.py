@@ -20,13 +20,30 @@ from app.interview.api import results as results_router
 from app.interview.api import routes as interview_router
 from app.interview.api import setup as setup_router
 from app.platform.api import config as config_router
-from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 from app.question_voice.api import routes as question_voice_router
 from app.shared.infrastructure.database import run_migrations
 from app.shared.paths import STATIC_DIR
 from app.speech.api import dictation as dictation_router
 from app.speech.api import routes as speech_router
 from app.theory.api import routes as theory_router
+
+
+def _get_app_version() -> str:
+    """Return the application version from package metadata.
+
+    Falls back to a hardcoded value when the package is not installed
+    (e.g., during development).
+
+    Returns:
+        Semantic version string.
+    """
+    try:
+        from importlib.metadata import version
+
+        return version("grillkit")
+    except Exception:
+        return "2026.6.12"
 
 
 @asynccontextmanager
@@ -50,7 +67,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="GrillKit",
         description="AI Interview Trainer",
-        version="2026.6.12",
+        version=_get_app_version(),
         lifespan=lifespan,
     )
 

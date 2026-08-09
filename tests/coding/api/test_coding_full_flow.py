@@ -4,8 +4,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+from app.coding.domain.evaluator_models import CodingAnswerEvaluation
 from app.coding.domain.value_objects import CodingRunResult
-from app.coding.services.evaluator.models import CodingAnswerEvaluation
 from tests.helpers.coding_seed import seed_active_coding_interview
 
 
@@ -56,7 +56,7 @@ class TestCodingFullFlow:
         override_ws_ai_provider(client, [])
         with (
             patch(
-                "app.coding.services.submission.CodingEvaluatorService.evaluate_submission",
+                "app.coding.use_cases.submit_solution.CodingEvaluator.evaluate_submission",
                 new=AsyncMock(return_value=(evaluation, False, None, None)),
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,

@@ -10,7 +10,7 @@ from app.interview.domain.value_objects import (
     TrackSelection,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from tests.helpers.known_questions_seed import seed_known_question
 
 
@@ -27,7 +27,7 @@ class TestSetupExcludeKnown:
 
     def test_exclude_known_reads_from_json(self, client, isolated_db):
         """selection_json with exclude_known=true is parsed correctly."""
-        from app.interview.services.rules.selection import parse_session_json
+        from app.interview.domain.rules.selection import parse_session_json
 
         raw = (
             '{"version":2,"session_mode":"theory_only","exclude_known":true,'
@@ -68,7 +68,7 @@ class TestSetupExcludeKnown:
             question_count=5,
         )
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=self._config(),
         ):
             response = client.post(

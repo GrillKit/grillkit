@@ -9,13 +9,13 @@ delegated to the service layer; theory transport lives under ``/theory/``.
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
-from app.interview.api.deps import SessionPageServiceDep
+from app.interview.api.deps import ActiveSessionPageDep
 from app.interview.api.errors import http_exception_from_domain_error
 from app.interview.domain.exceptions import InterviewDomainError
 from app.platform.api.deps import ConfigServiceDep
-from app.platform.services.speech_runtime import SpeechRuntimeCoordinator
-from app.question_voice.services.question_audio import get_question_audio_path
-from app.question_voice.services.tts_exceptions import (
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
+from app.question_voice.use_cases.generate_question_audio import GenerateQuestionAudio
+from app.shared.infrastructure.gateways.tts_exceptions import (
     QuestionVoiceDisabledError,
     QuestionVoiceSynthesisError,
 )
@@ -45,7 +45,7 @@ async def interview_page(
     interview_id: str,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
-    page_service: SessionPageServiceDep,
+    page_service: ActiveSessionPageDep,
 ) -> Response:
     """View an interview session.
 
@@ -107,7 +107,7 @@ async def question_audio(
         HTTPException: When voice is disabled, the session is invalid, or TTS fails.
     """
     try:
-        path = await get_question_audio_path(interview_id, answer_id)
+        path = await GenerateQuestionAudio.execute(interview_id, answer_id)
     except QuestionVoiceDisabledError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except QuestionVoiceSynthesisError as exc:

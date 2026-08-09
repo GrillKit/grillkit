@@ -39,11 +39,11 @@ def client():
     with (
         patch("app.main.run_migrations"),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.startup",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),
         ),
         patch(
-            "app.platform.services.speech_runtime.SpeechRuntimeCoordinator.unload_all",
+            "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
         ),
     ):
         app = create_app()
@@ -97,7 +97,7 @@ class TestTheoryWebSocket:
 
         with (
             patch(
-                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
+                "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.stream_answer_submission",
                 side_effect=mock_stream,
             ),
             client.websocket_connect("/interview/test-id/theory/ws") as ws,
@@ -127,7 +127,7 @@ class TestTheoryWebSocket:
         """Test WebSocket rejects answer on completed session."""
         with (
             patch(
-                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
+                "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotActiveError("test-id"), *args, **kwargs
                 ),
@@ -149,7 +149,7 @@ class TestTheoryWebSocket:
         """Test WebSocket returns error when session is not found."""
         with (
             patch(
-                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
+                "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     InterviewNotFoundError("test-id"), *args, **kwargs
                 ),
@@ -173,7 +173,7 @@ class TestTheoryWebSocket:
 
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.get_interview",
+                "app.interview.queries.loader.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
             client.websocket_connect("/interview/test-id/theory/ws") as ws,
@@ -189,7 +189,7 @@ class TestTheoryWebSocket:
 
         with (
             patch(
-                "app.interview.services.query.InterviewQuery.get_interview",
+                "app.interview.queries.loader.InterviewQuery.get_interview",
                 return_value=mock_session,
             ),
             client.websocket_connect("/interview/test-id/theory/ws") as ws,
@@ -203,7 +203,7 @@ class TestTheoryWebSocket:
         """Test WebSocket complete message triggers session completion."""
         with (
             patch(
-                "app.interview.services.completion.SessionCompletionService.complete_session",
+                "app.interview.use_cases.complete_session.CompleteInterviewSession.complete_session",
                 new_callable=AsyncMock,
                 return_value=[],
             ) as mock_complete,
@@ -223,7 +223,7 @@ class TestTheoryWebSocket:
         """Test WebSocket handles ValueError from service layer."""
         with (
             patch(
-                "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
+                "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.stream_answer_submission",
                 side_effect=lambda *args, **kwargs: _raising_answer_stream(
                     ValueError("Invalid question"), *args, **kwargs
                 ),

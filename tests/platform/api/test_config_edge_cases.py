@@ -5,7 +5,7 @@
 from unittest.mock import patch
 
 from app.ai.llm_models import LLMModelEntry
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 
 
 class TestConfigEdgeCases:
@@ -28,7 +28,7 @@ class TestConfigEdgeCases:
         """Locale change written to config and used in new sessions."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -36,16 +36,14 @@ class TestConfigEdgeCases:
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
         ):
             response = client.post(
                 "/config",
@@ -78,7 +76,7 @@ class TestConfigEdgeCases:
         )
 
         with patch(
-            "app.platform.services.config.ConfigService.delete_config"
+            "app.platform.domain.config.ConfigService.delete_config"
         ) as mock_delete:
             client.delete("/config")
             mock_delete.assert_called_once()
@@ -95,11 +93,11 @@ class TestConfigEdgeCases:
         """Adding model with unreachable URL fails validation."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.test_catalog_model",
+                "app.platform.domain.config.ConfigService.test_catalog_model",
                 return_value=(False, "Connection refused"),
             ),
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
         ):
@@ -131,15 +129,15 @@ class TestConfigEdgeCases:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.test_catalog_model",
+                "app.platform.domain.config.ConfigService.test_catalog_model",
                 return_value=(True, "OK"),
             ),
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
             patch(
-                "app.platform.services.llm_catalog.LLMCatalogService.add_user_model",
+                "app.platform.domain.llm_catalog.LLMCatalogService.add_user_model",
                 return_value=added_entry,
             ) as mock_add,
         ):
@@ -173,7 +171,7 @@ class TestConfigEdgeCases:
         )
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="local",
             ),
             patch(
@@ -181,12 +179,10 @@ class TestConfigEdgeCases:
                 return_value=ollama_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
         ):
             response = client.post(
                 "/config",
@@ -213,11 +209,11 @@ class TestConfigEdgeCases:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=existing,
             ),
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -225,12 +221,10 @@ class TestConfigEdgeCases:
                 return_value=self._catalog_entry(),
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
         ):
             response = client.post(
                 "/config",

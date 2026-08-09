@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Negative scenarios: 404s, bad UUID, bad WS msg, invalid WAV, active→results 404."""
 
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json
 from tests.helpers.interview_seed import persist_interview_with_answers
