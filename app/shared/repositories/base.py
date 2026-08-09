@@ -10,6 +10,7 @@ class that eliminates boilerplate for common CRUD operations.
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
@@ -102,4 +103,4 @@ class SqlAlchemyRepository[T](Repository[T], ABC):
         Returns:
             A list of model instances.
         """
-        return self._session.query(self._model).all()
+        return self._session.execute(select(self._model)).scalars().all()

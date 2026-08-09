@@ -6,21 +6,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from app.interview.domain.value_objects import InterviewSelection
-from app.shared.task_timer import (
-    DEFAULT_TIMEOUT_GRACE_SECONDS,
-)
-from app.shared.task_timer import (
-    is_timer_expired as shared_is_timer_expired,
-)
-from app.shared.task_timer import (
-    remaining_seconds as shared_remaining_seconds,
-)
-from app.shared.task_timer import (
-    timer_deadline as shared_timer_deadline,
-)
+from app.shared.section import Section
+from app.shared.timed_task import TimedTask
 from app.theory.domain.exceptions import (
     TheorySectionNotActiveError,
     TheoryTaskNotFoundError,
@@ -32,7 +22,7 @@ TheorySectionStatus = Literal["active", "completed", "skipped"]
 
 
 @dataclass(frozen=True, slots=True)
-class TheoryTask:
+class TheoryTask(TimedTask):
     """One answer round within a theory section.
 
     Attributes:
@@ -53,7 +43,6 @@ class TheoryTask:
     """
 
     TIME_EXPIRED_ANSWER_TEXT = "[Time expired]"
-    TIMEOUT_GRACE_SECONDS = DEFAULT_TIMEOUT_GRACE_SECONDS
     NEW_ID = 0
 
     id: int
@@ -71,91 +60,9 @@ class TheoryTask:
     created_at: datetime
     expected_points: tuple[str, ...] = ()
 
-    def timer_deadline(self, limit_seconds: int) -> datetime:
-        """Compute the absolute deadline for this timed task round.
-
-        Args:
-            limit_seconds: Allowed duration in seconds.
-
-        Returns:
-            Timezone-aware deadline timestamp.
-
-        Raises:
-            ValueError: If the round has no ``started_at`` timestamp.
-        """
-        if self.started_at is None:
-            raise ValueError("Theory task round has no started_at")
-        return shared_timer_deadline(
-            self.started_at,
-            limit_seconds,
-            label="Theory task",
-        )
-
-    def is_timer_expired(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-        *,
-        grace_seconds: int = TIMEOUT_GRACE_SECONDS,
-    ) -> bool:
-        """Return whether the per-round timer has elapsed.
-
-        Args:
-            limit_seconds: Configured limit for the section (None disables timer).
-            now: Current time (defaults to UTC now).
-            grace_seconds: Extra seconds allowed for network delay on timeout submit.
-
-        Returns:
-            True if the timer is enabled and the deadline plus grace has passed.
-        """
-        return shared_is_timer_expired(
-            self.started_at,
-            limit_seconds,
-            now,
-            grace_seconds=grace_seconds,
-        )
-
-    def remaining_seconds(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-    ) -> int | None:
-        """Return whole seconds left on the timer, or None if disabled.
-
-        Args:
-            limit_seconds: Configured limit for the section.
-            now: Current time (defaults to UTC now).
-
-        Returns:
-            Non-negative seconds remaining, or None when the timer is off.
-        """
-        return shared_remaining_seconds(self.started_at, limit_seconds, now)
-
-    def client_timeout_due(
-        self,
-        limit_seconds: int | None,
-        now: datetime | None = None,
-    ) -> bool:
-        """Return whether a client-sent timeout should be accepted.
-
-        Args:
-            limit_seconds: Configured limit for the section.
-            now: Current time (defaults to UTC now).
-
-        Returns:
-            True when the round timer has effectively expired for the client.
-        """
-        if limit_seconds is None or self.started_at is None:
-            return False
-        rem = self.remaining_seconds(limit_seconds, now)
-        return self.is_timer_expired(limit_seconds, now, grace_seconds=0) or (
-            rem is not None and rem <= 0
-        )
-
 
 @dataclass(frozen=True, slots=True)
-class TheorySection:
-    MAX_SCORE_PER_ROUND = 5
+class TheorySection(Section[TheoryTask]):
     """Theory section aggregate root.
 
     Attributes:
@@ -172,6 +79,7 @@ class TheorySection:
         tasks: Theory tasks in display order (order, then round).
     """
 
+    MAX_SCORE_PER_ROUND = 5  # pyright: ignore
     NEW_ID = 0
 
     id: int
@@ -186,6 +94,56 @@ class TheorySection:
     section_feedback: dict[str, object] | None
     tasks: tuple[TheoryTask, ...]
 
+    # ------------------------------------------------------------------
+    # Section abstract hooks
+    # ------------------------------------------------------------------
+    @property
+    def _completion_field_name(self) -> str:
+        return "answer_text"
+
+    @property
+    def _task_id_field(self) -> str:
+        return "question_id"
+
+    def _task_not_found_error(self, task_id: str, round_num: int) -> Exception:
+        return TheoryTaskNotFoundError(self.interview_id, task_id, round_num)
+
+    def _timeout_replacement_fields(
+        self, task: TheoryTask, feedback: str
+    ) -> dict[str, Any]:
+        return {
+            "answer_text": TheoryTask.TIME_EXPIRED_ANSWER_TEXT,
+            "score": 0,
+            "feedback": feedback,
+        }
+
+    def _create_follow_up(
+        self,
+        base: TheoryTask,
+        next_round: int,
+        prompt_text: str,
+        **kwargs: Any,
+    ) -> TheoryTask:
+        return TheoryTask(
+            id=TheoryTask.NEW_ID,
+            theory_section_id=self.id,
+            interview_id=self.interview_id,
+            question_id=base.question_id,
+            order=base.order,
+            round=next_round,
+            question_text=prompt_text,
+            question_code=base.question_code,
+            answer_text=None,
+            score=None,
+            feedback=None,
+            started_at=None,
+            created_at=datetime.now(UTC),
+            expected_points=base.expected_points,
+        )
+
+    # ------------------------------------------------------------------
+    # Factory
+    # ------------------------------------------------------------------
     @classmethod
     def start(
         cls,
@@ -259,6 +217,9 @@ class TheorySection:
             tasks=tuple(tasks),
         )
 
+    # ------------------------------------------------------------------
+    # Domain-specific behaviour
+    # ------------------------------------------------------------------
     def ensure_active(self) -> None:
         """Ensure this theory section accepts new task submissions.
 
@@ -267,90 +228,6 @@ class TheorySection:
         """
         if self.status != "active":
             raise TheorySectionNotActiveError(self.interview_id)
-
-    def find_first_unanswered(self) -> TheoryTask | None:
-        """Return the first unanswered task in display order.
-
-        Returns:
-            The first task with ``answer_text`` unset, or None when all are answered.
-        """
-        for task in self.tasks:
-            if task.answer_text is None:
-                return task
-        return None
-
-    def is_complete(self) -> bool:
-        """Return whether every task in this section has been answered.
-
-        Returns:
-            True when there is at least one task and none remain unanswered.
-        """
-        return bool(self.tasks) and self.find_first_unanswered() is None
-
-    def total_score(self) -> int:
-        """Sum scores from all answered task rounds in this section.
-
-        Returns:
-            Total earned points across answered rounds.
-        """
-        return sum(
-            (task.score or 0) for task in self.tasks if task.answer_text is not None
-        )
-
-    def max_score(self) -> int:
-        """Compute maximum achievable score for answered rounds in this section.
-
-        Returns:
-            Maximum possible points for rounds with user answers.
-        """
-        answered_rounds = sum(1 for task in self.tasks if task.answer_text is not None)
-        return self.MAX_SCORE_PER_ROUND * answered_rounds
-
-    def with_cached_section_feedback(
-        self,
-        feedback: dict[str, object],
-        *,
-        section_score: int,
-    ) -> TheorySection:
-        """Return aggregate with prefetched section feedback when not already cached.
-
-        Args:
-            feedback: Parsed section evaluation payload.
-            section_score: Aggregated section score.
-
-        Returns:
-            Updated aggregate, or ``self`` when feedback is already cached.
-        """
-        if self.section_feedback is not None:
-            return self
-        return replace(
-            self,
-            section_feedback=feedback,
-            section_score=section_score,
-        )
-
-    def start_timer_for_task(
-        self, task_id: int, when: datetime | None = None
-    ) -> TheorySection:
-        """Start the per-round timer on a task when the section has a limit.
-
-        Args:
-            task_id: Primary key of the task row to activate.
-            when: Timestamp to set (defaults to UTC now).
-
-        Returns:
-            A new aggregate with ``started_at`` set on the target task when applicable.
-        """
-        if self.task_time_limit_seconds is None:
-            return self
-        started_at = when or datetime.now(UTC)
-        tasks = tuple(
-            replace(task, started_at=started_at)
-            if task.id == task_id and task.started_at is None
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
 
     def with_task_text(self, task_id: int, text: str) -> TheorySection:
         """Return aggregate with user answer text on the given task.
@@ -368,97 +245,6 @@ class TheorySection:
         )
         return replace(self, tasks=tasks)
 
-    def with_timed_out_round(self, task_id: int, feedback: str) -> TheorySection:
-        """Return aggregate with a timed-out round scored zero.
-
-        Args:
-            task_id: Primary key of the task row that expired.
-            feedback: User-facing timeout feedback text.
-
-        Returns:
-            A new aggregate with timeout marker text, score 0, and feedback.
-        """
-        tasks = tuple(
-            replace(
-                task,
-                answer_text=TheoryTask.TIME_EXPIRED_ANSWER_TEXT,
-                score=0,
-                feedback=feedback,
-            )
-            if task.id == task_id
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
-
-    def with_evaluation(
-        self, question_id: str, round_num: int, score: int, feedback: str
-    ) -> TheorySection:
-        """Return aggregate with AI score and feedback on one task round.
-
-        Args:
-            question_id: YAML question ID.
-            round_num: Follow-up round (0 = initial).
-            score: AI score for the round.
-            feedback: AI feedback text.
-
-        Returns:
-            A new aggregate with evaluation fields set on the target task.
-        """
-        target = self.find_task(question_id, round_num)
-        tasks = tuple(
-            replace(task, score=score, feedback=feedback)
-            if task.id == target.id
-            else task
-            for task in self.tasks
-        )
-        return replace(self, tasks=tasks)
-
-    def max_round_for_question(self, question_id: str) -> int:
-        """Return the highest follow-up round number for a question.
-
-        Args:
-            question_id: YAML question ID.
-
-        Returns:
-            Maximum ``round`` value among tasks for the question, or 0 when none exist.
-        """
-        rounds = [task.round for task in self.tasks if task.question_id == question_id]
-        return max(rounds) if rounds else 0
-
-    def with_follow_up(
-        self, question_id: str, question_text: str
-    ) -> tuple[TheorySection, TheoryTask]:
-        """Return aggregate with a new unanswered follow-up task row.
-
-        Args:
-            question_id: YAML question ID for the follow-up chain.
-            question_text: Follow-up question text shown to the user.
-
-        Returns:
-            Tuple of updated aggregate and the pending follow-up task (``id`` is ``NEW_ID``).
-        """
-        base = self.find_task(question_id, 0)
-        next_round = self.max_round_for_question(question_id) + 1
-        created_at = datetime.now(UTC)
-        follow_up = TheoryTask(
-            id=TheoryTask.NEW_ID,
-            theory_section_id=self.id,
-            interview_id=self.interview_id,
-            question_id=question_id,
-            order=base.order,
-            round=next_round,
-            question_text=question_text,
-            question_code=base.question_code,
-            answer_text=None,
-            score=None,
-            feedback=None,
-            started_at=None,
-            created_at=created_at,
-            expected_points=base.expected_points,
-        )
-        return replace(self, tasks=self.tasks + (follow_up,)), follow_up
-
     def find_unanswered_for_question(self, question_id: str) -> TheoryTask:
         """Return the unanswered task row for a question (any follow-up round).
 
@@ -475,35 +261,3 @@ class TheorySection:
             if task.question_id == question_id and task.answer_text is None:
                 return task
         raise UnansweredTaskNotFoundError(self.interview_id, question_id)
-
-    def find_task(self, question_id: str, round_num: int) -> TheoryTask:
-        """Return the task row for a question and follow-up round.
-
-        Args:
-            question_id: YAML question ID.
-            round_num: Follow-up round (0 = initial).
-
-        Returns:
-            The matching task row.
-
-        Raises:
-            TheoryTaskNotFoundError: If no row matches the keys.
-        """
-        for task in self.tasks:
-            if task.question_id == question_id and task.round == round_num:
-                return task
-        raise TheoryTaskNotFoundError(self.interview_id, question_id, round_num)
-
-    def find_next_unanswered_after(self, current_index: int) -> TheoryTask | None:
-        """Return the next unanswered task after a position in the task list.
-
-        Args:
-            current_index: Index of the current task in ``tasks``.
-
-        Returns:
-            The next unanswered task, or None if none remain.
-        """
-        for task in self.tasks[current_index + 1 :]:
-            if task.answer_text is None:
-                return task
-        return None

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.question_voice.schemas import PiperVoiceStatusRead
 
 
@@ -43,11 +43,11 @@ class TestTtsStatusRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=missing,
             ),
         ):
@@ -74,11 +74,11 @@ class TestTtsStatusRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=ready,
             ),
         ):
@@ -105,11 +105,11 @@ class TestTtsStatusRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=ready,
             ),
         ):
@@ -130,11 +130,11 @@ class TestTtsStatusRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=missing,
             ) as get_status,
         ):
@@ -161,11 +161,11 @@ class TestTtsStatusRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=missing,
             ) as get_status,
         ):
@@ -195,11 +195,11 @@ class TestTtsVoiceDownloadRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=downloading,
             ) as start_download,
@@ -227,11 +227,11 @@ class TestTtsVoiceDownloadRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=downloading,
             ) as start_download,
@@ -259,11 +259,11 @@ class TestTtsVoiceDownloadRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=downloading,
             ) as start_download,
@@ -292,11 +292,11 @@ class TestTtsVoiceDownloadRoute:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=downloading,
             ),

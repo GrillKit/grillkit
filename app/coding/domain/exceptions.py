@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Coding domain exceptions."""
 
+from app.interview.domain.exceptions import InterviewDomainError
 
-class CodingDomainError(Exception):
+
+class CodingDomainError(InterviewDomainError):
     """Base class for coding-related domain errors."""
 
 

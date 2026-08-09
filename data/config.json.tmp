@@ -1,7 +1,0 @@
-{
-  "timeout": 120.0,
-  "locale": "ru",
-  "speech_model_size": "medium",
-  "question_voice_enabled": false,
-  "tts_voice_id": "ru_RU-irina-medium"
-}

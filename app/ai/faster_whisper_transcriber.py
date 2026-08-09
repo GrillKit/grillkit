@@ -52,7 +52,7 @@ class FasterWhisperTranscriber:
             result = "".join((segment.text or "") for segment in segment_list).strip()
             logger.info(
                 "Whisper transcript: language=%s segments=%d result=%r",
-                info.language,
+                getattr(info, "language", language) if info is not None else language,
                 len(segment_list),
                 result,
             )

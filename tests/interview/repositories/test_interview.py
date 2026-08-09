@@ -10,8 +10,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.interview.domain.entities import Interview as DomainInterview
 from app.interview.domain.value_objects import SessionSelection, TrackSelection
+from app.interview.queries.projection import assemble_interview_read
 from app.interview.repositories.interview import InterviewRepository
-from app.interview.services.read_model import assemble_interview_read
 from app.shared.infrastructure.database import Base
 from app.shared.infrastructure.models import Answer, Interview
 from app.shared.repositories.base import SqlAlchemyRepository

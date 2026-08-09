@@ -9,9 +9,10 @@ import pytest
 
 from app.ai.audio_probe import minimal_wav_bytes
 from app.ai.llm_models import LLMModelEntry
+from app.interview.queries.session_page import ActiveSessionPage as SessionPageService
+from app.interview.queries.session_page import SessionPageRender
 from app.interview.schemas.interview import AnswerRead, InterviewRead
-from app.interview.services.page import SessionPageRender, SessionPageService
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.question_voice.schemas import QuestionVoicePageContext
 from app.speech.schemas.page import SpeechModelPageContext
 from app.speech.schemas.status import WhisperModelStatusRead
@@ -21,7 +22,7 @@ from tests.helpers.selection import minimal_selection_spec
 from tests.helpers.transcription import FakeTranscriber
 
 
-def _parse_ndjson(body: str) -> list[dict]:
+def _parse_ndjson(body: str) -> list[dict[str, object]]:
     """Parse NDJSON response text into message dicts."""
     return [json.loads(line) for line in body.strip().split("\n") if line.strip()]
 
@@ -58,10 +59,10 @@ def _question_voice_page_context() -> QuestionVoicePageContext:
     )
 
 
-def _full_template_context(page_context) -> dict:
+def _full_template_context(page_context: object) -> dict[str, object]:
     """Merge interview, speech, and question-voice keys for page tests."""
     return {
-        **page_context.model_dump(),
+        **page_context.model_dump(),  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue]
         **_speech_model_page_context().model_dump(),
         **_question_voice_page_context().model_dump(),
     }
@@ -73,7 +74,7 @@ def _active_interview_read(interview_id: str) -> InterviewRead:
         id=interview_id,
         status="active",
         locale="en",
-        selection_spec=minimal_selection_spec(categories=["basics"]),
+        selection_spec=minimal_selection_spec(categories=("basics",)),
         question_ids='["q1"]',
         question_count=1,
         question_time_limit_seconds=None,
@@ -110,7 +111,7 @@ class TestAudioAnswerApi:
     ):
         """Successful upload returns saved, evaluating, transcript, and feedback lines."""
         monkeypatch.setattr(
-            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
+            "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         interview_id = seed_two_question_interview("audio-api-1")
@@ -143,7 +144,7 @@ class TestAudioAnswerApi:
     ):
         """Invalid WAV payloads return HTTP 400 before streaming."""
         monkeypatch.setattr(
-            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
+            "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         interview_id = seed_two_question_interview("audio-api-invalid")
@@ -163,7 +164,7 @@ class TestAudioAnswerApi:
         """HTTP 400 when the configured catalog model does not accept audio."""
         interview_id = seed_two_question_interview("audio-api-disabled")
         monkeypatch.setattr(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             lambda: AppConfig(
                 provider_type="openai-compatible",
                 base_url="http://localhost",
@@ -172,7 +173,7 @@ class TestAudioAnswerApi:
             ),
         )
         monkeypatch.setattr(
-            "app.platform.services.llm_catalog.LLMCatalogService.get_model",
+            "app.platform.domain.llm_catalog.LLMCatalogService.get_model",
             lambda preset_id: LLMModelEntry(
                 id=preset_id,
                 display_name="Text only",
@@ -199,7 +200,7 @@ class TestAudioAnswerApi:
     ):
         """HTTP 503 when Whisper is not loaded on the application."""
         monkeypatch.setattr(
-            "app.theory.services.submission.TheorySubmissionService.require_audio_answer_enabled",
+            "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.require_audio_answer_enabled",
             staticmethod(lambda: None),
         )
         override_ws_ai_provider(client, [])
@@ -208,7 +209,7 @@ class TestAudioAnswerApi:
         wav_bytes = minimal_wav_bytes()
 
         with patch(
-            "app.speech.services.transcriber_resolver.is_installed",
+            "app.speech.domain.transcriber_resolver.is_installed",
             return_value=False,
         ):
             response = client.post(
@@ -231,7 +232,7 @@ class TestInterviewAudioAnswerPage:
         del isolated_db
         interview = _active_interview_read("audio-ui-1")
         monkeypatch.setattr(
-            "app.interview.services.page.LLMCatalogService.get_model",
+            "app.interview.queries.session_page.LLMCatalogService.get_model",
             lambda preset_id: LLMModelEntry(
                 id=preset_id,
                 display_name="Audio model",
@@ -255,7 +256,7 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.services.page.SessionPageService.prepare_page",
+                "app.interview.queries.session_page.ActiveSessionPage.prepare_page",
                 new=AsyncMock(
                     return_value=SessionPageRender(
                         redirect_url=None,
@@ -290,7 +291,7 @@ class TestInterviewAudioAnswerPage:
 
         with (
             patch(
-                "app.interview.services.page.SessionPageService.prepare_page",
+                "app.interview.queries.session_page.ActiveSessionPage.prepare_page",
                 new=AsyncMock(
                     return_value=SessionPageRender(
                         redirect_url=None,

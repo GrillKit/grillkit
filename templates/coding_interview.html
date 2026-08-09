@@ -68,10 +68,6 @@
                 </div>
                 <div class="coding-session__assignment" id="coding-task-prompt">{{ coding.current_task.prompt_text }}</div>
             </div>
-            <aside class="coding-session__runs" id="coding-runs-panel" hidden>
-                <div class="coding-session__runs-header">Run results</div>
-                <div class="coding-session__output" id="coding-output" aria-live="polite"></div>
-            </aside>
         </aside>
 
         <div class="coding-session__workspace" id="coding-workspace">
@@ -86,6 +82,14 @@
             </div>
         </div>
     </div>
+
+    <section class="coding-session__runs" id="coding-runs-panel" hidden aria-live="polite">
+        <div class="coding-session__runs-header">
+            <span>Run results</span>
+            <button type="button" id="coding-runs-toggle" class="coding-session__runs-toggle" aria-expanded="false">Show</button>
+        </div>
+        <div class="coding-session__output" id="coding-output"></div>
+    </section>
 
     <footer class="coding-session__footer">
         <div id="coding-evaluating-indicator" class="evaluating-indicator coding-session__evaluating" hidden>

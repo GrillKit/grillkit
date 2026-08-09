@@ -3,7 +3,7 @@
 """Theory section HTTP and WebSocket transport."""
 
 import logging
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -18,34 +18,18 @@ from fastapi.responses import StreamingResponse
 
 from app.interview.api.deps import (
     AIProviderDep,
-    InterviewQueryDep,
-    SessionCompletionServiceDep,
+    CompleteSessionDep,
+    InterviewLoaderDep,
     SpeechTranscriberDep,
     TheorySubmissionServiceDep,
 )
+from app.shared.api.negotiated_response import safe_send_json
 from app.theory.api.audio_answer import TheoryAudioAnswerAdapter
 from app.theory.api.ws_session import TheoryWebSocketService
 
 router = APIRouter(prefix="/interview", tags=["theory"])
 
 logger = logging.getLogger(__name__)
-
-
-async def _safe_send_json(websocket: WebSocket, message: dict[str, Any]) -> bool:
-    """Send a JSON message, returning False if the client already disconnected.
-
-    Args:
-        websocket: Active theory WebSocket.
-        message: Payload to send.
-
-    Returns:
-        True if the message was sent, False if the socket is closed.
-    """
-    try:
-        await websocket.send_json(message)
-        return True
-    except (WebSocketDisconnect, RuntimeError):
-        return False
 
 
 @router.post("/{interview_id}/theory/audio-answer")
@@ -99,8 +83,8 @@ async def handle_theory_websocket(
     interview_id: str,
     provider: AIProviderDep,
     submission_service: TheorySubmissionServiceDep,
-    session_completion: SessionCompletionServiceDep,
-    interview_query: InterviewQueryDep,
+    session_completion: CompleteSessionDep,
+    interview_query: InterviewLoaderDep,
 ) -> None:
     """Run the theory WebSocket message loop until disconnect.
 
@@ -126,7 +110,7 @@ async def handle_theory_websocket(
                 session_completion=session_completion,
                 interview_query=interview_query,
             ):
-                if not await _safe_send_json(websocket, message):
+                if not await safe_send_json(websocket, message):
                     break
     except WebSocketDisconnect:
         logger.debug("Theory WebSocket disconnected for session %s", interview_id)
@@ -140,8 +124,8 @@ async def theory_ws(
     interview_id: str,
     provider: AIProviderDep,
     submission_service: TheorySubmissionServiceDep,
-    session_completion: SessionCompletionServiceDep,
-    interview_query: InterviewQueryDep,
+    session_completion: CompleteSessionDep,
+    interview_query: InterviewLoaderDep,
 ) -> None:
     """WebSocket endpoint for real-time theory task interaction.
 

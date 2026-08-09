@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.question_voice.services.piper_voice import PiperVoiceService
+from app.shared.infrastructure.gateways.piper_voice import PiperVoiceService
 
 
 def get_piper_voice_service() -> type[PiperVoiceService]:

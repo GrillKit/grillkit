@@ -4,16 +4,16 @@
 
 from unittest.mock import AsyncMock, patch
 
+from app.coding.domain.evaluator_models import CodingAnswerEvaluation
 from app.coding.domain.value_objects import CodingRunResult
-from app.coding.services.evaluator.models import CodingAnswerEvaluation
 from app.interview.domain.serialization import selection_to_spec
 from app.interview.domain.value_objects import (
     SectionBranchSpec,
     SessionSelection,
     TrackSelection,
 )
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from tests.fakes import answer_evaluation_json
 from tests.helpers.coding_seed import (
@@ -211,7 +211,7 @@ class TestCombinedPhaseSwitch:
         override_ws_ai_provider(client, [])
         with (
             patch(
-                "app.coding.services.submission.CodingEvaluatorService.evaluate_submission",
+                "app.coding.domain.evaluator.CodingEvaluator.evaluate_submission",
                 new=AsyncMock(return_value=(evaluation, False, None, None)),
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,

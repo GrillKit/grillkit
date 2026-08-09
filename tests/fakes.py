@@ -3,16 +3,12 @@
 """Test doubles for AI and interview flows."""
 
 from collections.abc import AsyncIterator
+from typing import Literal
 
-from app.ai.base import AIProvider, GenerationResult, Message
-from app.coding.services.evaluator.models import (
-    CodingAnswerEvaluation,
-)
+from app.ai.base import AIProvider, AudioCapableProvider, GenerationResult, Message
+from app.coding.domain.evaluator_models import CodingAnswerEvaluation
 from app.shared.evaluation_models import SectionEvaluation
-from app.theory.services.evaluator.models import (
-    AnswerEvaluation,
-    FollowUpEvaluation,
-)
+from app.theory.domain.evaluator_models import AnswerEvaluation, FollowUpEvaluation
 
 
 def answer_evaluation_json(
@@ -48,7 +44,7 @@ def coding_answer_evaluation_json(
     feedback: str = "Solid code.",
     follow_up_needed: bool = False,
     follow_up_question: str | None = None,
-    follow_up_mode: str | None = None,
+    follow_up_mode: Literal["code", "explanation"] | None = None,
 ) -> str:
     """Build JSON text matching ``CodingAnswerEvaluation`` for a fake provider.
 
@@ -67,7 +63,7 @@ def coding_answer_evaluation_json(
         feedback=feedback,
         follow_up_needed=follow_up_needed,
         follow_up_question=follow_up_question,
-        follow_up_mode=follow_up_mode,  # type: ignore[arg-type]
+        follow_up_mode=follow_up_mode,
     )
     return payload.model_dump_json()
 
@@ -123,7 +119,7 @@ def section_evaluation_json(
     return payload.model_dump_json()
 
 
-class FakeProvider(AIProvider):
+class FakeProvider(AIProvider, AudioCapableProvider):
     """Deterministic AI provider that returns queued JSON responses.
 
     Attributes:

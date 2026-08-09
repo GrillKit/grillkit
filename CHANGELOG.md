@@ -10,9 +10,23 @@ Work in progress is accumulated under `[Unreleased]`; on release, that section b
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## 2026.8.9
+
+### Added
+
+### Changed
+
+- **Updated UI** — light theme is now the default, with a **dark theme toggle** (sun/moon) in the navigation bar. Your choice is remembered and falls back to your system preference on first visit. The whole palette moved to a warm, restrained **«ember»** (orange/red) accent with better contrast throughout
 - **Theory answer evaluation** — load `expected_points` rubric bullets from question banks, pass them through evaluation prompts with explicit candidate-only scoring rules, and use temperature 0 for structured LLM evaluation
 
 ### Fixed
+
+- **Coding timer** — when a coding round timer expires, the round now submits automatically and the session advances even if you refresh the page
+- **Whisper transcription** — more robust audio transcription (voice-activity detection disabled) with clearer audio-answer logging
 
 ### Removed
 

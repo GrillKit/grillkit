@@ -5,7 +5,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.shared.infrastructure.models import Interview
 from tests.helpers.interview_seed import persist_interview_with_answers
 from tests.helpers.selection import minimal_selection_spec
@@ -26,7 +26,7 @@ class TestDashboardPage:
     def test_empty_state(self, client, isolated_db):
         """Dashboard shows welcome when no sessions exist."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")
@@ -53,7 +53,7 @@ class TestDashboardPage:
             )
 
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")
@@ -78,7 +78,7 @@ class TestDashboardPage:
             )
 
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")
@@ -95,7 +95,7 @@ class TestDashboardPage:
         interview_id = seed_completed_theory_interview("dash-results-1")
 
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")
@@ -118,7 +118,7 @@ class TestDashboardPage:
         )
 
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")
@@ -141,7 +141,7 @@ class TestDashboardPage:
             )
 
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=_config_with_locale(),
         ):
             response = client.get("/")

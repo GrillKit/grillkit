@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for shared artifact download state."""
 
-from app.question_voice.services.piper_voice import PiperVoiceService
-from app.speech.services.whisper_model import WhisperModelService
+from app.shared.infrastructure.gateways.piper_voice import PiperVoiceService
+from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
 
 
 def test_whisper_and_piper_have_separate_download_state():

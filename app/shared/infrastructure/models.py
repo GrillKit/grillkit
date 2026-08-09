@@ -294,7 +294,7 @@ class CodeRunAttempt(Base):
         Integer,
         ForeignKey("coding_tasks.id", ondelete="CASCADE"),
     )
-    attempt_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
     source_code: Mapped[str] = mapped_column(Text)
     language: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)

@@ -11,7 +11,7 @@ from app.interview.domain.value_objects import (
     TrackSelection,
 )
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 
 
 class TestSetupModes:
@@ -48,7 +48,7 @@ class TestSetupModes:
             task_time_limit_seconds=180,
         )
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=self._config(),
         ):
             response = self._post_setup(
@@ -98,11 +98,11 @@ class TestSetupModes:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
-                "app.interview.services.rules.selection.is_coding_available",
+                "app.interview.domain.rules.selection.is_coding_available",
                 return_value=True,
             ),
         ):
@@ -157,11 +157,11 @@ class TestSetupModes:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
-                "app.interview.services.rules.selection.is_coding_available",
+                "app.interview.domain.rules.selection.is_coding_available",
                 return_value=True,
             ),
         ):
@@ -219,11 +219,11 @@ class TestSetupModes:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
-                "app.interview.services.rules.selection.is_coding_available",
+                "app.interview.domain.rules.selection.is_coding_available",
                 return_value=True,
             ),
         ):

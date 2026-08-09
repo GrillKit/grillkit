@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Theory domain exceptions."""
 
+from app.interview.domain.exceptions import InterviewDomainError
 
-class TheoryDomainError(Exception):
+
+class TheoryDomainError(InterviewDomainError):
     """Base class for theory-related domain errors."""
 
 

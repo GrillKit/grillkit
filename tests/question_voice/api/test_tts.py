@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.interview.services.query import InterviewQuery
-from app.platform.services.config import AppConfig
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
+from app.platform.domain.config import AppConfig
 from app.question_voice.schemas import PiperVoiceStatusRead
 from tests.helpers.session_creation import create_session
 
@@ -46,11 +46,11 @@ class TestTtsStatusApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=missing,
             ),
         ):
@@ -77,11 +77,11 @@ class TestTtsStatusApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=ready,
             ),
         ):
@@ -107,11 +107,11 @@ class TestTtsStatusApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.get_status",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.get_status",
                 return_value=missing,
             ) as get_status,
         ):
@@ -138,11 +138,11 @@ class TestTtsStatusApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=ready,
             ),
@@ -169,11 +169,11 @@ class TestTtsStatusApi:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.piper_voice.PiperVoiceService.start_download",
+                "app.shared.infrastructure.gateways.piper_voice.PiperVoiceService.start_download",
                 new_callable=AsyncMock,
                 return_value=ready,
             ),
@@ -222,7 +222,7 @@ class TestQuestionAudioApi:
             locale="en",
         )
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=config,
         ):
             response = client.get(f"/interview/{interview.id}/question-audio")
@@ -266,11 +266,11 @@ class TestQuestionAudioApi:
 
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=voice_config,
             ),
             patch(
-                "app.question_voice.services.question_audio.TtsCacheService.get_or_fetch",
+                "app.shared.infrastructure.gateways.tts_cache.TtsCacheService.get_or_fetch",
                 new_callable=AsyncMock,
                 return_value=Path(wav_path),
             ),

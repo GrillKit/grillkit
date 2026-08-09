@@ -5,7 +5,7 @@
 Provides data access for interview session shell rows.
 """
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.interview.domain.entities import Interview as DomainInterview
@@ -45,16 +45,16 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         Returns:
             Interview with theory section and tasks loaded, or None.
         """
-        return (
-            self._session.query(Interview)
+        stmt = (
+            select(Interview)
             .options(
                 selectinload(Interview.theory_section).selectinload(
                     TheorySection.tasks
                 ),
             )
             .filter_by(id=entity_id)
-            .first()
         )
+        return self._session.execute(stmt).scalar_one_or_none()
 
     def get_aggregate(self, entity_id: str) -> DomainInterview | None:
         """Load a domain interview shell aggregate.
@@ -83,7 +83,11 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         """
         sort_key = func.coalesce(Interview.completed_at, Interview.started_at)
         rows = (
-            self._session.query(Interview).order_by(sort_key.desc()).limit(limit).all()
+            self._session.execute(
+                select(Interview).order_by(sort_key.desc()).limit(limit)
+            )
+            .scalars()
+            .all()
         )
         return [interview_from_orm(row) for row in rows]
 
@@ -116,7 +120,7 @@ class InterviewRepository(SqlAlchemyRepository[Interview]):
         Raises:
             InterviewNotFoundError: If the session row no longer exists.
         """
-        orm_interview = self.get(interview.id)
+        orm_interview = self._session.get(Interview, interview.id)
         if orm_interview is None:
             raise InterviewNotFoundError(interview.id)
 

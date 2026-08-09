@@ -8,16 +8,20 @@ from typing import Any
 
 from app.ai.base import AIProvider
 from app.interview.domain.exceptions import InterviewDomainError
-from app.interview.services.ai_errors import ai_error_message_for_client
-from app.interview.services.completion import SessionCompletionService
-from app.interview.services.query import InterviewQuery
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
+from app.interview.support.ai_errors import ai_error_message_for_client
+from app.interview.use_cases.complete_session import (
+    CompleteInterviewSession as SessionCompletionService,
+)
 from app.theory.api.ws_protocol import (
     domain_error_to_wire,
     event_to_message,
     events_to_messages,
 )
 from app.theory.domain.exceptions import TheoryDomainError
-from app.theory.services.submission import TheorySubmissionService
+from app.theory.use_cases.submit_answer import (
+    SubmitTheoryAnswer as TheorySubmissionService,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -10,8 +10,8 @@ from app.interview.domain.value_objects import (
     SessionSelection,
     TrackSelection,
 )
+from app.interview.queries.loader import InterviewLoader as InterviewQuery
 from app.interview.repositories.uow import InterviewUnitOfWork
-from app.interview.services.query import InterviewQuery
 from app.shared.infrastructure.models import Answer, Interview
 from app.theory.domain.entities import TheoryTask
 from tests.helpers.interview_seed import persist_interview_with_answers

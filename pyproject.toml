@@ -1,6 +1,6 @@
 [project]
 name = "grillkit"
-version = "2026.5.20"
+version = "2026.6.12"
 description = "AI Interview Trainer - Practice technical interviews with AI"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]

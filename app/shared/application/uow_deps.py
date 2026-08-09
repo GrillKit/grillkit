@@ -9,6 +9,8 @@ from fastapi import Depends
 
 from app.interview.repositories.uow import InterviewUnitOfWork
 
+__all__ = ["UoWDep", "UoWAutoCommitDep", "get_uow", "get_uow_auto_commit"]
+
 
 def get_uow() -> Iterator[InterviewUnitOfWork]:
     """Yield an application Unit of Work for the request scope.

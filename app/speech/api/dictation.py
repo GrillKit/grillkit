@@ -8,7 +8,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.interview.services.query import InterviewQuery
+from app.interview.queries.loader import InterviewQuery
 from app.platform.api.deps import ConfigServiceDep
 from app.speech.api.dictation_protocol import (
     DICTATION_CLIENT_START,
@@ -18,11 +18,11 @@ from app.speech.api.dictation_protocol import (
     DICTATION_SERVER_READY,
     dictation_message,
 )
-from app.speech.services.dictation import DictationSession
-from app.speech.services.transcriber_resolver import (
+from app.speech.domain.transcriber_resolver import (
     resolve_speech_transcriber,
     speech_transcriber_unavailable_message,
 )
+from app.speech.use_cases.dictation import DictationSession
 
 logger = logging.getLogger(__name__)
 

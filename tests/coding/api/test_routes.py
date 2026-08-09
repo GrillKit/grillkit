@@ -5,8 +5,8 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
+from app.coding.domain.evaluator_models import CodingAnswerEvaluation
 from app.coding.domain.value_objects import CodingRunResult
-from app.coding.services.evaluator.models import CodingAnswerEvaluation
 from app.interview.repositories.uow import InterviewUnitOfWork
 from app.shared.infrastructure.models import CodingTask
 from tests.helpers.coding_seed import seed_active_coding_interview
@@ -32,7 +32,7 @@ class TestCodingRunApi:
         """Run endpoint stores an attempt and returns the mirror payload."""
         interview_id, task_id = seed_active_coding_interview("coding-run-1")
         with patch(
-            "app.coding.services.run_execution.CodingRunnerService.run_public_tests",
+            "app.coding.domain.run_result.CodingRunnerService.run_public_tests",
             new=AsyncMock(return_value=_success_run_result()),
         ):
             response = client.post(
@@ -61,7 +61,7 @@ class TestCodingRunApi:
         interview_id, task_id = seed_active_coding_interview("coding-run-3")
         monkeypatch.setenv("CODING_MAX_RUNS_PER_TASK", "1")
         with patch(
-            "app.coding.services.run_execution.CodingRunnerService.run_public_tests",
+            "app.coding.domain.run_result.CodingRunnerService.run_public_tests",
             new=AsyncMock(return_value=_success_run_result()),
         ):
             first = client.post(
@@ -86,7 +86,7 @@ class TestCodingRunApi:
             return _success_run_result()
 
         with patch(
-            "app.coding.services.run_execution.CodingRunnerService.run_public_tests",
+            "app.coding.domain.run_result.CodingRunnerService.run_public_tests",
             new=AsyncMock(side_effect=complete_task_before_return),
         ):
             response = client.post(
@@ -104,7 +104,7 @@ class TestCodingStateApi:
         """State endpoint exposes progress and persisted Run history."""
         interview_id, task_id = seed_active_coding_interview("coding-state-1")
         with patch(
-            "app.coding.services.run_execution.CodingRunnerService.run_public_tests",
+            "app.coding.domain.run_result.CodingRunnerService.run_public_tests",
             new=AsyncMock(return_value=_success_run_result()),
         ):
             client.post(
@@ -145,11 +145,11 @@ class TestCodingWebSocket:
         )
         with (
             patch(
-                "app.coding.services.submission.CodingRunnerService.run_hidden_tests",
+                "app.coding.use_cases.submit_solution.CodingRunnerService.run_hidden_tests",
                 new=AsyncMock(return_value=_success_run_result()),
             ),
             patch(
-                "app.coding.services.submission.CodingEvaluatorService.evaluate_submission",
+                "app.coding.use_cases.submit_solution.CodingEvaluator.evaluate_submission",
                 new=AsyncMock(return_value=(evaluation, False, None, None)),
             ),
             client.websocket_connect(f"/interview/{interview_id}/coding/ws") as ws,

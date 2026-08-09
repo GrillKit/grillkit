@@ -3,7 +3,6 @@
 """Coding section HTTP and WebSocket transport."""
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -11,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.coding.api.errors import http_exception_from_coding_error
 from app.coding.api.ws_session import CodingWebSocketService
 from app.coding.domain.exceptions import CodingDomainError
+from app.coding.domain.run_result import RunResultBuilder as CodingRunExecutionService
 from app.coding.schemas.coding import (
     CodingRunRequest,
     CodingRunResponse,
@@ -18,34 +18,17 @@ from app.coding.schemas.coding import (
     domain_run_attempt_to_read,
     run_attempt_to_response,
 )
-from app.coding.services.run_execution import CodingRunExecutionService
 from app.interview.api.deps import (
     AIProviderDep,
     CodingStateServiceDep,
     CodingSubmissionServiceDep,
 )
 from app.interview.domain.exceptions import InterviewDomainError
+from app.shared.api.negotiated_response import safe_send_json
 
 router = APIRouter(prefix="/interview", tags=["coding"])
 
 logger = logging.getLogger(__name__)
-
-
-async def _safe_send_json(websocket: WebSocket, message: dict[str, Any]) -> bool:
-    """Send a JSON message, returning False if the client already disconnected.
-
-    Args:
-        websocket: Active coding WebSocket.
-        message: Payload to send.
-
-    Returns:
-        True if the message was sent, False if the socket is closed.
-    """
-    try:
-        await websocket.send_json(message)
-        return True
-    except (WebSocketDisconnect, RuntimeError):
-        return False
 
 
 @router.post("/{interview_id}/coding/run", response_model=CodingRunResponse)
@@ -127,7 +110,7 @@ async def coding_ws(
                 provider=provider,
                 submission_service=submission_service,
             ):
-                if not await _safe_send_json(websocket, message):
+                if not await safe_send_json(websocket, message):
                     break
     except WebSocketDisconnect:
         logger.debug("Coding WebSocket disconnected for session %s", interview_id)

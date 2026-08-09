@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.platform.api.deps import ConfigServiceDep
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.shared.api.negotiated_response import negotiated_response
 from app.shared.locales import DEFAULT_LOCALE, normalize_locale
 from app.shared.speech_models import (

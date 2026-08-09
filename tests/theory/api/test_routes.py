@@ -17,9 +17,9 @@ class TestTheoryCanonicalRoutes:
         interview_id = seed_two_question_interview("theory-ws-1")
         override_ws_ai_provider(client, [])
         with patch(
-            "app.theory.services.submission.TheorySubmissionService.stream_answer_submission",
+            "app.theory.use_cases.submit_answer.SubmitTheoryAnswer.stream_answer_submission",
         ) as mock_stream:
-            from app.interview.services.events import AnswerSavedEvent, EvaluatingEvent
+            from app.interview.domain.events import AnswerSavedEvent, EvaluatingEvent
 
             async def _events(*_args, **_kwargs):
                 yield AnswerSavedEvent()

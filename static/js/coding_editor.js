@@ -50,20 +50,42 @@
         return document.getElementById("coding-runs-panel");
     }
 
-    function getBrief() {
-        return document.querySelector(".coding-session__brief");
+    let runsCollapsed = false;
+
+    function getRunsToggle() {
+        return document.getElementById("coding-runs-toggle");
+    }
+
+    function updateRunsToggle(panel) {
+        const toggleBtn = getRunsToggle();
+        if (!toggleBtn) {
+            return;
+        }
+        const hidden = panel ? panel.hidden : false;
+        toggleBtn.textContent = hidden ? "Show" : "Hide";
+        toggleBtn.setAttribute("aria-expanded", String(!hidden));
+    }
+
+    function toggleRunsPanel() {
+        const panel = getRunsPanel();
+        if (!panel) {
+            return;
+        }
+        runsCollapsed = !panel.hidden;
+        panel.hidden = runsCollapsed;
+        updateRunsToggle(panel);
     }
 
     function syncRunsPanel(container) {
         const output = container || document.getElementById("coding-output");
         const hasContent = output && output.childElementCount > 0;
         const panel = getRunsPanel();
-        const brief = getBrief();
         if (panel) {
-            panel.hidden = !hasContent;
-        }
-        if (brief) {
-            brief.classList.toggle("coding-session__brief--has-runs", hasContent);
+            if (hasContent) {
+                runsCollapsed = false;
+            }
+            panel.hidden = !hasContent || runsCollapsed;
+            updateRunsToggle(panel);
         }
     }
 
@@ -295,5 +317,22 @@
         },
 
         syncRunsPanel: syncRunsPanel,
+        toggleRunsPanel: toggleRunsPanel,
     };
+
+    function bindRunsToggle() {
+        const toggleBtn = getRunsToggle();
+        if (!toggleBtn) {
+            return;
+        }
+        toggleBtn.addEventListener("click", function () {
+            window.grillkitCodingEditor.toggleRunsPanel();
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindRunsToggle);
+    } else {
+        bindRunsToggle();
+    }
 })();

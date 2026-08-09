@@ -10,9 +10,11 @@ from app.ai.base import AIProvider
 from app.coding.api.errors import coding_ws_error_payload
 from app.coding.api.ws_protocol import coding_event_to_message
 from app.coding.domain.exceptions import CodingDomainError
-from app.coding.services.submission import CodingSubmissionService
+from app.coding.use_cases.submit_solution import (
+    SubmitCodingSolution as CodingSubmissionService,
+)
 from app.interview.domain.exceptions import InterviewDomainError
-from app.interview.services.ai_errors import ai_error_message_for_client
+from app.interview.support.ai_errors import ai_error_message_for_client
 
 logger = logging.getLogger(__name__)
 

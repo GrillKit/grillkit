@@ -7,6 +7,7 @@ and the declarative base for all SQLAlchemy models.
 """
 
 import os
+import sqlite3
 
 from alembic.config import Config
 from sqlalchemy import create_engine, event
@@ -24,7 +25,7 @@ DATABASE_URL = os.environ.get(
 
 
 def _configure_sqlite_connection(
-    dbapi_connection: object,
+    dbapi_connection: sqlite3.Connection,
     _connection_record: object,
 ) -> None:
     """Enable WAL mode and a busy timeout for concurrent SQLite access.
@@ -33,7 +34,7 @@ def _configure_sqlite_connection(
         dbapi_connection: DB-API connection from the SQLAlchemy pool.
         _connection_record: SQLAlchemy connection record (unused).
     """
-    cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
+    cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA busy_timeout=30000")
     cursor.close()
@@ -43,6 +44,11 @@ if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
         DATABASE_URL,
         echo=False,
+        # ``check_same_thread=False`` is safe here because:
+        # 1. SQLAlchemy's ``SessionLocal`` manages a single-threaded session pool.
+        # 2. The ``UnitOfWork`` context manager scopes sessions to one request.
+        # 3. FastAPI's async endpoints run in a thread pool, so each request
+        #    gets its own thread and session.
         connect_args={"check_same_thread": False, "timeout": 30.0},
     )
     event.listen(engine, "connect", _configure_sqlite_connection)

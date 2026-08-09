@@ -2,7 +2,7 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-2026.6.12-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.8.9-blue.svg)](CHANGELOG.md)
 
 Open-source AI technical interview trainer. Practice **theory Q&A**, **live coding**, or **both in one session** from curated YAML banks — with structured scoring, follow-ups, optional voice, and a local results history. Bring your own LLM (cloud or local).
 
@@ -34,30 +34,6 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 https://github.com/user-attachments/assets/25655f1e-89d3-472f-8c1f-3f154df622b2
 
 
-**Dashboard** — recent sessions and quick start
-
-<p align="center">
-  <img src="./assets/dashboard.png" alt="GrillKit dashboard" width="900" />
-</p>
-
-**Interview setup** — question-bank tracks, levels, topics, and session options
-
-<p align="center">
-  <img src="./assets/interview-setup.png" alt="Interview setup" width="900" />
-</p>
-
-**Coding section** — Monaco editor, Run on public tests, Submit for AI evaluation
-
-<p align="center">
-  <img src="./assets/coding.png" alt="Coding interview session" width="900" />
-</p>
-
-**Theory section** — real-time Q&A with AI scoring and final evaluation
-
-<p align="center">
-  <img src="./assets/interview-session.png" alt="Completed interview with evaluation" width="900" />
-</p>
-
 ## Features
 
 ### Session modes
@@ -85,6 +61,7 @@ Coding modes need a running [Judge0](https://github.com/judge0/judge0) instance 
 - **Known questions** — mark theory or coding bank items as **I know this** during an interview or on review pages; optionally exclude them on **New interview** setup; manage the list at `/known-questions/manage`
 - **Dashboard** — recent sessions on the home page (completed sessions link to results)
 - **Setup** — model catalog on `/config`, interview locale, Whisper/Piper downloads from the UI
+- **Theme** — light theme by default with a **dark mode toggle** (sun/moon) in the navbar; your choice is remembered and follows your system preference on first visit
 - **Deployment** — Docker Compose on port 8000 with `./data` volume for config, DB, and models
 
 ## Quick start

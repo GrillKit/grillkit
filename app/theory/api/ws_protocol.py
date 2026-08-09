@@ -4,6 +4,14 @@
 
 from typing import Any
 
+from app.interview.domain.events import (
+    AnswerFeedbackEvent,
+    AnswerSavedEvent,
+    EvaluatingEvent,
+    InterviewCompletedEvent,
+    InterviewEvent,
+    TranscriptEvent,
+)
 from app.interview.domain.exceptions import InterviewDomainError
 from app.interview.schemas.ws import (
     AnswerFeedbackMessage,
@@ -12,14 +20,6 @@ from app.interview.schemas.ws import (
     InterviewCompletedMessage,
     TranscriptMessage,
     server_message_to_dict,
-)
-from app.interview.services.events import (
-    AnswerFeedbackEvent,
-    AnswerSavedEvent,
-    EvaluatingEvent,
-    InterviewCompletedEvent,
-    InterviewEvent,
-    TranscriptEvent,
 )
 from app.theory.domain.exceptions import TheoryDomainError
 

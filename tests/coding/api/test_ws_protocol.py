@@ -5,8 +5,8 @@
 import pytest
 
 from app.coding.api.ws_protocol import coding_event_to_message
-from app.coding.services.events import CodingFeedbackEvent
-from app.interview.services.events import AnswerSavedEvent, EvaluatingEvent
+from app.coding.support.events import CodingFeedbackEvent
+from app.interview.domain.events import AnswerSavedEvent, EvaluatingEvent
 
 
 def test_coding_event_to_message_answer_saved_event() -> None:

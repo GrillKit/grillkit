@@ -10,7 +10,7 @@ from app.interview.domain.value_objects import (
     SessionSelection,
     TrackSelection,
 )
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 from app.shared.questions import list_categories
 
 
@@ -55,7 +55,7 @@ class TestSetupNegative:
         selection = self._valid_theory_selection()
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
         ):
@@ -89,7 +89,7 @@ class TestSetupNegative:
             question_count=50,
         )
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=self._config(),
         ):
             response = client.post(
@@ -108,7 +108,7 @@ class TestSetupNegative:
         """Malformed selection_json returns setup form with error."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
@@ -146,7 +146,7 @@ class TestSetupNegative:
         # The error happens during plan validation, not JSON parse
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
@@ -197,11 +197,11 @@ class TestSetupNegative:
         # Coding available should be True for this test path
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
-                "app.interview.services.rules.selection.is_coding_available",
+                "app.interview.domain.rules.selection.is_coding_available",
                 return_value=True,
             ),
         ):
@@ -227,7 +227,7 @@ class TestSetupNegative:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=self._config(),
             ),
             patch(
@@ -256,7 +256,7 @@ class TestSetupNegative:
     def test_setup_get_redirects_without_config(self, client):
         """GET /setup redirects to /config when provider is not configured."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=None,
         ):
             response = client.get("/setup", follow_redirects=False)
@@ -266,7 +266,7 @@ class TestSetupNegative:
     def test_setup_post_redirects_without_config(self, client):
         """POST /setup redirects to /config when provider is not configured."""
         with patch(
-            "app.platform.services.config.ConfigService.get_config",
+            "app.platform.domain.config.ConfigService.get_config",
             return_value=None,
         ):
             response = client.post(

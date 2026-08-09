@@ -1,7 +1,0 @@
-{
-  "timeout": 60.0,
-  "locale": "en",
-  "speech_model_size": "medium",
-  "question_voice_enabled": false,
-  "tts_voice_id": "en_US-lessac-medium"
-}

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from app.ai.llm_models import LLMModelEntry
-from app.platform.services.config import AppConfig
+from app.platform.domain.config import AppConfig
 
 
 class TestConfigRouter:
@@ -45,7 +45,7 @@ class TestConfigRouter:
 
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=mock_config,
             ),
         ):
@@ -59,7 +59,7 @@ class TestConfigRouter:
         """Test GET /config without existing config."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=None,
             ),
         ):
@@ -80,11 +80,11 @@ class TestConfigRouter:
         )
         with (
             patch(
-                "app.platform.services.config.ConfigService.get_config",
+                "app.platform.domain.config.ConfigService.get_config",
                 return_value=existing,
             ),
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -92,16 +92,14 @@ class TestConfigRouter:
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
         ):
             response = client.post(
                 "/config",
@@ -117,7 +115,7 @@ class TestConfigRouter:
         """Test POST /config with successful connection test."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -125,16 +123,14 @@ class TestConfigRouter:
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "OK"),
             ),
-            patch(
-                "app.platform.services.config.ConfigService.save_config"
-            ) as mock_save,
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
         ):
             response = client.post(
                 "/config",
@@ -149,7 +145,7 @@ class TestConfigRouter:
         """Test POST /config with failed connection test."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -157,11 +153,11 @@ class TestConfigRouter:
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(False, "Connection failed"),
             ),
         ):
@@ -176,7 +172,7 @@ class TestConfigRouter:
         """Test DELETE /config endpoint."""
         with (
             patch(
-                "app.platform.services.config.ConfigService.delete_config"
+                "app.platform.domain.config.ConfigService.delete_config"
             ) as mock_delete,
         ):
             response = client.delete("/config")
@@ -189,7 +185,7 @@ class TestConfigRouter:
         """Test POST /config/test with successful connection."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -197,11 +193,11 @@ class TestConfigRouter:
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(True, "Connection successful"),
             ),
         ):
@@ -217,7 +213,7 @@ class TestConfigRouter:
         """Test POST /config/test with failed connection."""
         with (
             patch(
-                "app.platform.services.config_form.normalize_model_id",
+                "app.platform.queries.config_form.normalize_model_id",
                 return_value="cloud",
             ),
             patch(
@@ -225,11 +221,11 @@ class TestConfigRouter:
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.LLMCatalogService.get_model",
+                "app.platform.domain.config.LLMCatalogService.get_model",
                 return_value=self._catalog_entry,
             ),
             patch(
-                "app.platform.services.config.ConfigService.test_connection",
+                "app.platform.domain.config.ConfigService.test_connection",
                 return_value=(False, "Invalid API key"),
             ),
         ):

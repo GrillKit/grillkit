@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.interview.api.deps import (
     CodingReviewServiceDep,
-    SessionResultsPageServiceDep,
+    CompletedSessionResultsDep,
     TheoryReviewServiceDep,
 )
 from app.templating import templates
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/interview", tags=["interview-results"])
 async def session_results_page(
     request: Request,
     interview_id: str,
-    service: SessionResultsPageServiceDep,
+    service: CompletedSessionResultsDep,
 ) -> Response:
     """Render the completed session results hub.
 

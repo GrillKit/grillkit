@@ -9,11 +9,13 @@ import logging
 from app.ai.base import AIProvider
 from app.ai.speech_transcriber import SpeechTranscriber
 from app.interview.domain.exceptions import InterviewDomainError
-from app.interview.services.ai_errors import ai_error_message_for_client
+from app.interview.support.ai_errors import ai_error_message_for_client
 from app.shared.infrastructure.audio_wav import validate_wav_bytes
 from app.theory.api.ws_protocol import domain_error_to_wire, event_to_message
 from app.theory.domain.exceptions import TheoryDomainError
-from app.theory.services.submission import TheorySubmissionService
+from app.theory.use_cases.submit_answer import (
+    SubmitTheoryAnswer as TheorySubmissionService,
+)
 
 logger = logging.getLogger(__name__)
 

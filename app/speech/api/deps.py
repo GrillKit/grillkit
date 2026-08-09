@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.speech.services.whisper_model import WhisperModelService
+from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
 
 
 def get_whisper_model_service() -> type[WhisperModelService]:
