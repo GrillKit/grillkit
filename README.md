@@ -31,7 +31,26 @@ A general chat assistant is flexible, but it does not run an **interview** for y
 
 **Demo video** — full flow from setup to scored feedback
 
-https://github.com/user-attachments/assets/25655f1e-89d3-472f-8c1f-3f154df622b2
+Soon
+
+**Dashboard**
+<img width="1920" height="1200" alt="Снимок экрана от 2026-08-09 17-17-15" src="https://github.com/user-attachments/assets/c70f2f39-34a2-49dd-8719-d570685663a2" />
+
+
+**Setup**
+<img width="1920" height="1200" alt="Снимок экрана от 2026-08-09 17-06-56" src="https://github.com/user-attachments/assets/1781833c-fce8-4878-b191-f565e2b44eb4" />
+
+
+**Theory**
+<img width="1920" height="1200" alt="Снимок экрана от 2026-08-09 17-13-49" src="https://github.com/user-attachments/assets/be536299-aa80-4d6d-aff5-df25a330e281" />
+
+
+**Coding**
+<img width="1920" height="1200" alt="Снимок экрана от 2026-08-09 17-14-44" src="https://github.com/user-attachments/assets/7954a520-bcf1-45ee-acf1-615e6d797b4f" />
+
+
+**Evaluation**
+<img width="1920" height="1200" alt="Снимок экрана от 2026-08-09 17-14-52" src="https://github.com/user-attachments/assets/8b19a34c-9865-49ef-928d-dbe2a7a6d62a" />
 
 
 ## Features
