@@ -74,7 +74,7 @@ class TestFirstTimeConfigFlow:
                 return_value="local",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=None,
             ),
             patch(
@@ -107,7 +107,7 @@ class TestFirstTimeConfigFlow:
                 return_value="cloud",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(
@@ -135,7 +135,7 @@ class TestFirstTimeConfigFlow:
                 return_value="cloud",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(
@@ -218,7 +218,7 @@ class TestFirstTimeConfigFlow:
                 return_value="cloud",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(

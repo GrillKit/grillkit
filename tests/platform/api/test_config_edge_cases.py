@@ -32,7 +32,7 @@ class TestConfigEdgeCases:
                 return_value="cloud",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(
@@ -175,7 +175,7 @@ class TestConfigEdgeCases:
                 return_value="local",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=ollama_entry,
             ),
             patch(
@@ -217,7 +217,7 @@ class TestConfigEdgeCases:
                 return_value="cloud",
             ),
             patch(
-                "app.platform.api.config.LLMCatalogService.get_model",
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
                 return_value=self._catalog_entry(),
             ),
             patch(

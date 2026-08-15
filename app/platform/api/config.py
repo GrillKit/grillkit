@@ -6,14 +6,15 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
-from pydantic import ValidationError
 
-from app.platform.api.deps import ConfigServiceDep, SpeechRuntimeDep
-from app.platform.domain.config import AppConfig, ConfigService
-from app.platform.domain.llm_catalog import LLMCatalogService
+from app.platform.api.deps import (
+    AddLLMModelUseCaseDep,
+    ConfigServiceDep,
+    SpeechRuntimeDep,
+)
+from app.platform.domain.config import AppConfig
 from app.platform.queries.config_form import ConfigFormService
 from app.platform.queries.platform_page import ConfigPageService
-from app.platform.schemas import NewLLMModel
 from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
 from app.shared.locales import DEFAULT_LOCALE
 from app.shared.speech_models import DEFAULT_SPEECH_MODEL_SIZE
@@ -196,6 +197,7 @@ async def add_llm_model(
     request: Request,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    add_model: AddLLMModelUseCaseDep,
     display_name: str = Form(...),
     base_url: str = Form(...),
     model: str = Form(...),
@@ -209,6 +211,7 @@ async def add_llm_model(
         request: FastAPI request object.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        add_model: Use case that probes and persists the new catalog entry.
         display_name: Label shown in the interview model selector.
         base_url: OpenAI-compatible API base URL.
         model: Provider model name.
@@ -219,51 +222,19 @@ async def add_llm_model(
     Returns:
         Configuration page with a success or validation error message.
     """
-    config = config_service.get_config()
-    selected_preset_id: str | None = None
-    message: str | None = None
-    error: str | None = None
-    try:
-        payload = NewLLMModel(
-            display_name=display_name,
-            base_url=base_url,
-            model=model,
-            api_key_required=api_key_required,
-            api_key=api_key,
-            accepts_audio_input=accepts_audio_input,
-        )
-        speech_model_size = (
-            config.speech_model_size
-            if config is not None
-            else DEFAULT_SPEECH_MODEL_SIZE
-        )
-        probe_config = AppConfig(
-            provider_type="openai-compatible",
-            base_url=payload.base_url,
-            model=payload.model,
-            api_key=payload.api_key,
-            speech_model_size=speech_model_size,
-            locale=config.locale if config is not None else DEFAULT_LOCALE,
-        )
-        success, test_message = await ConfigService.test_catalog_model(
-            probe_config,
-            accepts_audio_input=payload.accepts_audio_input,
-        )
-        if not success:
-            raise ValueError(test_message)
-        entry = LLMCatalogService.add_user_model(payload)
-        selected_preset_id = entry.id
-        message = f"Added model '{entry.display_name}' to the catalog."
-    except ValidationError as exc:
-        error = exc.errors()[0]["msg"]
-    except ValueError as exc:
-        error = str(exc)
-
+    result = await add_model.execute(
+        display_name=display_name,
+        base_url=base_url,
+        model=model,
+        api_key=api_key,
+        api_key_required=api_key_required,
+        accepts_audio_input=accepts_audio_input,
+    )
     context = await build_config_page_context(
-        config=config,
+        config=config_service.get_config(),
         whisper_model_service=whisper_model_service,
-        error=error,
-        message=message,
-        selected_llm_preset_id=selected_preset_id,
+        error=result.error,
+        message=result.message,
+        selected_llm_preset_id=result.selected_preset_id,
     )
     return templates.TemplateResponse(request, "config.html", context)
