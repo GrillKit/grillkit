@@ -12,8 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from app.interview.api.deps import ActiveSessionPageDep
 from app.interview.api.errors import http_exception_from_domain_error
 from app.interview.domain.exceptions import InterviewDomainError
-from app.platform.api.deps import ConfigServiceDep
-from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
+from app.platform.api.deps import ConfigServiceDep, SpeechRuntimeDep
 from app.question_voice.use_cases.generate_question_audio import GenerateQuestionAudio
 from app.shared.infrastructure.gateways.tts_exceptions import (
     QuestionVoiceDisabledError,
@@ -46,6 +45,7 @@ async def interview_page(
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
     page_service: ActiveSessionPageDep,
+    coordinator: SpeechRuntimeDep,
 ) -> Response:
     """View an interview session.
 
@@ -57,6 +57,8 @@ async def interview_page(
         interview_id: The session UUID.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        page_service: Active session page service.
+        coordinator: App-lifetime speech runtime coordinator.
 
     Returns:
         HTML response with interview view, or redirect if not found.
@@ -77,8 +79,7 @@ async def interview_page(
             status_code=303,
         )
 
-    await SpeechRuntimeCoordinator.preload_whisper_for_active_interview(
-        request.app,
+    await coordinator.preload_whisper_for_active_interview(
         config,
         interview_active=page.interview_active,
     )
@@ -92,22 +93,26 @@ async def interview_page(
 @router.get("/{interview_id}/question-audio")
 async def question_audio(
     interview_id: str,
+    coordinator: SpeechRuntimeDep,
     answer_id: int | None = None,
 ) -> FileResponse:
     """Stream WAV audio for the current or specified unanswered question.
 
     Args:
         interview_id: Interview session UUID.
+        coordinator: App-lifetime speech runtime coordinator.
         answer_id: Optional answer row id; defaults to the first unanswered question.
 
     Returns:
-        ``audio/wav`` file from cache or Piper synthesis.
+        ``audio/wav`` file from cache or TTS synthesis.
 
     Raises:
         HTTPException: When voice is disabled, the session is invalid, or TTS fails.
     """
     try:
-        path = await GenerateQuestionAudio.execute(interview_id, answer_id)
+        path = await GenerateQuestionAudio.execute(
+            coordinator.tts, interview_id, answer_id
+        )
     except QuestionVoiceDisabledError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except QuestionVoiceSynthesisError as exc:

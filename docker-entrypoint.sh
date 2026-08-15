@@ -12,4 +12,6 @@ if [ "$(id -u)" = "0" ]; then
     exec gosu "${PUID}:${PGID}" "$@"
 fi
 
+python -c "from app.shared.infrastructure.database import run_migrations; run_migrations()"
+
 exec "$@"

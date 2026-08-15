@@ -1,102 +1,137 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Coordinate Whisper and Piper in-process runtimes across app lifecycle."""
+"""Coordinate in-process speech runtimes (STT and TTS) across the app lifecycle."""
 
-from fastapi import FastAPI
-
+from app.ai.speech_transcriber import SpeechTranscriber
 from app.platform.domain.config import AppConfig, ConfigService
 from app.platform.domain.speech_settings import (
     question_voice_settings_from_config,
     speech_settings_from_config,
 )
-from app.shared.infrastructure.gateways.piper import PiperGateway as PiperRuntime
-from app.shared.infrastructure.gateways.piper_storage import is_voice_installed
-from app.shared.infrastructure.gateways.whisper import WhisperGateway as WhisperRuntime
-from app.shared.infrastructure.gateways.whisper_storage import is_installed
+from app.speech.domain.stt_loader import SttModelLoader
+from app.speech.domain.tts_engine import TtsEngine
 
 
 class SpeechRuntimeCoordinator:
-    """Load or unload speech artifacts on startup, config save, and interview pages."""
+    """Single owner of in-process speech artifacts.
 
-    @staticmethod
-    def unload_all() -> None:
-        """Unload in-process Whisper and Piper models synchronously."""
-        WhisperRuntime.unload()
-        PiperRuntime.unload()
+    Created during the FastAPI lifespan and exposed through ``app.state`` /
+    dependency injection. All read/write access to the loaded speech models flows
+    through this coordinator so the concrete STT/TTS backends can be swapped
+    without touching the rest of the application.
+    """
 
-    @staticmethod
-    async def startup(app: FastAPI) -> None:
-        """Bind Whisper to the app and load configured artifacts when installed.
+    def __init__(
+        self,
+        stt_loader: SttModelLoader,
+        tts_engine: TtsEngine,
+        config_service: type[ConfigService] = ConfigService,
+    ) -> None:
+        """Initialize the coordinator with STT and TTS backends.
 
         Args:
-            app: FastAPI application instance.
+            stt_loader: Backend that loads a :class:`SpeechTranscriber` into memory.
+            tts_engine: Backend that holds a voice and synthesizes WAV bytes.
+            config_service: Provider configuration service class.
         """
-        WhisperRuntime.bind_app(app)
-        config = ConfigService.get_config()
-        await SpeechRuntimeCoordinator.sync_whisper(config)
-        await SpeechRuntimeCoordinator.sync_piper(config)
+        self._stt = stt_loader
+        self._tts = tts_engine
+        self._config_service = config_service
 
-    @staticmethod
-    async def sync_whisper(config: AppConfig | None) -> None:
+    @property
+    def config_service(self) -> type[ConfigService]:
+        """Return the configuration service class bound to this coordinator."""
+        return self._config_service
+
+    @property
+    def tts(self) -> TtsEngine:
+        """Return the TTS engine owned by this coordinator."""
+        return self._tts
+
+    def unload_all(self) -> None:
+        """Unload any in-memory Whisper and Piper models."""
+        self._stt.unload()
+        self._tts.unload()
+
+    async def startup(self) -> None:
+        """Load configured speech artifacts when installed."""
+        await self.sync(self._config_service.get_config())
+
+    async def shutdown(self) -> None:
+        """Unload all in-memory speech artifacts."""
+        self.unload_all()
+
+    async def sync(self, config: AppConfig | None) -> None:
+        """Align both speech runtimes with the given configuration."""
+        await self.sync_whisper(config)
+        await self.sync_piper(config)
+
+    async def reload_after_config_save(self, config: AppConfig) -> None:
+        """Reload speech runtimes after configuration is persisted.
+
+        Args:
+            config: Configuration that was just saved.
+        """
+        await self.sync(config)
+
+    async def sync_whisper(self, config: AppConfig | None) -> None:
         """Load or unload Whisper based on configuration and on-disk install state.
 
         Args:
             config: Saved provider configuration, if any.
         """
         if config is None:
-            WhisperRuntime.unload()
+            self._stt.unload()
             return
         settings = speech_settings_from_config(config)
-        if is_installed(settings.speech_model_size):
-            await WhisperRuntime.load_size(settings.speech_model_size)
+        if self._stt.is_installed(settings.speech_model_size):
+            await self._stt.load_size(settings.speech_model_size)
         else:
-            WhisperRuntime.unload()
+            self._stt.unload()
 
-    @staticmethod
-    async def sync_piper(config: AppConfig | None) -> None:
+    async def sync_piper(self, config: AppConfig | None) -> None:
         """Load or unload Piper based on configuration and on-disk install state.
 
         Args:
             config: Saved provider configuration, if any.
         """
         if config is None:
-            PiperRuntime.unload()
+            self._tts.unload()
             return
         settings = question_voice_settings_from_config(config)
-        if settings.enabled and is_voice_installed(settings.voice_id):
-            await PiperRuntime.load_voice(settings.voice_id)
+        if settings.enabled and self._tts.is_installed(settings.voice_id):
+            await self._tts.load_voice(settings.voice_id)
         else:
-            PiperRuntime.unload()
+            self._tts.unload()
 
-    @staticmethod
-    async def reload_after_config_save(config: AppConfig) -> None:
-        """Reload speech runtimes after configuration is persisted.
-
-        Args:
-            config: Configuration that was just saved.
-        """
-        await SpeechRuntimeCoordinator.sync_whisper(config)
-        await SpeechRuntimeCoordinator.sync_piper(config)
-
-    @staticmethod
     async def preload_whisper_for_active_interview(
-        app: FastAPI,
+        self,
         config: AppConfig | None,
         *,
         interview_active: bool,
     ) -> None:
-        """Ensure Whisper is bound and loaded when an interview session is active.
+        """Ensure Whisper is loaded when an interview session is active.
 
         Args:
-            app: FastAPI application instance.
             config: Saved provider configuration.
             interview_active: Whether the interview session is still active.
         """
-        WhisperRuntime.bind_app(app)
         if config is None or not interview_active:
             return
         settings = speech_settings_from_config(config)
-        if is_installed(settings.speech_model_size) and not WhisperRuntime.is_loaded(
+        if self._stt.is_installed(settings.speech_model_size) and not self._stt.is_loaded(
             settings.speech_model_size
         ):
-            await WhisperRuntime.load_size(settings.speech_model_size)
+            await self._stt.load_size(settings.speech_model_size)
+
+    def get_transcriber(self) -> SpeechTranscriber | None:
+        """Return the currently loaded speech transcriber, if any."""
+        return self._stt.get()
+
+    def load_error(self) -> str | None:
+        """Return the last STT load error message, if any."""
+        return self._stt.load_error()
+
+    def is_loaded(self, size: str) -> bool:
+        """Return whether the STT model for ``size`` is loaded in memory."""
+        return self._stt.is_loaded(size)

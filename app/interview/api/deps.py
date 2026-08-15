@@ -5,7 +5,7 @@
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException
 
 from app.ai.base import AIProvider
 from app.ai.speech_transcriber import SpeechTranscriber
@@ -21,7 +21,7 @@ from app.interview.queries.results_page import CompletedSessionResults
 from app.interview.queries.session_page import ActiveSessionPage
 from app.interview.use_cases.complete_session import CompleteInterviewSession
 from app.interview.use_cases.create_session import CreateInterviewSession
-from app.platform.api.deps import ConfigServiceDep
+from app.platform.api.deps import SpeechRuntimeDep
 from app.shared.application.uow_deps import UoWAutoCommitDep, UoWDep
 from app.shared.infrastructure.gateways.ai_context import ai_provider_from_config
 from app.speech.domain.transcriber_resolver import (
@@ -216,26 +216,24 @@ AIProviderDep = Annotated[AIProvider, Depends(get_ai_provider)]
 
 
 async def get_speech_transcriber(
-    request: Request,
-    config_service: ConfigServiceDep,
+    coordinator: SpeechRuntimeDep,
 ) -> SpeechTranscriber:
-    """Resolve a loaded Whisper transcriber from application state.
+    """Resolve a loaded speech transcriber through the speech runtime.
 
     Args:
-        request: FastAPI request with ASGI app state.
-        config_service: Provider configuration service.
+        coordinator: App-lifetime speech runtime coordinator.
 
     Returns:
         Loaded speech transcriber.
 
     Raises:
-        HTTPException: When Whisper is not installed or loaded.
+        HTTPException: When a speech model is not installed or loaded.
     """
-    transcriber = await resolve_speech_transcriber(request.app, config_service)
+    transcriber = await resolve_speech_transcriber(coordinator)
     if transcriber is None:
         raise HTTPException(
             status_code=503,
-            detail=speech_transcriber_unavailable_message(),
+            detail=speech_transcriber_unavailable_message(coordinator),
         )
     return transcriber
 

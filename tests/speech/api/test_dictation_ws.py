@@ -15,7 +15,6 @@ from app.speech.use_cases.dictation import DictationSession
 def client():
     """Create a test client without loading Whisper on startup."""
     with (
-        patch("app.main.run_migrations"),
         patch(
             "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),
@@ -25,7 +24,6 @@ def client():
         ),
     ):
         app = create_app()
-        app.state.speech_transcriber = None
         with TestClient(app) as test_client:
             yield test_client
 
@@ -43,11 +41,15 @@ class TestDictationWebSocket:
     """Tests for WS /interview/{id}/dictation."""
 
     def test_rejects_when_model_not_loaded(self, client):
-        """Connection closes with error when speech_transcriber is absent."""
+        """Connection closes with error when speech transcriber is absent."""
         with (
             patch(
                 "app.interview.queries.loader.InterviewQuery.load",
                 return_value=_active_interview(),
+            ),
+            patch(
+                "app.speech.api.dictation.resolve_speech_transcriber",
+                new=AsyncMock(return_value=None),
             ),
             client.websocket_connect("/interview/test-session/dictation") as ws,
         ):
@@ -67,10 +69,13 @@ class TestDictationWebSocket:
                 return_value=_active_interview(),
             ),
             patch(
+                "app.speech.api.dictation.resolve_speech_transcriber",
+                new=AsyncMock(return_value=mock_transcriber),
+            ),
+            patch(
                 "app.speech.api.dictation.DictationSession", return_value=mock_session
             ),
         ):
-            client.app.state.speech_transcriber = mock_transcriber
             with client.websocket_connect("/interview/test-session/dictation") as ws:
                 ws.send_json({"type": "start"})
                 assert ws.receive_json() == {"type": "ready"}
@@ -79,7 +84,9 @@ class TestDictationWebSocket:
                 final = ws.receive_json()
                 assert final == {"type": "final", "text": "hello world"}
                 mock_session.append_pcm.assert_called()
-                mock_session.finalize.assert_awaited_once_with(mock_transcriber, "en")
+                mock_session.finalize.assert_awaited_once_with(
+                    mock_transcriber, "en"
+                )
 
     def test_rejects_completed_interview(self, client):
         """Completed interviews receive an error and close."""

@@ -628,7 +628,7 @@ Run attempts are rate-limited per task (`CODING_MAX_RUNS_PER_TASK`, default 20).
 
 ## Data Flow: Dictation WebSocket
 
-Separate from answer/evaluation WS. Requires active interview and loaded transcriber (`app.state.speech_transcriber`).
+Separate from answer/evaluation WS. Requires active interview and loaded transcriber (from the in-process Whisper runtime).
 
 ```
 Client → WS connect /interview/{id}/dictation
@@ -655,7 +655,7 @@ User → GET /config (speech_model_size, locale)
 User → POST /speech/model/download
   → WhisperModelService.start_download(size from config)
        → Hugging Face snapshot → data/whisper-models/<size>/
-       → WhisperRuntime.load_size(size) → app.state.speech_transcriber
+       → WhisperRuntime.load_size(size) → transcriber in the in-process runtime
 User → GET /speech/model/status (HTMX poll while downloading)
 ```
 

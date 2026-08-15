@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for first-time configuration flow (S1 scenarios)."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from app.ai.llm_models import LLMModelEntry
 from app.platform.domain.config import AppConfig
@@ -227,7 +227,8 @@ class TestFirstTimeConfigFlow:
             ),
             patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
             patch(
-                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save"
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save",
+                new=AsyncMock(),
             ),
         ):
             response = client.post(

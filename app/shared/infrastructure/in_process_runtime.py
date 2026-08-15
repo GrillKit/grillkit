@@ -4,7 +4,7 @@
 
 import asyncio
 import logging
-from typing import Any, ClassVar
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -12,47 +12,45 @@ logger = logging.getLogger(__name__)
 class InProcessArtifactRuntime:
     """Hold one loaded artifact and expose load/unload helpers.
 
-    Subclasses implement ``normalize_key``, ``is_installed``, and ``load_sync``.
+    Subclasses implement ``_normalize_key``, ``_is_installed`` and ``_load_sync``,
+    and expose public, protocol-named wrappers (e.g. ``is_installed(size)`` or
+    ``is_installed(voice_id)``) that delegate to the protected helpers. Each
+    instance owns its own in-memory artifact state.
     """
 
-    _artifact: ClassVar[Any | None] = None
-    _loaded_key: ClassVar[str | None] = None
-    _load_error: ClassVar[str | None] = None
+    def __init__(self) -> None:
+        """Initialize empty artifact state."""
+        self._artifact: Any | None = None
+        self._loaded_key: str | None = None
+        self._load_error: str | None = None
 
-    @classmethod
-    def normalize_key(cls, key: str) -> str:
+    def _normalize_key(self, key: str) -> str:
         """Normalize an artifact identifier to the canonical form."""
         raise NotImplementedError
 
-    @classmethod
-    def is_installed(cls, key: str) -> bool:
+    def _is_installed(self, key: str) -> bool:
         """Return whether artifact files are present on disk."""
         raise NotImplementedError
 
-    @classmethod
-    def load_sync(cls, key: str) -> Any:
+    def _load_sync(self, key: str) -> Any:
         """Load the artifact from disk (blocking)."""
         raise NotImplementedError
 
-    @classmethod
-    def loaded_key(cls) -> str | None:
+    def loaded_key(self) -> str | None:
         """Return the key of the artifact currently in memory, if any."""
-        return cls._loaded_key
+        return self._loaded_key
 
-    @classmethod
-    def load_error(cls) -> str | None:
+    def load_error(self) -> str | None:
         """Return the last in-process load error message, if any."""
-        return cls._load_error
+        return self._load_error
 
-    @classmethod
-    def is_loaded(cls, key: str) -> bool:
-        """Return whether an artifact for ``key`` is loaded in this process."""
-        if cls._artifact is None or cls._loaded_key is None:
+    def _has_loaded_key(self, key: str) -> bool:
+        """Return whether an artifact for the canonical ``key`` is loaded in this process."""
+        if self._artifact is None or self._loaded_key is None:
             return False
-        return cls._loaded_key == cls.normalize_key(key)
+        return self._loaded_key == self._normalize_key(key)
 
-    @classmethod
-    async def load(cls, key: str) -> bool:
+    async def _load(self, key: str) -> bool:
         """Load or reload the artifact for ``key`` from disk.
 
         Args:
@@ -61,37 +59,34 @@ class InProcessArtifactRuntime:
         Returns:
             True if an artifact is loaded for the key after this call.
         """
-        code = cls.normalize_key(key)
-        if not cls.is_installed(code):
-            cls.unload()
-            cls._load_error = None
+        code = self._normalize_key(key)
+        if not self._is_installed(code):
+            self.unload()
+            self._load_error = None
             return False
 
         try:
-            artifact = await asyncio.to_thread(cls.load_sync, code)
+            artifact = await asyncio.to_thread(self._load_sync, code)
         except Exception as exc:
             logger.exception("Failed to load artifact %s", code)
-            cls.unload()
-            cls._load_error = str(exc)
+            self.unload()
+            self._load_error = str(exc)
             return False
 
-        cls._artifact = artifact
-        cls._loaded_key = code
-        cls._load_error = None
-        cls.on_loaded(code, artifact)
+        self._artifact = artifact
+        self._loaded_key = code
+        self._load_error = None
+        self.on_loaded(code, artifact)
         return True
 
-    @classmethod
-    def unload(cls) -> None:
+    def unload(self) -> None:
         """Drop the in-memory artifact."""
-        cls._artifact = None
-        cls._loaded_key = None
-        cls.on_unloaded()
+        self._artifact = None
+        self._loaded_key = None
+        self.on_unloaded()
 
-    @classmethod
-    def on_loaded(cls, key: str, artifact: Any) -> None:
+    def on_loaded(self, key: str, artifact: Any) -> None:
         """Hook invoked after a successful load (optional)."""
 
-    @classmethod
-    def on_unloaded(cls) -> None:
+    def on_unloaded(self) -> None:
         """Hook invoked after unload (optional)."""

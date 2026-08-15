@@ -10,14 +10,16 @@ from app.platform.domain.config import ConfigService
 from app.platform.domain.speech_settings import question_voice_settings_from_config
 from app.shared.infrastructure.gateways.tts_cache import TtsCacheService
 from app.shared.infrastructure.gateways.tts_exceptions import QuestionVoiceDisabledError
+from app.speech.domain.tts_engine import TtsEngine
 
 
 async def get_question_audio_path(
+    engine: TtsEngine,
     interview_id: str,
     answer_id: int | None = None,
 ) -> Path:
     """Convenience wrapper for :meth:`GenerateQuestionAudio.execute`."""
-    return await GenerateQuestionAudio.execute(interview_id, answer_id)
+    return await GenerateQuestionAudio.execute(engine, interview_id, answer_id)
 
 
 class GenerateQuestionAudio:
@@ -25,12 +27,14 @@ class GenerateQuestionAudio:
 
     @staticmethod
     async def execute(
+        engine: TtsEngine,
         interview_id: str,
         answer_id: int | None = None,
     ) -> Path:
         """Return a WAV path for interview question audio.
 
         Args:
+            engine: TTS engine used to synthesize audio.
             interview_id: Interview session UUID.
             answer_id: Optional answer row id; defaults to the current question.
 
@@ -54,6 +58,7 @@ class GenerateQuestionAudio:
         interview = InterviewQuery.get_active_interview_or_raise(interview_id)
         answer = _resolve_answer(interview, answer_id)
         return await TtsCacheService.get_or_fetch(
+            engine,
             voice_settings.voice_id,
             interview.locale,
             answer.question_text,

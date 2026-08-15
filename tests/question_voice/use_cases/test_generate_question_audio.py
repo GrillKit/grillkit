@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -15,6 +15,12 @@ from app.question_voice.use_cases.generate_question_audio import (
     _resolve_answer,
 )
 from app.shared.infrastructure.gateways.tts_exceptions import QuestionVoiceDisabledError
+from app.speech.domain.tts_engine import TtsEngine
+
+
+def _engine():
+    """Build a dummy TTS engine for orchestration tests."""
+    return MagicMock(spec=TtsEngine)
 
 
 def _make_answer(
@@ -69,10 +75,7 @@ class TestGetQuestionAudioPath:
             ),
             pytest.raises(QuestionVoiceDisabledError),
         ):
-            await GenerateQuestionAudio.execute("interview-id")
-
-    @pytest.mark.asyncio
-    async def test_raises_when_voice_disabled(self):
+            await GenerateQuestionAudio.execute(_engine(), "interview-id")
         """Disabled voice in config raises QuestionVoiceDisabledError."""
         config = AppConfig(
             provider_type="openai-compatible",
@@ -87,11 +90,12 @@ class TestGetQuestionAudioPath:
             ),
             pytest.raises(QuestionVoiceDisabledError),
         ):
-            await GenerateQuestionAudio.execute("interview-id")
+            await GenerateQuestionAudio.execute(_engine(), "interview-id")
 
     @pytest.mark.asyncio
     async def test_returns_cached_path_with_answer_id(self):
         """Enabled voice returns WAV path for a specific answer_id."""
+        engine = _engine()
         config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
@@ -119,10 +123,13 @@ class TestGetQuestionAudioPath:
                 return_value=cached_path,
             ) as mock_cache,
         ):
-            result = await GenerateQuestionAudio.execute("interview-id", answer_id=7)
+            result = await GenerateQuestionAudio.execute(
+                engine, "interview-id", answer_id=7
+            )
 
         assert result == cached_path
         mock_cache.assert_called_once_with(
+            engine,
             "en_US-lessac-medium",
             "en",
             "What is Python?",
@@ -131,6 +138,7 @@ class TestGetQuestionAudioPath:
     @pytest.mark.asyncio
     async def test_returns_cached_path_for_current_question(self):
         """Enabled voice returns path for current unanswered question."""
+        engine = _engine()
         config = AppConfig(
             provider_type="openai-compatible",
             base_url="http://localhost",
@@ -158,10 +166,11 @@ class TestGetQuestionAudioPath:
                 return_value=cached_path,
             ) as mock_cache,
         ):
-            result = await GenerateQuestionAudio.execute("interview-id")
+            result = await GenerateQuestionAudio.execute(engine, "interview-id")
 
         assert result == cached_path
         mock_cache.assert_called_once_with(
+            engine,
             "en_US-lessac-medium",
             "en",
             "What is Python?",

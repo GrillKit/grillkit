@@ -6,13 +6,12 @@ import hashlib
 from pathlib import Path
 import re
 
-from app.shared.infrastructure.gateways.piper import PiperGateway as PiperRuntime
-from app.shared.infrastructure.gateways.piper_storage import is_voice_installed
 from app.shared.infrastructure.gateways.tts_exceptions import (
     QuestionVoiceSynthesisError,
 )
 from app.shared.locales import normalize_locale
 from app.shared.paths import TTS_CACHE_DIR
+from app.speech.domain.tts_engine import TtsEngine
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _CACHE_VERSION = "v2"
@@ -51,10 +50,16 @@ class TtsCacheService:
         return TTS_CACHE_DIR / _CACHE_VERSION / code / f"{digest}.wav"
 
     @staticmethod
-    async def get_or_fetch(voice_id: str, locale: str, text: str) -> Path:
+    async def get_or_fetch(
+        engine: TtsEngine,
+        voice_id: str,
+        locale: str,
+        text: str,
+    ) -> Path:
         """Return a cached WAV path, synthesizing on miss.
 
         Args:
+            engine: TTS engine used to synthesize on a cache miss.
             voice_id: Piper voice id from provider configuration.
             locale: Interview locale code.
             text: Question text snapshot.
@@ -69,19 +74,19 @@ class TtsCacheService:
         if path.is_file():
             return path
 
-        if not is_voice_installed(voice_id):
+        if not engine.is_installed(voice_id):
             raise QuestionVoiceSynthesisError(
                 "Question voice is not installed. Download it on the Configuration page."
             )
 
-        if not PiperRuntime.is_loaded(voice_id):
-            loaded = await PiperRuntime.load_voice(voice_id)
+        if not engine.is_loaded(voice_id):
+            loaded = await engine.load_voice(voice_id)
             if not loaded:
-                detail = PiperRuntime.load_error() or "Could not load question voice."
+                detail = engine.load_error() or "Could not load question voice."
                 raise QuestionVoiceSynthesisError(detail)
 
         try:
-            audio = await PiperRuntime.synthesize_wav_bytes(text)
+            audio = await engine.synthesize_wav_bytes(text)
         except Exception as exc:
             raise QuestionVoiceSynthesisError("TTS synthesis failed.") from exc
 

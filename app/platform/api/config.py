@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
-from app.platform.api.deps import ConfigServiceDep
+from app.platform.api.deps import ConfigServiceDep, SpeechRuntimeDep
 from app.platform.domain.config import AppConfig, ConfigService
 from app.platform.domain.llm_catalog import LLMCatalogService
-from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 from app.platform.queries.config_form import ConfigFormService
 from app.platform.queries.platform_page import ConfigPageService
 from app.platform.schemas import NewLLMModel
@@ -112,6 +111,7 @@ async def save_config(
     form: ConfigFromForm,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    coordinator: SpeechRuntimeDep,
 ) -> HTMLResponse:
     """Save configuration.
 
@@ -120,6 +120,7 @@ async def save_config(
         form: Parsed form fields and connection test result.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        coordinator: App-lifetime speech runtime coordinator.
 
     Returns:
         HTML response with success message or error.
@@ -135,7 +136,7 @@ async def save_config(
         return templates.TemplateResponse(request, "config.html", context)
 
     config_service.save_config(config)
-    await SpeechRuntimeCoordinator.reload_after_config_save(config)
+    await coordinator.reload_after_config_save(config)
     return templates.TemplateResponse(
         request,
         "config_success.html",
@@ -148,6 +149,7 @@ async def delete_config(
     request: Request,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    coordinator: SpeechRuntimeDep,
 ) -> HTMLResponse:
     """Delete configuration.
 
@@ -155,12 +157,13 @@ async def delete_config(
         request: FastAPI request object.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        coordinator: App-lifetime speech runtime coordinator.
 
     Returns:
         HTML response with empty form.
     """
     config_service.delete_config()
-    SpeechRuntimeCoordinator.unload_all()
+    coordinator.unload_all()
     context = await build_config_page_context(
         config=None,
         whisper_model_service=whisper_model_service,

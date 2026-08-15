@@ -1,49 +1,44 @@
 # Copyright 2026 GrillKit Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Resolve a loaded Whisper speech transcriber from application state."""
-
-from typing import cast
-
-from starlette.applications import Starlette
+"""Resolve a loaded speech transcriber through the speech runtime coordinator."""
 
 from app.ai.speech_transcriber import SpeechTranscriber
-from app.platform.domain.config import ConfigService
-from app.shared.infrastructure.gateways.whisper import WhisperRuntime
-from app.shared.infrastructure.gateways.whisper_storage import is_installed
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 
 _UNLOADED_MESSAGE = "Speech model is not loaded. Download it in Configuration."
 
 
 async def resolve_speech_transcriber(
-    app: Starlette,
-    config_service: type[ConfigService],
+    coordinator: SpeechRuntimeCoordinator,
 ) -> SpeechTranscriber | None:
     """Return a loaded speech transcriber, attempting runtime load when needed.
 
     Args:
-        app: ASGI application with optional ``speech_transcriber`` on state.
-        config_service: Provider configuration service class.
+        coordinator: App-lifetime speech runtime coordinator.
 
     Returns:
-        Loaded transcriber, or None when Whisper is unavailable.
+        Loaded transcriber, or None when a model is unavailable.
     """
-    transcriber = getattr(app.state, "speech_transcriber", None)
+    transcriber = coordinator.get_transcriber()
     if transcriber is None:
-        config = config_service.get_config()
-        if config is not None and is_installed(config.speech_model_size):
-            await WhisperRuntime.load_size(config.speech_model_size)
-            transcriber = getattr(app.state, "speech_transcriber", None)
-    if transcriber is None:
-        return None
-    return cast(SpeechTranscriber, transcriber)
+        config = coordinator.config_service.get_config()
+        if config is not None:
+            await coordinator.sync_whisper(config)
+            transcriber = coordinator.get_transcriber()
+    return transcriber
 
 
-def speech_transcriber_unavailable_message() -> str:
+def speech_transcriber_unavailable_message(
+    coordinator: SpeechRuntimeCoordinator,
+) -> str:
     """Build a user-facing message when no speech transcriber is loaded.
 
+    Args:
+        coordinator: App-lifetime speech runtime coordinator.
+
     Returns:
-        Error text including optional Whisper load error details.
+        Error text including optional model load error details.
     """
-    load_error = WhisperRuntime.load_error()
+    load_error = coordinator.load_error()
     detail = f" Speech model load error: {load_error}" if load_error else ""
     return _UNLOADED_MESSAGE + detail

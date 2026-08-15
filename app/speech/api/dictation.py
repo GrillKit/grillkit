@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.interview.queries.loader import InterviewQuery
-from app.platform.api.deps import ConfigServiceDep
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 from app.speech.api.dictation_protocol import (
     DICTATION_CLIENT_START,
     DICTATION_CLIENT_STOP,
@@ -47,7 +47,6 @@ async def _reject_dictation(websocket: WebSocket, message: str) -> None:
 async def interview_dictation_ws(
     websocket: WebSocket,
     interview_id: str,
-    config_service: ConfigServiceDep,
 ) -> None:
     """Stream PCM audio and return a final transcript for the answer field.
 
@@ -67,8 +66,8 @@ async def interview_dictation_ws(
     Args:
         websocket: Dictation WebSocket connection.
         interview_id: Interview session UUID.
-        config_service: Provider configuration service.
     """
+    coordinator: SpeechRuntimeCoordinator = websocket.app.state.speech_runtime
     interview = InterviewQuery.load(interview_id)
     if interview is None:
         await _reject_dictation(websocket, "Interview not found")
@@ -78,11 +77,11 @@ async def interview_dictation_ws(
         await _reject_dictation(websocket, "Interview is not active")
         return
 
-    transcriber = await resolve_speech_transcriber(websocket.app, config_service)
+    transcriber = await resolve_speech_transcriber(coordinator)
     if transcriber is None:
         await _reject_dictation(
             websocket,
-            speech_transcriber_unavailable_message(),
+            speech_transcriber_unavailable_message(coordinator),
         )
         return
 

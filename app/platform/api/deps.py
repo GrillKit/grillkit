@@ -4,9 +4,10 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from app.platform.domain.config import ConfigService
+from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 
 
 def get_config_service() -> type[ConfigService]:
@@ -15,3 +16,14 @@ def get_config_service() -> type[ConfigService]:
 
 
 ConfigServiceDep = Annotated[type[ConfigService], Depends(get_config_service)]
+
+
+def get_speech_runtime(request: Request) -> SpeechRuntimeCoordinator:
+    """Return the app-lifetime speech runtime coordinator."""
+    return request.app.state.speech_runtime
+
+
+SpeechRuntimeDep = Annotated[
+    SpeechRuntimeCoordinator,
+    Depends(get_speech_runtime),
+]
