@@ -3,6 +3,7 @@
 """GrillKit application package."""
 
 from importlib.metadata import PackageNotFoundError, version
+
 from app.shared.infrastructure.hf_hub_runtime import configure_hf_hub
 
 try:

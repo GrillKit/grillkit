@@ -9,11 +9,11 @@ import pytest
 from app.platform.domain.config import AppConfig, ConfigService
 from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 from app.speech.domain.stt_loader import SttModelLoader
-from app.speech.domain.tts_engine import TtsEngine
 from app.speech.domain.transcriber_resolver import (
     resolve_speech_transcriber,
     speech_transcriber_unavailable_message,
 )
+from app.speech.domain.tts_engine import TtsEngine
 
 
 class FakeTranscriber:

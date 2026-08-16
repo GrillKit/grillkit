@@ -4,8 +4,6 @@
 
 from dataclasses import dataclass
 
-from pydantic import ValidationError
-
 from app.platform.domain.config import AppConfig, ConfigService
 from app.platform.domain.llm_catalog import LLMCatalogService
 from app.platform.schemas import NewLLMModel
@@ -46,37 +44,18 @@ class AddLLMModelUseCase:
 
     async def execute(
         self,
-        *,
-        display_name: str,
-        base_url: str,
-        model: str,
-        api_key: str,
-        api_key_required: bool,
-        accepts_audio_input: bool,
+        payload: NewLLMModel,
     ) -> AddLLMModelResult:
         """Run the add-model flow.
 
         Args:
-            display_name: Label shown in the interview model selector.
-            base_url: OpenAI-compatible API base URL.
-            model: Provider model name.
-            api_key: Optional API key stored with the catalog entry.
-            api_key_required: Whether the saved provider config needs an API key.
-            accepts_audio_input: Whether the catalog entry supports audio answers.
+            payload: Validated add-model form values from the catalog form.
 
         Returns:
             Result with an error or success message for the config page.
         """
         config = self._config_service.get_config()
         try:
-            payload = NewLLMModel(
-                display_name=display_name,
-                base_url=base_url,
-                model=model,
-                api_key_required=api_key_required,
-                api_key=api_key,
-                accepts_audio_input=accepts_audio_input,
-            )
             speech_model_size = (
                 config.speech_model_size
                 if config is not None
@@ -90,6 +69,10 @@ class AddLLMModelUseCase:
                 speech_model_size=speech_model_size,
                 locale=config.locale if config is not None else DEFAULT_LOCALE,
             )
+            if payload.api_key_required and not payload.api_key:
+                raise ValueError(
+                    "API key is required for this model but none was provided."
+                )
             success, test_message = await self._config_service.test_catalog_model(
                 probe_config,
                 accepts_audio_input=payload.accepts_audio_input,
@@ -101,7 +84,5 @@ class AddLLMModelUseCase:
                 message=f"Added model '{entry.display_name}' to the catalog.",
                 selected_preset_id=entry.id,
             )
-        except ValidationError as exc:
-            return AddLLMModelResult(error=exc.errors()[0]["msg"])
         except ValueError as exc:
             return AddLLMModelResult(error=str(exc))

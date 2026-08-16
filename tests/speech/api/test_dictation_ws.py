@@ -75,18 +75,16 @@ class TestDictationWebSocket:
             patch(
                 "app.speech.api.dictation.DictationSession", return_value=mock_session
             ),
+            client.websocket_connect("/interview/test-session/dictation") as ws,
         ):
-            with client.websocket_connect("/interview/test-session/dictation") as ws:
-                ws.send_json({"type": "start"})
-                assert ws.receive_json() == {"type": "ready"}
-                ws.send_bytes(b"\x00\x00" * 50)
-                ws.send_json({"type": "stop"})
-                final = ws.receive_json()
-                assert final == {"type": "final", "text": "hello world"}
-                mock_session.append_pcm.assert_called()
-                mock_session.finalize.assert_awaited_once_with(
-                    mock_transcriber, "en"
-                )
+            ws.send_json({"type": "start"})
+            assert ws.receive_json() == {"type": "ready"}
+            ws.send_bytes(b"\x00\x00" * 50)
+            ws.send_json({"type": "stop"})
+            final = ws.receive_json()
+            assert final == {"type": "final", "text": "hello world"}
+            mock_session.append_pcm.assert_called()
+            mock_session.finalize.assert_awaited_once_with(mock_transcriber, "en")
 
     def test_rejects_completed_interview(self, client):
         """Completed interviews receive an error and close."""

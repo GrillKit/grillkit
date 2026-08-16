@@ -365,14 +365,14 @@ class ConfigService:
         Returns:
             Tuple of (success: bool, message: str).
         """
+        # test_catalog_model already performs the text (and optional audio)
+        # readiness probes; only the Whisper check is specific to interview models.
         success, message = await ConfigService.test_catalog_model(
             config,
             accepts_audio_input=accepts_audio_input,
         )
-        if not success:
-            return False, message
-        if not accepts_audio_input:
-            return True, message
+        if not success or not accepts_audio_input:
+            return success, message
         whisper_ok, whisper_message = ConfigService.check_whisper_ready(
             config.speech_model_size
         )

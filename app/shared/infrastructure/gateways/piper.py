@@ -3,6 +3,7 @@
 """In-process Piper voice loading and synthesis."""
 
 import asyncio
+import gc
 import io
 import logging
 from typing import TYPE_CHECKING
@@ -72,6 +73,11 @@ class PiperGateway(InProcessArtifactRuntime):
         """Log successful voice load."""
         del artifact
         logger.debug("Piper voice %s loaded into memory", key)
+
+    def on_unloaded(self) -> None:
+        """Log successful voice unload."""
+        logger.debug("Piper voice unloaded from memory")
+        _ = gc.collect()
 
     def synthesize_wav_bytes_sync(self, text: str) -> bytes:
         """Synthesize WAV audio for ``text`` using the loaded voice (blocking).

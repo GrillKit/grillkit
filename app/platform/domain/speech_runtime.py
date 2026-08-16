@@ -55,54 +55,76 @@ class SpeechRuntimeCoordinator:
 
     async def startup(self) -> None:
         """Load configured speech artifacts when installed."""
-        await self.sync(self._config_service.get_config())
+        _ = await self.sync(self._config_service.get_config())
 
     async def shutdown(self) -> None:
         """Unload all in-memory speech artifacts."""
         self.unload_all()
 
-    async def sync(self, config: AppConfig | None) -> None:
-        """Align both speech runtimes with the given configuration."""
-        await self.sync_whisper(config)
-        await self.sync_piper(config)
+    async def sync(self, config: AppConfig | None) -> list[str]:
+        """Align both speech runtimes with the given configuration.
 
-    async def reload_after_config_save(self, config: AppConfig) -> None:
+        Args:
+            config: Saved provider configuration, if any.
+
+        Returns:
+            Human-readable load errors for STT/TTS that failed to load, if any.
+        """
+        errors: list[str] = []
+        if stt_error := await self.sync_whisper(config):
+            errors.append(stt_error)
+        if tts_error := await self.sync_piper(config):
+            errors.append(tts_error)
+        return errors
+
+    async def reload_after_config_save(self, config: AppConfig) -> list[str]:
         """Reload speech runtimes after configuration is persisted.
 
         Args:
             config: Configuration that was just saved.
-        """
-        await self.sync(config)
 
-    async def sync_whisper(self, config: AppConfig | None) -> None:
+        Returns:
+            Human-readable load errors for STT/TTS that failed to load, if any.
+        """
+        return await self.sync(config)
+
+    async def sync_whisper(self, config: AppConfig | None) -> str | None:
         """Load or unload Whisper based on configuration and on-disk install state.
 
         Args:
             config: Saved provider configuration, if any.
+
+        Returns:
+            A load error message when Whisper failed to load, otherwise ``None``.
         """
         if config is None:
             self._stt.unload()
-            return
+            return None
         settings = speech_settings_from_config(config)
         if self._stt.is_installed(settings.speech_model_size):
-            await self._stt.load_size(settings.speech_model_size)
+            _ = await self._stt.load_size(settings.speech_model_size)
         else:
             self._stt.unload()
+        return self._stt.load_error()
 
-    async def sync_piper(self, config: AppConfig | None) -> None:
+    async def sync_piper(self, config: AppConfig | None) -> str | None:
         """Load or unload Piper based on configuration and on-disk install state.
 
         Args:
             config: Saved provider configuration, if any.
+
+        Returns:
+            A load error message when Piper failed to load, otherwise ``None``.
         """
         if config is None:
             self._tts.unload()
-            return
+            return None
         settings = question_voice_settings_from_config(config)
         if settings.enabled and self._tts.is_installed(settings.voice_id):
-            await self._tts.load_voice(settings.voice_id)
+            _ = await self._tts.load_voice(settings.voice_id)
         else:
             self._tts.unload()
+        return self._tts.load_error()
 
     async def preload_whisper_for_active_interview(
         self,
@@ -119,10 +141,10 @@ class SpeechRuntimeCoordinator:
         if config is None or not interview_active:
             return
         settings = speech_settings_from_config(config)
-        if self._stt.is_installed(settings.speech_model_size) and not self._stt.is_loaded(
+        if self._stt.is_installed(
             settings.speech_model_size
-        ):
-            await self._stt.load_size(settings.speech_model_size)
+        ) and not self._stt.is_loaded(settings.speech_model_size):
+            _ = await self._stt.load_size(settings.speech_model_size)
 
     def get_transcriber(self) -> SpeechTranscriber | None:
         """Return the currently loaded speech transcriber, if any."""

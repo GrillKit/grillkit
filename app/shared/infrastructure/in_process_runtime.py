@@ -3,6 +3,7 @@
 """Base class for loading ML artifacts into the current process."""
 
 import asyncio
+import gc
 import logging
 from typing import Any
 
@@ -80,10 +81,30 @@ class InProcessArtifactRuntime:
         return True
 
     def unload(self) -> None:
-        """Drop the in-memory artifact."""
+        """Drop the in-memory artifact and release its resources.
+
+        The held reference is dropped, then :meth:`_release_artifact` gives
+        subclasses a chance to free native resources (CUDA/ctranslate2,
+        onnxruntime) explicitly. Finally a GC pass is forced so reference
+        cycles held by ML frameworks do not keep the memory alive.
+        """
+        artifact = self._artifact
         self._artifact = None
         self._loaded_key = None
+        if artifact is not None:
+            self._release_artifact(artifact)
+        _ = gc.collect()
         self.on_unloaded()
+
+    def _release_artifact(self, artifact: Any) -> None:
+        """Release native resources held by ``artifact`` (optional hook).
+
+        Subclasses override this to explicitly close underlying native model
+        sessions (e.g. CT2/onnxruntime) instead of relying solely on garbage
+        collection. The default implementation keeps the reference until it is
+        reclaimed by the reference counter / GC.
+        """
+        del artifact
 
     def on_loaded(self, key: str, artifact: Any) -> None:
         """Hook invoked after a successful load (optional)."""

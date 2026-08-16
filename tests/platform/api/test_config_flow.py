@@ -228,7 +228,7 @@ class TestFirstTimeConfigFlow:
             patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
             patch(
                 "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save",
-                new=AsyncMock(),
+                new=AsyncMock(return_value=[]),
             ),
         ):
             response = client.post(
@@ -243,6 +243,40 @@ class TestFirstTimeConfigFlow:
         assert response.status_code == 200
         mock_save.assert_called_once()
         assert "saved" in response.text.lower() or "success" in response.text.lower()
+
+    def test_config_save_warns_when_speech_model_fails_to_load(self, client):
+        """S1.7b: Config saved but warning shown when a speech model fails to load."""
+        with (
+            patch(
+                "app.platform.queries.config_form.normalize_model_id",
+                return_value="cloud",
+            ),
+            patch(
+                "app.platform.queries.config_form.LLMCatalogService.get_model",
+                return_value=self._catalog_entry(),
+            ),
+            patch(
+                "app.platform.domain.config.ConfigService.test_connection",
+                return_value=(True, "OK"),
+            ),
+            patch("app.platform.domain.config.ConfigService.save_config") as mock_save,
+            patch(
+                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.reload_after_config_save",
+                new=AsyncMock(return_value=["Whisper failed to load"]),
+            ),
+        ):
+            response = client.post(
+                "/config",
+                data={
+                    "llm_preset_id": "cloud",
+                    "api_key": "test-key",
+                    "timeout": "60",
+                    "locale": "en",
+                },
+            )
+        assert response.status_code == 200
+        mock_save.assert_called_once()
+        assert "Whisper failed to load" in response.text
 
     def test_after_save_setup_no_longer_redirects(self, client):
         """S1.8: After config saved, GET /setup returns setup page."""

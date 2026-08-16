@@ -10,6 +10,8 @@ from app.platform.domain.config import ConfigService
 from app.platform.domain.llm_catalog import LLMCatalogService
 from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
 from app.platform.use_cases.add_llm_model import AddLLMModelUseCase
+from app.platform.use_cases.delete_config import DeleteConfigUseCase
+from app.platform.use_cases.save_config import SaveConfigUseCase
 
 
 def get_config_service() -> type[ConfigService]:
@@ -31,6 +33,34 @@ def get_add_llm_model_use_case() -> AddLLMModelUseCase:
 AddLLMModelUseCaseDep = Annotated[
     AddLLMModelUseCase,
     Depends(get_add_llm_model_use_case),
+]
+
+
+def get_save_config_use_case(request: Request) -> SaveConfigUseCase:
+    """Return the save-config use case wired with app-lifetime services."""
+    return SaveConfigUseCase(
+        config_service=ConfigService,
+        coordinator=request.app.state.speech_runtime,
+    )
+
+
+SaveConfigUseCaseDep = Annotated[
+    SaveConfigUseCase,
+    Depends(get_save_config_use_case),
+]
+
+
+def get_delete_config_use_case(request: Request) -> DeleteConfigUseCase:
+    """Return the delete-config use case wired with app-lifetime services."""
+    return DeleteConfigUseCase(
+        config_service=ConfigService,
+        coordinator=request.app.state.speech_runtime,
+    )
+
+
+DeleteConfigUseCaseDep = Annotated[
+    DeleteConfigUseCase,
+    Depends(get_delete_config_use_case),
 ]
 
 

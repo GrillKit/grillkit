@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """In-process speech transcriber loading and hot-reload."""
 
+import gc
 import logging
 import os
 
@@ -86,6 +87,7 @@ class WhisperGateway(InProcessArtifactRuntime):
     def on_unloaded(self) -> None:
         """Log when the transcriber is dropped."""
         logger.debug("Whisper model unloaded from memory")
+        _ = gc.collect()
 
 
 # Single in-process runtime instance shared by the coordinator and status services.
