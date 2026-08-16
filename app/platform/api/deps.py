@@ -66,7 +66,11 @@ DeleteConfigUseCaseDep = Annotated[
 
 def get_speech_runtime(request: Request) -> SpeechRuntimeCoordinator:
     """Return the app-lifetime speech runtime coordinator."""
-    return request.app.state.speech_runtime
+    coordinator = request.app.state.speech_runtime
+    assert isinstance(coordinator, SpeechRuntimeCoordinator), (
+        "speech runtime not initialized"
+    )
+    return coordinator
 
 
 SpeechRuntimeDep = Annotated[
