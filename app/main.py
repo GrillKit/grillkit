@@ -13,49 +13,31 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.coding.api import routes as coding_router
-from app.interview.api import dashboard as dashboard_router
-from app.interview.api import known_questions as known_questions_router
-from app.interview.api import results as results_router
-from app.interview.api import routes as interview_router
-from app.interview.api import setup as setup_router
-from app.platform.api import config as config_router
+from app import __version__
+from app.coding.api import router as coding_router
+from app.interview.api import router as interview_router
+from app.platform.api import router as platform_router
 from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
-from app.question_voice.api import routes as question_voice_router
-from app.shared.infrastructure.database import run_migrations
+from app.question_voice.api import router as question_voice_router
+from app.shared.infrastructure.gateways.piper import PiperRuntime
+from app.shared.infrastructure.gateways.whisper import WhisperRuntime
 from app.shared.paths import STATIC_DIR
-from app.speech.api import dictation as dictation_router
-from app.speech.api import routes as speech_router
-from app.theory.api import routes as theory_router
-
-
-def _get_app_version() -> str:
-    """Return the application version from package metadata.
-
-    Falls back to a hardcoded value when the package is not installed
-    (e.g., during development).
-
-    Returns:
-        Semantic version string.
-    """
-    try:
-        from importlib.metadata import version
-
-        return version("grillkit")
-    except Exception:
-        return "2026.6.12"
+from app.speech.api import router as speech_router
+from app.theory.api import router as theory_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler.
 
-    Initializes database and loads the Whisper model when installed.
+    Creates the speech runtime coordinator, loads the Whisper model (and Piper
+    when configured) on startup, and unloads them on shutdown.
     """
-    run_migrations()
-    await SpeechRuntimeCoordinator.startup(app)
+    coordinator = SpeechRuntimeCoordinator(WhisperRuntime, PiperRuntime)
+    app.state.speech_runtime = coordinator
+    await coordinator.startup()
     yield
-    SpeechRuntimeCoordinator.unload_all()
+    await coordinator.shutdown()
 
 
 def create_app() -> FastAPI:
@@ -67,22 +49,17 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="GrillKit",
         description="AI Interview Trainer",
-        version=_get_app_version(),
+        version=__version__,
         lifespan=lifespan,
     )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-    app.include_router(dashboard_router.router)
-    app.include_router(setup_router.router)
-    app.include_router(known_questions_router.router)
-    app.include_router(config_router.router)
-    app.include_router(interview_router.router)
-    app.include_router(results_router.router)
-    app.include_router(theory_router.router)
-    app.include_router(coding_router.router)
-    app.include_router(dictation_router.router)
-    app.include_router(speech_router.router)
-    app.include_router(question_voice_router.router)
+    app.include_router(interview_router)
+    app.include_router(platform_router)
+    app.include_router(theory_router)
+    app.include_router(coding_router)
+    app.include_router(speech_router)
+    app.include_router(question_voice_router)
 
     return app
 

@@ -2,11 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """In-process speech transcriber loading and hot-reload."""
 
+import gc
 import logging
 import os
-from typing import ClassVar
 
-from fastapi import FastAPI
 from faster_whisper import WhisperModel
 
 from app.ai.faster_whisper_transcriber import FasterWhisperTranscriber
@@ -22,22 +21,21 @@ WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
 
 
 class WhisperGateway(InProcessArtifactRuntime):
-    """Hold the loaded :class:`SpeechTranscriber` and sync it to ``app.state``."""
+    """Hold a loaded :class:`SpeechTranscriber` in this process.
 
-    _app: ClassVar[FastAPI | None] = None
+    Satisfies the :class:`SttModelLoader` protocol, so it can be injected into the
+    :class:`SpeechRuntimeCoordinator` as the STT backend.
+    """
 
-    @classmethod
-    def normalize_key(cls, key: str) -> str:
+    def _normalize_key(self, key: str) -> str:
         """Normalize a speech model size identifier."""
         return normalize_speech_model_size(key)
 
-    @classmethod
-    def is_installed(cls, key: str) -> bool:
+    def _is_installed(self, key: str) -> bool:
         """Return whether a valid Whisper model is on disk for ``key``."""
         return is_installed(key)
 
-    @classmethod
-    def load_sync(cls, key: str) -> SpeechTranscriber:
+    def _load_sync(self, key: str) -> SpeechTranscriber:
         """Load ``WhisperModel`` and wrap it in a transcriber (blocking)."""
         path = model_dir(key)
         model = WhisperModel(
@@ -47,18 +45,23 @@ class WhisperGateway(InProcessArtifactRuntime):
         )
         return FasterWhisperTranscriber(model)
 
-    @classmethod
-    def bind_app(cls, app: FastAPI) -> None:
-        """Register the FastAPI app for ``app.state`` updates after load/unload."""
-        cls._app = app
+    def is_installed(self, size: str) -> bool:
+        """Return whether a valid Whisper model is on disk for ``size``."""
+        return self._is_installed(size)
 
-    @classmethod
-    def loaded_size(cls) -> str | None:
+    def is_loaded(self, size: str) -> bool:
+        """Return whether the model for ``size`` is loaded in memory."""
+        return self._has_loaded_key(size)
+
+    def get(self) -> SpeechTranscriber | None:
+        """Return the currently loaded transcriber, if any."""
+        return self._artifact
+
+    def loaded_size(self) -> str | None:
         """Return the size of the model currently in memory, if any."""
-        return cls.loaded_key()
+        return self.loaded_key()
 
-    @classmethod
-    async def load_size(cls, size: str) -> bool:
+    async def load_size(self, size: str) -> bool:
         """Load or reload the Whisper model for ``size`` from disk.
 
         Args:
@@ -67,33 +70,25 @@ class WhisperGateway(InProcessArtifactRuntime):
         Returns:
             True if a transcriber is loaded for the size after this call.
         """
-        loaded = await cls.load(size)
+        loaded = await self._load(size)
         if loaded:
             logger.info(
                 "Loaded Whisper model %s from %s",
-                cls.normalize_key(size),
-                model_dir(cls.normalize_key(size)),
+                self._normalize_key(size),
+                model_dir(self._normalize_key(size)),
             )
         return loaded
 
-    @classmethod
-    def on_loaded(cls, key: str, artifact: SpeechTranscriber) -> None:
-        """Mirror runtime handles onto the bound FastAPI application."""
+    def on_loaded(self, key: str, artifact: SpeechTranscriber) -> None:
+        """Log a successful load."""
         del artifact
-        cls._sync_app_state()
+        logger.debug("Whisper model %s loaded into memory", key)
 
-    @classmethod
-    def on_unloaded(cls) -> None:
-        """Clear ``app.state`` when the transcriber is dropped."""
-        cls._sync_app_state()
-
-    @classmethod
-    def _sync_app_state(cls) -> None:
-        """Mirror runtime handles onto the bound FastAPI application."""
-        app = cls._app
-        if app is None:
-            return
-        app.state.speech_transcriber = cls._artifact
+    def on_unloaded(self) -> None:
+        """Log when the transcriber is dropped."""
+        logger.debug("Whisper model unloaded from memory")
+        _ = gc.collect()
 
 
-WhisperRuntime = WhisperGateway
+# Single in-process runtime instance shared by the coordinator and status services.
+WhisperRuntime = WhisperGateway()

@@ -84,3 +84,4 @@ dmypy.json
 /.kilocode/
 /data/whisper-models/
 /.qwen/
+docs/

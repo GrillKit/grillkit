@@ -11,7 +11,7 @@ from huggingface_hub import snapshot_download
 
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
-from app.shared.infrastructure.gateways.whisper import WhisperGateway as WhisperRuntime
+from app.shared.infrastructure.gateways.whisper import WhisperRuntime
 from app.shared.infrastructure.gateways.whisper_storage import (
     is_installed,
     is_valid_model_dir,

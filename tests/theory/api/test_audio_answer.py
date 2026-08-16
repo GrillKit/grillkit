@@ -96,11 +96,14 @@ def _active_interview_read(interview_id: str) -> InterviewRead:
 
 @pytest.fixture
 def audio_api_client(client, override_ws_ai_provider):
-    """Test client with speech transcriber attached to app state."""
+    """Test client with a fake speech transcriber resolved from the runtime."""
     override_ws_ai_provider(client, [])
-    client.app.state.speech_transcriber = FakeTranscriber("spoken via api")
-    yield client
-    client.app.state.speech_transcriber = None
+    fake = FakeTranscriber("spoken via api")
+    with patch(
+        "app.interview.api.deps.resolve_speech_transcriber",
+        new=AsyncMock(return_value=fake),
+    ):
+        yield client
 
 
 class TestAudioAnswerApi:
@@ -205,12 +208,11 @@ class TestAudioAnswerApi:
         )
         override_ws_ai_provider(client, [])
         interview_id = seed_two_question_interview("audio-api-no-whisper")
-        client.app.state.speech_transcriber = None
         wav_bytes = minimal_wav_bytes()
 
         with patch(
-            "app.speech.domain.transcriber_resolver.is_installed",
-            return_value=False,
+            "app.interview.api.deps.resolve_speech_transcriber",
+            new=AsyncMock(return_value=None),
         ):
             response = client.post(
                 f"/interview/{interview_id}/theory/audio-answer",

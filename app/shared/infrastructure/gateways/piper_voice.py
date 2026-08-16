@@ -12,7 +12,7 @@ from huggingface_hub import hf_hub_download
 from app.question_voice.schemas import PiperVoiceStatusRead
 from app.shared.infrastructure.artifact_download import ArtifactDownloadService
 from app.shared.infrastructure.artifact_status import ArtifactStatusBuilder
-from app.shared.infrastructure.gateways.piper import PiperGateway as PiperRuntime
+from app.shared.infrastructure.gateways.piper import PiperRuntime
 from app.shared.infrastructure.gateways.piper_storage import (
     is_valid_voice_dir,
     is_voice_installed,

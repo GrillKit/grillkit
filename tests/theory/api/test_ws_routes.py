@@ -37,7 +37,6 @@ def client():
         yield FakeProvider([])
 
     with (
-        patch("app.main.run_migrations"),
         patch(
             "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),

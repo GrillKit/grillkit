@@ -2,20 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """Configuration endpoints."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
-from app.platform.api.deps import ConfigServiceDep
-from app.platform.domain.config import AppConfig, ConfigService
-from app.platform.domain.llm_catalog import LLMCatalogService
-from app.platform.domain.speech_runtime import SpeechRuntimeCoordinator
-from app.platform.queries.config_form import ConfigFormService
-from app.platform.queries.platform_page import ConfigPageService
+from app.platform.api.deps import (
+    AddLLMModelUseCaseDep,
+    ConfigServiceDep,
+    DeleteConfigUseCaseDep,
+    SaveConfigUseCaseDep,
+)
+from app.platform.domain.config import AppConfig
+from app.platform.queries.config_form import parse_and_test
+from app.platform.queries.platform_page import build_page_context
 from app.platform.schemas import NewLLMModel
-from app.shared.infrastructure.gateways.whisper_model import WhisperModelService
+from app.platform.use_cases.add_llm_model import AddLLMModelResult
 from app.shared.locales import DEFAULT_LOCALE
 from app.shared.speech_models import DEFAULT_SPEECH_MODEL_SIZE
 from app.speech.api.deps import WhisperModelServiceDep
@@ -34,7 +37,7 @@ async def _config_from_form(
     question_voice_enabled: bool = Form(False),
 ) -> tuple[AppConfig, bool, str]:
     """Parse the config form, build AppConfig, and test the connection."""
-    return await ConfigFormService.parse_and_test(
+    return await parse_and_test(
         config_service,
         llm_preset_id=llm_preset_id,
         api_key=api_key,
@@ -43,40 +46,6 @@ async def _config_from_form(
         speech_model_size=speech_model_size,
         question_voice_enabled=question_voice_enabled,
     )
-
-
-async def build_config_page_context(
-    *,
-    config: AppConfig | None,
-    whisper_model_service: type[WhisperModelService],
-    error: str | None = None,
-    message: str | None = None,
-    mask_secret: bool = True,
-    selected_llm_preset_id: str | None = None,
-) -> dict[str, Any]:
-    """Build the full Jinja context for ``config.html``.
-
-    Args:
-        config: Saved provider configuration, if any.
-        whisper_model_service: Whisper model download service class.
-        error: Optional form validation or connection error message.
-        message: Optional success or informational message.
-        mask_secret: Whether to mask the API key in the config dict.
-        selected_llm_preset_id: Override selected preset after catalog edits.
-
-    Returns:
-        Context dict for ``config.html``.
-    """
-    return (
-        await ConfigPageService.build_page_context(
-            config=config,
-            whisper_model_service=whisper_model_service,
-            error=error,
-            message=message,
-            mask_secret=mask_secret,
-            selected_llm_preset_id=selected_llm_preset_id,
-        )
-    ).model_dump()
 
 
 ConfigFromForm = Annotated[tuple[AppConfig, bool, str], Depends(_config_from_form)]
@@ -99,10 +68,12 @@ async def config_page(
         HTML response with configuration form.
     """
     config = config_service.get_config()
-    context = await build_config_page_context(
-        config=config,
-        whisper_model_service=whisper_model_service,
-    )
+    context = (
+        await build_page_context(
+            config=config,
+            whisper_model_service=whisper_model_service,
+        )
+    ).model_dump()
     return templates.TemplateResponse(request, "config.html", context)
 
 
@@ -110,32 +81,48 @@ async def config_page(
 async def save_config(
     request: Request,
     form: ConfigFromForm,
-    config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    save_config: SaveConfigUseCaseDep,
 ) -> HTMLResponse:
     """Save configuration.
 
     Args:
         request: FastAPI request object.
         form: Parsed form fields and connection test result.
-        config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        save_config: Use case that persists config and reloads speech runtimes.
 
     Returns:
         HTML response with success message or error.
     """
     config, success, message = form
     if not success:
-        context = await build_config_page_context(
-            config=config,
-            whisper_model_service=whisper_model_service,
-            error=message,
-            mask_secret=False,
-        )
+        context = (
+            await build_page_context(
+                config=config,
+                whisper_model_service=whisper_model_service,
+                error=message,
+                mask_secret=False,
+            )
+        ).model_dump()
         return templates.TemplateResponse(request, "config.html", context)
 
-    config_service.save_config(config)
-    await SpeechRuntimeCoordinator.reload_after_config_save(config)
+    result = await save_config.execute(config)
+    if result.speech_errors:
+        # Config is saved, but one of the speech models failed to load.
+        # Warn the user instead of silently ignoring the failure.
+        warning = (
+            "Configuration saved, but a speech model failed to load: "
+            + " | ".join(result.speech_errors)
+        )
+        context = (
+            await build_page_context(
+                config=config,
+                whisper_model_service=whisper_model_service,
+                message=warning,
+            )
+        ).model_dump()
+        return templates.TemplateResponse(request, "config.html", context)
     return templates.TemplateResponse(
         request,
         "config_success.html",
@@ -146,26 +133,27 @@ async def save_config(
 @router.delete("", response_class=HTMLResponse)
 async def delete_config(
     request: Request,
-    config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    delete_config: DeleteConfigUseCaseDep,
 ) -> HTMLResponse:
     """Delete configuration.
 
     Args:
         request: FastAPI request object.
-        config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        delete_config: Use case that removes config and unloads speech runtimes.
 
     Returns:
         HTML response with empty form.
     """
-    config_service.delete_config()
-    SpeechRuntimeCoordinator.unload_all()
-    context = await build_config_page_context(
-        config=None,
-        whisper_model_service=whisper_model_service,
-        message="Configuration removed",
-    )
+    delete_config.execute()
+    context = (
+        await build_page_context(
+            config=None,
+            whisper_model_service=whisper_model_service,
+            message="Configuration removed",
+        )
+    ).model_dump()
     return templates.TemplateResponse(request, "config.html", context)
 
 
@@ -193,6 +181,7 @@ async def add_llm_model(
     request: Request,
     config_service: ConfigServiceDep,
     whisper_model_service: WhisperModelServiceDep,
+    add_model: AddLLMModelUseCaseDep,
     display_name: str = Form(...),
     base_url: str = Form(...),
     model: str = Form(...),
@@ -206,6 +195,7 @@ async def add_llm_model(
         request: FastAPI request object.
         config_service: Provider configuration service.
         whisper_model_service: Whisper model download service.
+        add_model: Use case that probes and persists the new catalog entry.
         display_name: Label shown in the interview model selector.
         base_url: OpenAI-compatible API base URL.
         model: Provider model name.
@@ -216,51 +206,26 @@ async def add_llm_model(
     Returns:
         Configuration page with a success or validation error message.
     """
-    config = config_service.get_config()
-    selected_preset_id: str | None = None
-    message: str | None = None
-    error: str | None = None
     try:
         payload = NewLLMModel(
             display_name=display_name,
             base_url=base_url,
             model=model,
-            api_key_required=api_key_required,
             api_key=api_key,
+            api_key_required=api_key_required,
             accepts_audio_input=accepts_audio_input,
         )
-        speech_model_size = (
-            config.speech_model_size
-            if config is not None
-            else DEFAULT_SPEECH_MODEL_SIZE
-        )
-        probe_config = AppConfig(
-            provider_type="openai-compatible",
-            base_url=payload.base_url,
-            model=payload.model,
-            api_key=payload.api_key,
-            speech_model_size=speech_model_size,
-            locale=config.locale if config is not None else DEFAULT_LOCALE,
-        )
-        success, test_message = await ConfigService.test_catalog_model(
-            probe_config,
-            accepts_audio_input=payload.accepts_audio_input,
-        )
-        if not success:
-            raise ValueError(test_message)
-        entry = LLMCatalogService.add_user_model(payload)
-        selected_preset_id = entry.id
-        message = f"Added model '{entry.display_name}' to the catalog."
     except ValidationError as exc:
-        error = exc.errors()[0]["msg"]
-    except ValueError as exc:
-        error = str(exc)
-
-    context = await build_config_page_context(
-        config=config,
-        whisper_model_service=whisper_model_service,
-        error=error,
-        message=message,
-        selected_llm_preset_id=selected_preset_id,
-    )
+        result = AddLLMModelResult(error=exc.errors()[0]["msg"])
+    else:
+        result = await add_model.execute(payload)
+    context = (
+        await build_page_context(
+            config=config_service.get_config(),
+            whisper_model_service=whisper_model_service,
+            error=result.error,
+            message=result.message,
+            selected_llm_preset_id=result.selected_preset_id,
+        )
+    ).model_dump()
     return templates.TemplateResponse(request, "config.html", context)

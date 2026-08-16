@@ -8,7 +8,7 @@ import pytest
 
 from app.ai.llm_models import LLMModelEntry
 from app.platform.domain.config import AppConfig
-from app.platform.queries.config_form import ConfigFormService
+from app.platform.queries.config_form import parse_and_test
 
 
 class TestParseAndTest:
@@ -51,7 +51,7 @@ class TestParseAndTest:
     async def test_parse_and_test_success(self, mock_catalog, mock_config_service):
         """Valid form data yields config, success=True, and message."""
         _, entry = mock_catalog
-        config, success, message = await ConfigFormService.parse_and_test(
+        config, success, message = await parse_and_test(
             config_service=mock_config_service,
             llm_preset_id="cloud",
             api_key="secret",
@@ -85,7 +85,7 @@ class TestParseAndTest:
         )
         mock_config_service.get_config.return_value = existing
 
-        config, success, message = await ConfigFormService.parse_and_test(
+        config, success, message = await parse_and_test(
             config_service=mock_config_service,
             llm_preset_id="cloud",
             api_key="secret",
@@ -110,7 +110,7 @@ class TestParseAndTest:
         )
         mock_config_service.get_config.return_value = existing
 
-        config, success, message = await ConfigFormService.parse_and_test(
+        config, success, message = await parse_and_test(
             config_service=mock_config_service,
             llm_preset_id="cloud",
             api_key="secret",
@@ -134,7 +134,7 @@ class TestParseAndTest:
                 side_effect=ValueError("Unsupported LLM model"),
             ),
         ):
-            config, success, message = await ConfigFormService.parse_and_test(
+            config, success, message = await parse_and_test(
                 config_service=mock_config_service,
                 llm_preset_id="invalid",
                 api_key="",
@@ -166,7 +166,7 @@ class TestParseAndTest:
                 return_value="cloud",
             ),
         ):
-            config, success, message = await ConfigFormService.parse_and_test(
+            config, success, message = await parse_and_test(
                 config_service=mock_config_service,
                 llm_preset_id="cloud",
                 api_key="",
@@ -187,7 +187,7 @@ class TestParseAndTest:
             return_value=(False, "Connection refused")
         )
 
-        config, success, message = await ConfigFormService.parse_and_test(
+        config, success, message = await parse_and_test(
             config_service=mock_config_service,
             llm_preset_id="cloud",
             api_key="bad",
@@ -206,7 +206,7 @@ class TestParseAndTest:
     ):
         """Locale and speech_model_size are normalized."""
         _, entry = mock_catalog
-        config, success, message = await ConfigFormService.parse_and_test(
+        config, success, message = await parse_and_test(
             config_service=mock_config_service,
             llm_preset_id="cloud",
             api_key="",

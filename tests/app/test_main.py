@@ -19,7 +19,7 @@ class TestCreateApp:
         assert app is not None
         assert app.title == "GrillKit"
         assert app.description == "AI Interview Trainer"
-        assert app.version == "2026.6.12"
+        assert app.version == "2026.8.9"
 
     def test_static_files_mounted(self):
         """Test that static files are mounted."""
@@ -46,30 +46,9 @@ class TestLifespan:
     """Tests for lifespan context manager."""
 
     @pytest.mark.asyncio
-    async def test_lifespan_calls_run_migrations(self):
-        """Test that lifespan runs database migrations on startup."""
-        with (
-            patch("app.main.run_migrations") as mock_run_migrations,
-            patch(
-                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.unload_all",
-            ),
-        ):
-            mock_app = MagicMock()
-
-            async with lifespan(mock_app):
-                pass
-
-            mock_run_migrations.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_lifespan_yields_control(self):
         """Test that lifespan yields control to the app."""
         with (
-            patch("app.main.run_migrations"),
             patch(
                 "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
                 new=AsyncMock(),
@@ -97,7 +76,6 @@ class TestAppIntegration:
     def client(self):
         """Create a test client."""
         with (
-            patch("app.main.run_migrations"),
             patch(
                 "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
                 new=AsyncMock(),

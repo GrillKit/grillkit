@@ -3,6 +3,7 @@
 """In-process Piper voice loading and synthesis."""
 
 import asyncio
+import gc
 import io
 import logging
 from typing import TYPE_CHECKING
@@ -22,20 +23,21 @@ logger = logging.getLogger(__name__)
 
 
 class PiperGateway(InProcessArtifactRuntime):
-    """Hold the loaded :class:`PiperVoice` for the configured question voice."""
+    """Hold a loaded :class:`PiperVoice` for the configured question voice.
 
-    @classmethod
-    def normalize_key(cls, key: str) -> str:
+    Satisfies the :class:`TtsEngine` protocol, so it can be injected into the
+    :class:`SpeechRuntimeCoordinator` as the TTS backend.
+    """
+
+    def _normalize_key(self, key: str) -> str:
         """Normalize a Piper voice identifier."""
         return normalize_tts_voice_id(key)
 
-    @classmethod
-    def is_installed(cls, key: str) -> bool:
+    def _is_installed(self, key: str) -> bool:
         """Return whether a valid Piper voice is on disk for ``key``."""
         return is_voice_installed(key)
 
-    @classmethod
-    def load_sync(cls, key: str) -> "PiperVoice":
+    def _load_sync(self, key: str) -> "PiperVoice":
         """Load ``PiperVoice`` from a local voice directory (blocking)."""
         from piper import PiperVoice
 
@@ -44,8 +46,15 @@ class PiperGateway(InProcessArtifactRuntime):
         config_path = directory / f"{key}.onnx.json"
         return PiperVoice.load(model_path, config_path=config_path)
 
-    @classmethod
-    async def load_voice(cls, voice_id: str) -> bool:
+    def is_installed(self, voice_id: str) -> bool:
+        """Return whether a valid Piper voice is on disk for ``voice_id``."""
+        return self._is_installed(voice_id)
+
+    def is_loaded(self, voice_id: str) -> bool:
+        """Return whether the voice for ``voice_id`` is loaded in memory."""
+        return self._has_loaded_key(voice_id)
+
+    async def load_voice(self, voice_id: str) -> bool:
         """Load or reload the Piper voice for ``voice_id`` from disk.
 
         Args:
@@ -54,20 +63,23 @@ class PiperGateway(InProcessArtifactRuntime):
         Returns:
             True if a voice is loaded for the id after this call.
         """
-        code = cls.normalize_key(voice_id)
-        loaded = await cls.load(voice_id)
+        code = self._normalize_key(voice_id)
+        loaded = await self._load(voice_id)
         if loaded:
             logger.info("Loaded Piper voice %s from %s", code, voice_dir(code))
         return loaded
 
-    @classmethod
-    def on_loaded(cls, key: str, artifact: "PiperVoice") -> None:
+    def on_loaded(self, key: str, artifact: "PiperVoice") -> None:
         """Log successful voice load."""
         del artifact
         logger.debug("Piper voice %s loaded into memory", key)
 
-    @classmethod
-    def synthesize_wav_bytes_sync(cls, text: str) -> bytes:
+    def on_unloaded(self) -> None:
+        """Log successful voice unload."""
+        logger.debug("Piper voice unloaded from memory")
+        _ = gc.collect()
+
+    def synthesize_wav_bytes_sync(self, text: str) -> bytes:
         """Synthesize WAV audio for ``text`` using the loaded voice (blocking).
 
         Args:
@@ -79,7 +91,7 @@ class PiperGateway(InProcessArtifactRuntime):
         Raises:
             RuntimeError: When no voice is loaded.
         """
-        voice = cls._artifact
+        voice = self._artifact
         if voice is None:
             raise RuntimeError("Piper voice is not loaded")
 
@@ -88,8 +100,7 @@ class PiperGateway(InProcessArtifactRuntime):
             voice.synthesize_wav(text, wav_file)
         return buffer.getvalue()
 
-    @classmethod
-    async def synthesize_wav_bytes(cls, text: str) -> bytes:
+    async def synthesize_wav_bytes(self, text: str) -> bytes:
         """Synthesize WAV audio for ``text`` in a worker thread.
 
         Args:
@@ -98,4 +109,8 @@ class PiperGateway(InProcessArtifactRuntime):
         Returns:
             Raw WAV file bytes.
         """
-        return await asyncio.to_thread(cls.synthesize_wav_bytes_sync, text)
+        return await asyncio.to_thread(self.synthesize_wav_bytes_sync, text)
+
+
+# Single in-process runtime instance shared by the coordinator and status services.
+PiperRuntime = PiperGateway()

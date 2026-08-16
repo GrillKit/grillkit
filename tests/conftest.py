@@ -29,7 +29,6 @@ from tests.fakes import FakeProvider
 def client():
     """Create a test client with mocked database init."""
     with (
-        patch("app.main.run_migrations"),
         patch(
             "app.platform.domain.speech_runtime.SpeechRuntimeCoordinator.startup",
             new=AsyncMock(),
